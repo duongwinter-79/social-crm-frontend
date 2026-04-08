@@ -84,8 +84,7 @@ export class SocialCrmApiClient {
       this.refreshPromise = this.http
         .post<ApiEnvelope<AuthTokens> | AuthTokens>(
           "/auth/refresh",
-          {},
-          { headers: { Authorization: `Bearer ${tokens.refresh_token}` } }
+          { refresh_token: tokens.refresh_token }
         )
         .then((response) => unwrapEnvelope(response.data))
         .finally(() => {

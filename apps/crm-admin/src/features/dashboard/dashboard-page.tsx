@@ -97,7 +97,7 @@ export function DashboardPage() {
       </section>
 
       <div className="dashboard-grid">
-        <Panel title={<span className="dashboard-panel-title">Pipeline pressure</span> as any} subtitle={"Where the latest visible lead window is currently concentrated." as any}>
+        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">Pipeline pressure</span>} subtitle={<span className="dashboard-panel-subtitle">Where the latest visible lead window is currently concentrated.</span>}>
           <div className="dashboard-stage-grid">
             {stageCounts.map((item) => (
               <div key={item.label} className="dashboard-stage-card">
@@ -108,7 +108,7 @@ export function DashboardPage() {
           </div>
         </Panel>
 
-        <Panel title={<span className="dashboard-panel-title">Lead temperature</span> as any} subtitle={"Classification distribution across the current query window." as any}>
+        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">Lead temperature</span>} subtitle={<span className="dashboard-panel-subtitle">Classification distribution across the current query window.</span>}>
           {classification.length ? (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -127,7 +127,7 @@ export function DashboardPage() {
         </Panel>
       </div>
 
-      <Panel title={<span className="dashboard-panel-title">Priority lead queue</span> as any} subtitle={"Highest visible lead scores in the current dashboard window." as any}>
+      <Panel className="dashboard-module" title={<span className="dashboard-panel-title">Priority lead queue</span>} subtitle={<span className="dashboard-panel-subtitle">Highest visible lead scores in the current dashboard window.</span>}>
         {urgentLeads.length ? (
           <table className="dashboard-table">
             <thead>
