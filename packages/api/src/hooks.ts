@@ -84,7 +84,7 @@ export function useAiQueryMutation() {
 
 export function useMatchingEvaluationMutation() {
   return useMutation({
-    mutationFn: ({ leadId, orderId }: { leadId: string; orderId: string }) => apiClient.evaluateMatching(leadId, orderId)
+    mutationFn: ({ leadId, orderId }: { leadId: string; orderId: string }) => apiClient.evaluateLeadTriage(leadId, orderId)
   });
 }
 

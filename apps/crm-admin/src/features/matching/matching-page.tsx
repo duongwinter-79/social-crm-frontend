@@ -67,40 +67,66 @@ export function MatchingPage() {
                 ]}
               />
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-                The backend currently builds strict matching mainly from lead aiExtractedData, so results depend on extracted profile quality.
+                Lead triage is preliminary. It uses lead AI-extracted data and partial profile signals, so incomplete extraction will lower confidence and should trigger operator review.
               </div>
             </div>
           ) : (
-            <EmptyState title="Choose lead and order" description="Select both entities to inspect a strict matching result." />
+            <EmptyState title="Choose lead and order" description="Select both entities to inspect a preliminary triage result." />
           )}
         </Panel>
 
-        <Panel title="Matching result" subtitle="The UI exposes hard-fail reasons, flex penalties, flags, and eligibility.">
+        <Panel title="Triage result" subtitle="The UI exposes hard-fail reasons, flex penalties, missing inputs, and data quality.">
           {evaluation.data ? (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                <Badge tone={evaluation.data.isEligible ? "success" : "danger"}>{evaluation.data.isEligible ? "Eligible" : "Rejected"}</Badge>
-                <Badge tone="accent">{evaluation.data.conclusion}</Badge>
-                {evaluation.data.requiresManagerApproval ? <Badge tone="warning">Manager approval required</Badge> : null}
+                <Badge tone={evaluation.data.matching.isEligible ? "success" : "danger"}>
+                  {evaluation.data.matching.isEligible ? "Eligible" : "Rejected"}
+                </Badge>
+                <Badge tone="accent">{evaluation.data.matching.conclusion}</Badge>
+                <Badge tone="neutral">{evaluation.data.preliminaryFit.replace(/_/g, " ")}</Badge>
+                <Badge tone="neutral">Data quality {evaluation.data.dataQuality.completeness}%</Badge>
+                {evaluation.data.matching.requiresManagerApproval ? <Badge tone="warning">Manager approval required</Badge> : null}
               </div>
               <div className="grid gap-3 md:grid-cols-4">
-                <Metric label="Score" value={evaluation.data.totalScore} />
-                <Metric label="Foundation" value={evaluation.data.breakdown.foundation} />
-                <Metric label="Experience" value={evaluation.data.breakdown.experience} />
-                <Metric label="Penalties" value={evaluation.data.breakdown.penalties} />
+                <Metric label="Score" value={evaluation.data.matching.totalScore} />
+                <Metric label="Foundation" value={evaluation.data.matching.breakdown.foundation} />
+                <Metric label="Experience" value={evaluation.data.matching.breakdown.experience} />
+                <Metric label="Penalties" value={evaluation.data.matching.breakdown.penalties} />
               </div>
-              {evaluation.data.rejectReason ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{evaluation.data.rejectReason}</div>
+              {evaluation.data.matching.rejectReason ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{evaluation.data.matching.rejectReason}</div>
               ) : null}
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <div className="font-medium">Missing requirements</div>
+                <div className="mt-1">
+                  {evaluation.data.missingRequirements.length
+                    ? evaluation.data.missingRequirements.join(", ")
+                    : "No required triage signals are missing."}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+                <div className="font-medium">Suggested next action</div>
+                <div className="mt-1">{evaluation.data.suggestedAction.replace(/_/g, " ")}</div>
+              </div>
+              <div>
+                <div className="text-sm text-slate-500">Warnings</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {evaluation.data.warnings.length
+                    ? evaluation.data.warnings.map((warning) => <Badge key={warning} tone="warning">{warning}</Badge>)
+                    : <span className="text-sm text-slate-500">No warnings</span>}
+                </div>
+              </div>
               <div>
                 <div className="text-sm text-slate-500">Flags</div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {evaluation.data.flags.length ? evaluation.data.flags.map((flag) => <Badge key={flag}>{flag}</Badge>) : <span className="text-sm text-slate-500">No flags</span>}
+                  {evaluation.data.matching.flags.length
+                    ? evaluation.data.matching.flags.map((flag) => <Badge key={flag}>{flag}</Badge>)
+                    : <span className="text-sm text-slate-500">No flags</span>}
                 </div>
               </div>
             </div>
           ) : (
-            <EmptyState title="No evaluation yet" description="Run the matching engine to see score, flags, penalties, and reject reasons." />
+            <EmptyState title="No triage yet" description="Run lead triage to see score, flags, penalties, missing inputs, and reject reasons." />
           )}
         </Panel>
       </div>

@@ -9,6 +9,7 @@ import type {
   DashboardStats,
   HealthStatus,
   Lead,
+  LeadTriageEvaluation,
   LeadListResponse,
   LeadProfile,
   LeadTransitions,
@@ -166,8 +167,8 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async evaluateMatching(leadId: string, orderId: string) {
-    const response = await this.http.post<ApiEnvelope<MatchingResult> | MatchingResult>("/matching/evaluate", {
+  async evaluateLeadTriage(leadId: string, orderId: string) {
+    const response = await this.http.post<ApiEnvelope<LeadTriageEvaluation> | LeadTriageEvaluation>("/matching/triage", {
       leadId,
       orderId
     });

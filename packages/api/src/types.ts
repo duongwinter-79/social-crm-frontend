@@ -111,8 +111,29 @@ export interface MatchingResult {
   rejectReason?: string;
 }
 
+export interface LeadTriageEvaluation {
+  mode: "lead_triage";
+  leadId: string;
+  orderId: string;
+  dataQuality: {
+    completeness: number;
+    presentSignals: string[];
+    source: string;
+  };
+  missingRequirements: string[];
+  warnings: string[];
+  preliminaryFit: "promising" | "needs_review" | "insufficient_data" | "not_fit";
+  suggestedAction:
+    | "qualify_for_candidate_matching"
+    | "request_profile_completion"
+    | "request_risk_review"
+    | "disqualify_or_reconfirm";
+  matching: MatchingResult;
+}
+
 export interface CandidateSuggestion extends Order {
   matchScore: number;
+  matching: MatchingResult;
 }
 
 export interface AiQueryResult {
