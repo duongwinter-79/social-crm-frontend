@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@social-crm/api": ["../../packages/api/src/index.ts"],
+      "@social-crm/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}
