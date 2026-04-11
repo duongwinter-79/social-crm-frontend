@@ -32,7 +32,8 @@ export function LoginPage() {
           <div className="login-brand-top">
             <div className="login-brand-mark">SC</div>
             <div>
-              <div className="login-brand-title">Social CRM</div>
+              <div className="login-brand-kicker">Social CRM</div>
+              <div className="login-brand-title">Admin Console</div>
               <div className="login-brand-subtitle">Internal recruitment operations</div>
             </div>
           </div>

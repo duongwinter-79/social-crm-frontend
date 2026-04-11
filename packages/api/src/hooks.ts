@@ -54,6 +54,14 @@ export function useOrdersQuery() {
   });
 }
 
+export function useSuggestedOrdersQuery(leadId?: string) {
+  return useQuery({
+    queryKey: ["matching", "suggest", leadId],
+    queryFn: () => apiClient.suggestOrders(leadId as string),
+    enabled: Boolean(leadId)
+  });
+}
+
 export function useUpdateLeadMutation() {
   const queryClient = useQueryClient();
   return useMutation({
