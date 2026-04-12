@@ -7,18 +7,9 @@ export const capabilityRegistry: CapabilityRegistry = {
   aiExtraction: { enabled: true },
   matching: { enabled: true },
   orders: { enabled: true },
-  applications: {
-    enabled: false,
-    reason: "Backend controller exists but does not expose usable CRUD endpoints yet."
-  },
-  documents: {
-    enabled: false,
-    reason: "Backend controller exists but does not expose usable CRUD endpoints yet."
-  },
-  trainingFinance: {
-    enabled: false,
-    reason: "Backend controller exists but does not expose usable CRUD endpoints yet."
-  },
+  applications: { enabled: true },
+  documents: { enabled: true },
+  trainingFinance: { enabled: true },
   integrations: { enabled: true },
   candidatePortal: {
     enabled: false,

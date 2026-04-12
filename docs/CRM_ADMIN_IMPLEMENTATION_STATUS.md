@@ -54,6 +54,7 @@ None in the main CRM operator flow.
 
 - Tailwind workspace config fixed for per-app builds
 - Route-level lazy loading added to `crm-admin`
+- stale capability-registry flags corrected for applications, documents, and training-finance
 
 ## Known Technical Debt
 
