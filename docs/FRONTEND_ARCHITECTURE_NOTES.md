@@ -19,7 +19,7 @@
 - Top header for current module context and backend health
 - Route-loaded content area
 
-The shell is designed to preserve source CRM UX while staying reusable across active and gated modules.
+The shell is designed to preserve source CRM UX while staying reusable across active CRM modules and later follow-up admin phases.
 
 ## Shared UI Strategy
 
@@ -47,7 +47,11 @@ Page-specific layout is still kept local when the screen needs stronger workflow
 - matching
 - orders
 - integrations
-- capability-gated modules
+- applications
+- documents
+- training-finance
+- pipeline
+- admin
 
 Login remains eager-loaded.
 
@@ -70,6 +74,17 @@ Matching and orders rely on current backend endpoints instead of frontend-only h
 - Orders page uses real order payloads
 - Matching page uses backend lead triage
 - Lead workbench uses backend order suggestions when available
+- Applications page uses real backend application records and live lifecycle updates
+- Documents page uses backend checklist summaries and document metadata CRUD
+- Training-finance page uses backend milestone records for deposit, training, visa, and departure progression
+- Pipeline page uses an aggregated backend case-flow endpoint rather than composing a fake board from unrelated module calls
+- Admin page uses real backend user-management APIs for identity and activation control
+
+## Qualification Overlay Boundary
+
+Sparse intake may come from CNV or other integrations, but staff-verified data is edited inside the lead workbench through `GET/PATCH /api/leads/:id/qualification`.
+
+The frontend intentionally keeps raw extracted data and verified qualification data visible side by side. Lead score and matching should be interpreted as outputs of merged intake plus verified data, not intake data alone.
 
 ## Documentation Rule
 

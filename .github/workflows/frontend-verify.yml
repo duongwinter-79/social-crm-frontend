@@ -1,0 +1,46 @@
+name: Frontend Verify
+
+on:
+  push:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - "turbo.json"
+      - "tsconfig.base.json"
+      - "tailwind.config.js"
+      - ".github/workflows/frontend-verify.yml"
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - "turbo.json"
+      - "tsconfig.base.json"
+      - "tailwind.config.js"
+      - ".github/workflows/frontend-verify.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint CRM admin
+        run: npm run lint --workspace @social-crm/crm-admin
+
+      - name: Build workspaces
+        run: npm run build

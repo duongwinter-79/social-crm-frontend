@@ -7,11 +7,15 @@ import "./admin-shell.css";
 
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
 const LeadsPage = lazy(() => import("@/features/leads/leads-page").then((m) => ({ default: m.LeadsPage })));
+const PipelinePage = lazy(() => import("@/features/pipeline/pipeline-page").then((m) => ({ default: m.PipelinePage })));
 const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-page").then((m) => ({ default: m.LeadWorkbenchPage })));
 const MatchingPage = lazy(() => import("@/features/matching/matching-page").then((m) => ({ default: m.MatchingPage })));
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
+const ApplicationsPage = lazy(() => import("@/features/applications/applications-page").then((m) => ({ default: m.ApplicationsPage })));
+const DocumentsPage = lazy(() => import("@/features/documents/documents-page").then((m) => ({ default: m.DocumentsPage })));
+const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
 const IntegrationsPage = lazy(() => import("@/features/integrations/integrations-page").then((m) => ({ default: m.IntegrationsPage })));
-const CapabilityPage = lazy(() => import("@/components/capability-page").then((m) => ({ default: m.CapabilityPage })));
+const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 
 type NavItem = { to: string; label: string; hint: string };
 
@@ -38,8 +42,8 @@ function ProtectedLayout() {
   const { user, clearSession } = useSessionStore();
   const health = useHealthQuery();
   const pageTitle = titleForPath(location.pathname);
-  const primaryItems = navItems.slice(0, 6);
-  const secondaryItems = navItems.slice(6);
+  const primaryItems = navItems.slice(0, 9);
+  const secondaryItems = navItems.slice(9);
 
   return (
     <ShellFrame
@@ -179,124 +183,14 @@ export function AppRouter() {
         <Route path="/dashboard" element={<LazyRoute><DashboardPage /></LazyRoute>} />
         <Route path="/leads" element={<LazyRoute><LeadsPage /></LazyRoute>} />
         <Route path="/leads/:leadId" element={<LazyRoute><LeadWorkbenchPage /></LazyRoute>} />
-        <Route
-          path="/pipeline"
-          element={
-            <LazyRoute>
-              <CapabilityPage
-                title="Pipeline workspace"
-                description="Build the cross-stage operator flow only after backend coverage expands beyond lead status transitions and standalone matching actions."
-                readinessLabel="Workflow shell only"
-                surfaces={["Pipeline board", "Stage SLA queue", "Exception lane", "Team ownership view"]}
-                blockers={[
-                  "No aggregated pipeline endpoint exists for multi-stage operational views.",
-                  "Applications and training-finance modules are not exposed as usable workflow dependencies yet.",
-                  "The current backend only supports per-lead transitions, not full cross-stage board state."
-                ]}
-                nextSteps={[
-                  "Expose a backend pipeline query that returns grouped stage data and ownership context.",
-                  "Add API support for linked applications and training-finance milestones.",
-                  "Replace this shell with a real board only when the stage graph can be rendered from backend data."
-                ]}
-              />
-            </LazyRoute>
-          }
-        />
+        <Route path="/pipeline" element={<LazyRoute><PipelinePage /></LazyRoute>} />
         <Route path="/matching" element={<LazyRoute><MatchingPage /></LazyRoute>} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
-        <Route
-          path="/applications"
-          element={
-            <LazyRoute>
-              <CapabilityPage
-                title="Applications workspace"
-                description="This should become the placement-progress workbench for matched candidates, but it must stay gated until the backend exposes real application CRUD and lifecycle APIs."
-                readinessLabel="Controller exists, CRUD missing"
-                surfaces={["Application queue", "Interview outcome tracker", "Placement checklist", "Employer submission history"]}
-                blockers={[
-                  "Applications controller exists, but usable CRUD endpoints are not implemented.",
-                  "No reliable backend payload exists yet for application stage history or placement metadata.",
-                  "The frontend should not fake application records or statuses."
-                ]}
-                nextSteps={[
-                  "Implement application list, detail, create, and update endpoints in the backend.",
-                  "Define the application state model and response payloads for operator views.",
-                  "Replace this shell with a backend-backed queue and detail workbench."
-                ]}
-              />
-            </LazyRoute>
-          }
-        />
-        <Route
-          path="/documents"
-          element={
-            <LazyRoute>
-              <CapabilityPage
-                title="Documents workspace"
-                description="This module should handle candidate document readiness and auditability, but it remains gated until document CRUD and upload flows are truly available."
-                readinessLabel="Entity exists, UI blocked"
-                surfaces={["Document readiness board", "Candidate file checklist", "Upload audit trail", "Missing-file follow-up queue"]}
-                blockers={[
-                  "The backend document entity exists, but the controller does not expose usable CRUD.",
-                  "There is no safe upload/download flow for operator document management yet.",
-                  "Candidate-facing or operator-facing document actions would currently be fake."
-                ]}
-                nextSteps={[
-                  "Expose document list, upload, update, and delete endpoints in the backend.",
-                  "Define file metadata, ownership, and readiness-state payloads.",
-                  "Promote this shell into a live document workbench only after end-to-end file handling is real."
-                ]}
-              />
-            </LazyRoute>
-          }
-        />
-        <Route
-          path="/training-finance"
-          element={
-            <LazyRoute>
-              <CapabilityPage
-                title="Training & Finance workspace"
-                description="This should become the commitment, deposit, and visa-readiness module, but it stays gated until training-finance operations can be executed against real backend endpoints."
-                readinessLabel="Data model exists, operations missing"
-                surfaces={["Deposit ledger", "Training attendance panel", "Visa readiness tracker", "Financial commitment alerts"]}
-                blockers={[
-                  "Training-finance entity exists, but operator-grade endpoints are not available.",
-                  "No backend workflow currently supports real payment, deposit, or milestone updates from the UI.",
-                  "This module depends on downstream process state that should not be simulated in the frontend."
-                ]}
-                nextSteps={[
-                  "Add backend endpoints for list, detail, update, and milestone progression.",
-                  "Define how finance/training state maps to candidates and applications.",
-                  "Replace this shell with a real ledger and milestone workspace once the API is stable."
-                ]}
-              />
-            </LazyRoute>
-          }
-        />
+        <Route path="/applications" element={<LazyRoute><ApplicationsPage /></LazyRoute>} />
+        <Route path="/documents" element={<LazyRoute><DocumentsPage /></LazyRoute>} />
+        <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
         <Route path="/integrations" element={<LazyRoute><IntegrationsPage /></LazyRoute>} />
-        <Route
-          path="/admin"
-          element={
-            <LazyRoute>
-              <CapabilityPage
-                title="Admin settings"
-                description="System administration should live here eventually, but it remains gated until the backend exposes real user, role, and configuration management APIs."
-                readinessLabel="Admin API incomplete"
-                surfaces={["User administration", "Role matrix", "System policy settings", "Operational audit controls"]}
-                blockers={[
-                  "No backend user-management workflow is exposed for this admin surface.",
-                  "Role administration and system settings endpoints are not available yet.",
-                  "The frontend should not present editable system controls without real authorization-backed APIs."
-                ]}
-                nextSteps={[
-                  "Expose backend endpoints for users, roles, and configuration management.",
-                  "Define permission-aware admin response models for the frontend.",
-                  "Activate this area only when settings changes can be executed and audited end-to-end."
-                ]}
-              />
-            </LazyRoute>
-          }
-        />
+        <Route path="/admin" element={<LazyRoute><AdminPage /></LazyRoute>} />
       </Route>
     </Routes>
   );

@@ -2,19 +2,36 @@ import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig 
 import { readStoredTokens, storeTokens, useSessionStore } from "./session";
 import type {
   AiQueryResult,
+  AdminUser,
+  AdminAuditLogListResponse,
+  AdminSessionListResponse,
+  AdminSystemStatus,
+  AdminUserListResponse,
+  ApplicationListResponse,
+  ApplicationRecord,
   ApiEnvelope,
   AuthTokens,
   AuthUser,
+  CandidateListResponse,
+  CandidateRef,
   CandidateSuggestion,
   DashboardStats,
+  DocumentChecklistSummary,
+  DocumentListResponse,
+  DocumentRecord,
   HealthStatus,
   Lead,
+  LeadQualificationSnapshot,
   LeadTriageEvaluation,
   LeadListResponse,
   LeadProfile,
   LeadTransitions,
   MatchingResult,
   Order
+  ,
+  PipelineResponse,
+  TrainingFinanceListResponse,
+  TrainingFinanceRecord
 } from "./types";
 
 const API_BASE_URL =
@@ -154,8 +171,38 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async getLeadQualification(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<LeadQualificationSnapshot> | LeadQualificationSnapshot>(`/leads/${leadId}/qualification`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateLeadQualification(leadId: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${leadId}/qualification`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
   async listOrders() {
     const response = await this.http.get<ApiEnvelope<Order[]> | Order[]>("/orders");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listApplications(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; status?: string }) {
+    const response = await this.http.get<ApiEnvelope<ApplicationListResponse> | ApplicationListResponse>("/applications", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getApplication(id: string) {
+    const response = await this.http.get<ApiEnvelope<ApplicationRecord> | ApplicationRecord>(`/applications/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateApplication(id: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<ApplicationRecord> | ApplicationRecord>(`/applications/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createApplication(payload: { candidateId: string; orderId: string; status?: string; interviewDate?: string; interviewResult?: string; rejectReason?: string }) {
+    const response = await this.http.post<ApiEnvelope<ApplicationRecord> | ApplicationRecord>("/applications", payload);
     return unwrapEnvelope(response.data);
   }
 
@@ -177,6 +224,106 @@ export class SocialCrmApiClient {
 
   async suggestOrders(candidateId: string) {
     const response = await this.http.get<ApiEnvelope<CandidateSuggestion[]> | CandidateSuggestion[]>(`/matching/suggest/${candidateId}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCandidates(params: { offset: number; limit: number; leadId?: string; lifecycleStatus?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<CandidateListResponse> | CandidateListResponse>("/recruitment/candidates", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getCandidateByLead(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<CandidateRef | null> | CandidateRef | null>(`/recruitment/candidates/by-lead/${leadId}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listDocuments(params: { offset: number; limit: number; leadId?: string; candidateId?: string; docType?: string; status?: string }) {
+    const response = await this.http.get<ApiEnvelope<DocumentListResponse> | DocumentListResponse>("/documents", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getLeadDocumentChecklist(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<DocumentChecklistSummary> | DocumentChecklistSummary>(`/documents/lead/${leadId}/checklist`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getCandidateDocumentChecklist(candidateId: string) {
+    const response = await this.http.get<ApiEnvelope<DocumentChecklistSummary> | DocumentChecklistSummary>(`/documents/candidate/${candidateId}/checklist`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createDocument(payload: { leadId: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) {
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateDocument(id: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<DocumentRecord> | DocumentRecord>(`/documents/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listTrainingFinance(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {
+    const response = await this.http.get<ApiEnvelope<TrainingFinanceListResponse> | TrainingFinanceListResponse>("/training-finance", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getTrainingFinanceByLead(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<TrainingFinanceRecord[]> | TrainingFinanceRecord[]>(`/training-finance/lead/${leadId}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createTrainingFinance(payload: { leadId: string; orderId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) {
+    const response = await this.http.post<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>("/training-finance", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateTrainingFinance(id: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>(`/training-finance/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getPipeline(params: { offset: number; limit: number; stage?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<PipelineResponse> | PipelineResponse>("/pipeline", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listUsers(params: { offset: number; limit: number; search?: string; role?: string; isActive?: boolean }) {
+    const response = await this.http.get<ApiEnvelope<AdminUserListResponse> | AdminUserListResponse>("/users", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getUser(id: string) {
+    const response = await this.http.get<ApiEnvelope<AdminUser> | AdminUser>(`/users/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createUser(payload: { username: string; password: string; role?: string; isActive?: boolean }) {
+    const response = await this.http.post<ApiEnvelope<AdminUser> | AdminUser>("/users", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateUser(id: string, payload: { username?: string; password?: string; role?: string; isActive?: boolean }) {
+    const response = await this.http.patch<ApiEnvelope<AdminUser> | AdminUser>(`/users/${id}`, payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getAdminSystemStatus() {
+    const response = await this.http.get<ApiEnvelope<AdminSystemStatus> | AdminSystemStatus>("/admin/system-status");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listAdminAuditLogs(params: { limit: number; action?: string; targetType?: string }) {
+    const response = await this.http.get<ApiEnvelope<AdminAuditLogListResponse> | AdminAuditLogListResponse>("/admin/audit-logs", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listAdminSessions(params: { limit: number; includeRevoked?: boolean }) {
+    const response = await this.http.get<ApiEnvelope<AdminSessionListResponse> | AdminSessionListResponse>("/admin/sessions", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async revokeAdminSession(id: string) {
+    const response = await this.http.delete<ApiEnvelope<{ success: boolean; sessionId: string; revokedAt: string }> | { success: boolean; sessionId: string; revokedAt: string }>(`/admin/sessions/${id}`);
     return unwrapEnvelope(response.data);
   }
 

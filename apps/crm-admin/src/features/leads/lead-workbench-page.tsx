@@ -8,18 +8,23 @@ import {
   InfoStrip,
   Input,
   Panel,
+  Select,
   SectionHeader,
   Toolbar,
   ToolbarActions
 } from "@social-crm/ui";
 import {
   useAiQueryMutation,
+  useCandidateByLeadQuery,
+  useCreateApplicationMutation,
   useLeadDetailQuery,
+  useLeadQualificationQuery,
   useLeadProfileQuery,
   useLeadTransitionsQuery,
   useOrdersQuery,
   useSuggestedOrdersQuery,
   useUpdateLeadMutation,
+  useUpdateLeadQualificationMutation,
   useUpsertLeadProfileMutation
 } from "@social-crm/api";
 import type { CandidateSuggestion, Order } from "@social-crm/api";
@@ -34,12 +39,16 @@ function toneForStatus(status: string) {
 export function LeadWorkbenchPage() {
   const { leadId = "" } = useParams();
   const leadQuery = useLeadDetailQuery(leadId);
+  const candidateQuery = useCandidateByLeadQuery(leadId);
   const transitionsQuery = useLeadTransitionsQuery(leadId);
   const profileQuery = useLeadProfileQuery(leadId);
+  const qualificationQuery = useLeadQualificationQuery(leadId);
   const ordersQuery = useOrdersQuery();
   const suggestedOrdersQuery = useSuggestedOrdersQuery(leadId);
   const updateLead = useUpdateLeadMutation();
+  const createApplication = useCreateApplicationMutation();
   const profileMutation = useUpsertLeadProfileMutation(leadId);
+  const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
   const aiMutation = useAiQueryMutation();
 
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
@@ -52,6 +61,29 @@ export function LeadWorkbenchPage() {
     desiredIndustry: "",
     preferredRegion: "",
     desiredSalary: ""
+  });
+  const [qualificationForm, setQualificationForm] = useState({
+    age: "",
+    gender: "",
+    hasPassport: "",
+    height: "",
+    weight: "",
+    experienceLevel: "",
+    experienceYears: "",
+    hasStrongSkills: "",
+    readyToDepartInMonths: "",
+    understandsJobNature: "",
+    preferredRegion: "",
+    lateCancellationCount: "",
+    noShowCount: "",
+    unreasonableCancellationCount: "",
+    inconsistentInfoCount: "",
+    hasWorkedAbroad: "",
+    hasCleanHistoryAbroad: "",
+    tattooStatus: "",
+    healthMeetsCriteria: "",
+    hasRiskHistory: "",
+    note: ""
   });
 
   useEffect(() => {
@@ -68,7 +100,36 @@ export function LeadWorkbenchPage() {
     });
   }, [profileQuery.data]);
 
+  useEffect(() => {
+    if (!qualificationQuery.data) return;
+    const verified = qualificationQuery.data.verifiedData ?? {};
+    setQualificationForm({
+      age: readString(verified.age),
+      gender: readString(verified.gender),
+      hasPassport: readBooleanString(verified.hasPassport),
+      height: readString(verified.height),
+      weight: readString(verified.weight),
+      experienceLevel: readString(verified.experienceLevel),
+      experienceYears: readString(verified.experienceYears),
+      hasStrongSkills: readBooleanString(verified.hasStrongSkills),
+      readyToDepartInMonths: readString(verified.readyToDepartInMonths),
+      understandsJobNature: readBooleanString(verified.understandsJobNature),
+      preferredRegion: Array.isArray(verified.preferredRegion) ? verified.preferredRegion.join(", ") : readString(verified.preferredRegion),
+      lateCancellationCount: readString(verified.lateCancellationCount),
+      noShowCount: readString(verified.noShowCount),
+      unreasonableCancellationCount: readString(verified.unreasonableCancellationCount),
+      inconsistentInfoCount: readString(verified.inconsistentInfoCount),
+      hasWorkedAbroad: readBooleanString(verified.hasWorkedAbroad),
+      hasCleanHistoryAbroad: readBooleanString(verified.hasCleanHistoryAbroad),
+      tattooStatus: readString(verified.tattooStatus),
+      healthMeetsCriteria: readBooleanString(verified.healthMeetsCriteria),
+      hasRiskHistory: readString(verified.hasRiskHistory),
+      note: readQualificationNote(verified)
+    });
+  }, [qualificationQuery.data]);
+
   const lead = leadQuery.data;
+  const candidate = candidateQuery.data;
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
   const allOrders = ordersQuery.data ?? [];
   const suggestedOrders = suggestedOrdersQuery.data ?? [];
@@ -115,6 +176,7 @@ export function LeadWorkbenchPage() {
           <span>Use transitions from the backend state machine first.</span>
           <Badge tone="neutral">Profile completeness drives matching quality</Badge>
           <Badge tone="neutral">{suggestedOrders.length ? `${suggestedOrders.length} suggested orders` : "No backend suggestions yet"}</Badge>
+          <Badge tone={candidate ? "success" : "warning"}>{candidate ? `Candidate ${candidate.code ?? candidate.id}` : "No candidate created yet"}</Badge>
         </div>
       </InfoStrip>
 
@@ -211,6 +273,98 @@ export function LeadWorkbenchPage() {
               </Button>
             </div>
           </Panel>
+
+          <Panel
+            title="Qualification overlay"
+            subtitle="Staff-verified fields override sparse CNV intake and directly influence lead score and formal matching."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <Input label="Verified age" value={qualificationForm.age} onChange={(e) => setQualificationForm((s) => ({ ...s, age: e.target.value }))} />
+              <Select label="Verified gender" value={qualificationForm.gender} onChange={(e) => setQualificationForm((s) => ({ ...s, gender: e.target.value }))}>
+                <option value="">Unspecified</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </Select>
+              <Select label="Has passport" value={qualificationForm.hasPassport} onChange={(e) => setQualificationForm((s) => ({ ...s, hasPassport: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </Select>
+              <Input label="Verified height (cm)" value={qualificationForm.height} onChange={(e) => setQualificationForm((s) => ({ ...s, height: e.target.value }))} />
+              <Input label="Verified weight (kg)" value={qualificationForm.weight} onChange={(e) => setQualificationForm((s) => ({ ...s, weight: e.target.value }))} />
+              <Select label="Experience level" value={qualificationForm.experienceLevel} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceLevel: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="excellent">Excellent</option>
+                <option value="good">Good</option>
+                <option value="basic">Basic</option>
+                <option value="none">None</option>
+                <option value="undisclosed">Undisclosed</option>
+              </Select>
+              <Input label="Experience years" value={qualificationForm.experienceYears} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceYears: e.target.value }))} />
+              <Select label="Strong skills" value={qualificationForm.hasStrongSkills} onChange={(e) => setQualificationForm((s) => ({ ...s, hasStrongSkills: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </Select>
+              <Input label="Ready to depart (months)" value={qualificationForm.readyToDepartInMonths} onChange={(e) => setQualificationForm((s) => ({ ...s, readyToDepartInMonths: e.target.value }))} />
+              <Select label="Understands job nature" value={qualificationForm.understandsJobNature} onChange={(e) => setQualificationForm((s) => ({ ...s, understandsJobNature: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </Select>
+              <Input label="Preferred region(s)" value={qualificationForm.preferredRegion} onChange={(e) => setQualificationForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
+              <Select label="Worked abroad before" value={qualificationForm.hasWorkedAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasWorkedAbroad: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </Select>
+              <Select label="Returnee history clean" value={qualificationForm.hasCleanHistoryAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasCleanHistoryAbroad: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </Select>
+              <Select label="Tattoo risk" value={qualificationForm.tattooStatus} onChange={(e) => setQualificationForm((s) => ({ ...s, tattooStatus: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="none">None</option>
+                <option value="hidden">Hidden</option>
+                <option value="small">Small / coverable</option>
+                <option value="visible">Visible</option>
+                <option value="offensive">Offensive</option>
+                <option value="forbidden_zone">Forbidden zone</option>
+              </Select>
+              <Select label="Mandatory health fit" value={qualificationForm.healthMeetsCriteria} onChange={(e) => setQualificationForm((s) => ({ ...s, healthMeetsCriteria: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="true">Pass</option>
+                <option value="false">Fail</option>
+              </Select>
+              <Select label="Risk history" value={qualificationForm.hasRiskHistory} onChange={(e) => setQualificationForm((s) => ({ ...s, hasRiskHistory: e.target.value }))}>
+                <option value="">Unknown</option>
+                <option value="none">None</option>
+                <option value="dropped_deposit">Dropped deposit</option>
+                <option value="canceled_late">Canceled late</option>
+                <option value="fake_profile">Fake profile</option>
+              </Select>
+              <Input label="Late cancellation count" value={qualificationForm.lateCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, lateCancellationCount: e.target.value }))} />
+              <Input label="No-show count" value={qualificationForm.noShowCount} onChange={(e) => setQualificationForm((s) => ({ ...s, noShowCount: e.target.value }))} />
+              <Input label="Unreasonable cancellation count" value={qualificationForm.unreasonableCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, unreasonableCancellationCount: e.target.value }))} />
+              <Input label="Verified inconsistency count" value={qualificationForm.inconsistentInfoCount} onChange={(e) => setQualificationForm((s) => ({ ...s, inconsistentInfoCount: e.target.value }))} />
+            </div>
+            <div className="mt-4">
+              <Input label="Qualification note" value={qualificationForm.note} onChange={(e) => setQualificationForm((s) => ({ ...s, note: e.target.value }))} />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button
+                onClick={() => qualificationMutation.mutate(buildQualificationPatch(qualificationForm))}
+                disabled={qualificationMutation.isPending}
+              >
+                {qualificationMutation.isPending ? "Saving qualification..." : "Save verified qualification"}
+              </Button>
+              <span className="text-sm text-slate-500">
+                Saving this overlay updates the backend scoring inputs without overwriting the raw CNV intake snapshot.
+              </span>
+            </div>
+          </Panel>
         </div>
 
         <div className="space-y-6">
@@ -218,6 +372,7 @@ export function LeadWorkbenchPage() {
             <DescriptionList
               items={[
                 { label: "Lead ID", value: lead.id },
+                { label: "Candidate", value: candidate?.code ?? candidate?.id ?? "Not created" },
                 { label: "Source", value: lead.source },
                 { label: "Phone", value: lead.phone || "No phone" },
                 { label: "Region", value: lead.region || "No region" },
@@ -243,6 +398,23 @@ export function LeadWorkbenchPage() {
                       {renderOrderBadge(order)}
                     </div>
                     <div className="mt-3 text-xs leading-5 text-slate-500">{order.description || order.requirements || "No additional order detail available."}</div>
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (!candidate?.id) return;
+                          createApplication.mutate({ candidateId: candidate.id, orderId: order.id });
+                        }}
+                        disabled={!candidate?.id || createApplication.isPending}
+                      >
+                        {createApplication.isPending ? "Creating..." : "Create application"}
+                      </Button>
+                      <span className="text-xs text-slate-500">
+                        {candidate?.id
+                          ? "Uses the linked candidate record from the recruitment API."
+                          : "Create or promote a candidate first before opening an application."}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -256,6 +428,13 @@ export function LeadWorkbenchPage() {
             subtitle="What the current AI/matching layer sees before operator corrections."
           >
             <pre className="overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(lead.aiExtractedData ?? {}, null, 2)}</pre>
+          </Panel>
+
+          <Panel
+            title="Verified qualification snapshot"
+            subtitle="Staff-confirmed fields that override sparse intake when score and matching are recalculated."
+          >
+            <pre className="overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(qualificationQuery.data?.verifiedData ?? lead.verifiedProfileData ?? {}, null, 2)}</pre>
           </Panel>
         </div>
       </div>
@@ -287,4 +466,55 @@ function renderOrderBadge(order: Order | CandidateSuggestion) {
   }
 
   return <Badge tone="neutral">Catalog</Badge>;
+}
+
+function readString(value: unknown) {
+  return value == null ? "" : String(value);
+}
+
+function readBooleanString(value: unknown) {
+  return typeof value === "boolean" ? String(value) : "";
+}
+
+function readQualificationNote(verified: Record<string, unknown>) {
+  const meta = verified._qualificationMeta as Record<string, unknown> | undefined;
+  return typeof meta?.note === "string" ? meta.note : "";
+}
+
+function parseNumber(value: string) {
+  return value.trim() ? Number(value) : undefined;
+}
+
+function parseBoolean(value: string) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+}
+
+function buildQualificationPatch(form: Record<string, string>) {
+  return {
+    age: parseNumber(form.age),
+    gender: form.gender || undefined,
+    hasPassport: parseBoolean(form.hasPassport),
+    height: parseNumber(form.height),
+    weight: parseNumber(form.weight),
+    experienceLevel: form.experienceLevel || undefined,
+    experienceYears: parseNumber(form.experienceYears),
+    hasStrongSkills: parseBoolean(form.hasStrongSkills),
+    readyToDepartInMonths: parseNumber(form.readyToDepartInMonths),
+    understandsJobNature: parseBoolean(form.understandsJobNature),
+    preferredRegion: form.preferredRegion
+      ? form.preferredRegion.split(",").map((item) => item.trim()).filter(Boolean)
+      : undefined,
+    lateCancellationCount: parseNumber(form.lateCancellationCount),
+    noShowCount: parseNumber(form.noShowCount),
+    unreasonableCancellationCount: parseNumber(form.unreasonableCancellationCount),
+    inconsistentInfoCount: parseNumber(form.inconsistentInfoCount),
+    hasWorkedAbroad: parseBoolean(form.hasWorkedAbroad),
+    hasCleanHistoryAbroad: parseBoolean(form.hasCleanHistoryAbroad),
+    tattooStatus: form.tattooStatus || undefined,
+    healthMeetsCriteria: parseBoolean(form.healthMeetsCriteria),
+    hasRiskHistory: form.hasRiskHistory || undefined,
+    note: form.note || undefined
+  };
 }

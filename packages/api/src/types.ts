@@ -17,9 +17,90 @@ export interface AuthUser {
   roles: UserRole[];
 }
 
+export interface AdminUser {
+  id: string;
+  username: string;
+  role: UserRole;
+  isActive: boolean;
+}
+
+export interface AdminUserListResponse {
+  data: AdminUser[];
+  total: number;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actorUserId: string;
+  actorUsername: string;
+  action: string;
+  targetType: string;
+  targetId?: string | null;
+  summary: string;
+  metadata?: Record<string, unknown> | null;
+  createdAt?: string;
+}
+
+export interface AdminAuditLogListResponse {
+  data: AdminAuditLog[];
+  total: number;
+}
+
+export interface AdminSessionRecord {
+  id: string;
+  sessionId: string;
+  userId: string;
+  username?: string | null;
+  userRole?: string | null;
+  isActiveUser?: boolean | null;
+  createdAt?: string;
+  updatedAt?: string;
+  expiresAt?: string;
+  revokedAt?: string | null;
+  lastUsedAt?: string | null;
+  userAgent?: string | null;
+  ipAddress?: string | null;
+}
+
+export interface AdminSessionListResponse {
+  data: AdminSessionRecord[];
+  total: number;
+}
+
+export interface AdminSystemStatus {
+  backend: {
+    generatedAt: string;
+    nodeEnv: string;
+    port: number;
+  };
+  auth: {
+    totalUsers: number;
+    activeUsers: number;
+    activeSessions: number;
+  };
+  integrations: {
+    zaloEnabled: boolean;
+    cnvEnabled: boolean;
+  };
+  cnv: {
+    apiBaseUrl: string;
+    webhookUrlConfigured: boolean;
+    verifyTokenConfigured: boolean;
+    clientIdConfigured: boolean;
+    accountIdSuffix?: string | null;
+  };
+}
+
 export interface DashboardStats {
   totalLeads: number;
   totalThreads: number;
+  totalCandidates?: number;
+  totalApplications?: number;
+  totalDocuments?: number;
+  leadsByStatus?: Record<string, number>;
+  applicationsByStatus?: Record<string, number>;
+  documentsByStatus?: Record<string, number>;
+  workflowSummary?: Record<string, number>;
 }
 
 export interface HealthStatus {
@@ -50,6 +131,7 @@ export interface Lead {
   tags?: string[] | null;
   status: string;
   aiExtractedData?: Record<string, unknown> | null;
+  verifiedProfileData?: Record<string, unknown> | null;
   leadScore?: number | null;
   leadClassification?: string | null;
   createdAt?: string;
@@ -74,6 +156,13 @@ export interface LeadProfile {
   desiredIndustry?: string | null;
   preferredRegion?: string | null;
   desiredSalary?: string | null;
+}
+
+export interface LeadQualificationSnapshot {
+  leadId: string;
+  intakeData: Record<string, unknown>;
+  verifiedData: Record<string, unknown>;
+  mergedData: Record<string, unknown>;
 }
 
 export interface LeadTransitions {
@@ -134,6 +223,135 @@ export interface LeadTriageEvaluation {
 export interface CandidateSuggestion extends Order {
   matchScore: number;
   matching: MatchingResult;
+}
+
+export interface CandidateRef {
+  id: string;
+  code?: string | null;
+  lifecycleStatus?: string | null;
+  lead_id?: string;
+  lead?: Lead;
+  profile?: Record<string, unknown> | null;
+}
+
+export interface ApplicationRecord {
+  id: string;
+  lead_id: string;
+  order_id: string;
+  candidate_id?: string | null;
+  status: string;
+  interviewDate?: string | null;
+  interviewResult?: string | null;
+  rejectReason?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  lead?: Lead;
+  order?: Order;
+  candidate?: CandidateRef | null;
+}
+
+export interface ApplicationListResponse {
+  data: ApplicationRecord[];
+  total: number;
+}
+
+export interface CandidateListResponse {
+  data: CandidateRef[];
+  total: number;
+}
+
+export interface DocumentRecord {
+  id: string;
+  lead_id: string;
+  candidate_id?: string | null;
+  docType: string;
+  status: string;
+  fileUrl?: string | null;
+  storageBucket?: string | null;
+  issueDate?: string | null;
+  expiryDate?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  candidate?: CandidateRef | null;
+}
+
+export interface DocumentListResponse {
+  data: DocumentRecord[];
+  total: number;
+}
+
+export interface DocumentChecklistSummary {
+  requiredDocTypes: string[];
+  presentDocTypes: string[];
+  missingDocTypes: string[];
+  verifiedDocTypes: string[];
+  rejectedDocTypes: string[];
+  expiredDocTypes: string[];
+  isComplete: boolean;
+  items: Array<{
+    docType: string;
+    required: boolean;
+    status: string;
+    present: boolean;
+    isExpired: boolean;
+  }>;
+  leadId?: string;
+  candidateId?: string;
+}
+
+export interface TrainingFinanceRecord {
+  id: string;
+  lead_id: string;
+  order_id?: string | null;
+  orderType?: string | null;
+  depositStatus?: string | null;
+  amountPaid?: number | null;
+  trainingStartDate?: string | null;
+  trainingProgress?: string | null;
+  visaDate?: string | null;
+  departureDate?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  lead?: Lead;
+  order?: Order | null;
+}
+
+export interface TrainingFinanceListResponse {
+  data: TrainingFinanceRecord[];
+  total: number;
+}
+
+export interface PipelineRow {
+  leadId: string;
+  leadName?: string | null;
+  phone?: string | null;
+  source: string;
+  currentStage: string;
+  candidateId?: string | null;
+  candidateCode?: string | null;
+  applicationStatus?: string | null;
+  applicationOrderName?: string | null;
+  documents: {
+    missingRequired: string[];
+    expired: string[];
+    total: number;
+  };
+  trainingFinance?: {
+    depositStatus?: string | null;
+    amountPaid?: number | null;
+    trainingProgress?: string | null;
+    visaDate?: string | null;
+    departureDate?: string | null;
+  } | null;
+  blockers: string[];
+  nextAction: string;
+  updatedAt?: string;
+}
+
+export interface PipelineResponse {
+  data: PipelineRow[];
+  total: number;
+  groups: Record<string, number>;
 }
 
 export interface AiQueryResult {
