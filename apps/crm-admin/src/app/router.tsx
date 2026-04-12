@@ -54,7 +54,7 @@ function ProtectedLayout() {
             <div className="admin-shell-brand-mark">SC</div>
             <div className="admin-shell-brand-copy">
               <div className="admin-shell-brand-kicker">Social CRM</div>
-              <div className="admin-shell-brand-title">Admin Console</div>
+              <div className="admin-shell-brand-title">Operations Workspace</div>
               <p className="admin-shell-brand-text">
                 Recruitment operations, matching control, and backend-backed workflow execution.
               </p>

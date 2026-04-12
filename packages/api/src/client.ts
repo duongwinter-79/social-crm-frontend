@@ -4,6 +4,7 @@ import type {
   AiQueryResult,
   AdminUser,
   AdminAuditLogListResponse,
+  CnvConnectionStatus,
   AdminSessionListResponse,
   AdminSystemStatus,
   AdminUserListResponse,
@@ -332,6 +333,16 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async getCnvConnectionStatus() {
+    const response = await this.http.get<ApiEnvelope<CnvConnectionStatus> | CnvConnectionStatus>("/cnv/webhook-admin/status");
+    return unwrapEnvelope(response.data);
+  }
+
+  async getCnvConnectLink() {
+    const response = await this.http.post<ApiEnvelope<{ success: boolean; url: string }> | { success: boolean; url: string }>("/cnv/webhook-admin/connect-link");
+    return unwrapEnvelope(response.data);
+  }
+
   async getCnvInfo() {
     const response = await this.http.get<ApiEnvelope<{ success: boolean; result: unknown }> | { success: boolean; result: unknown }>("/cnv/webhook-admin/info");
     return unwrapEnvelope(response.data);
@@ -344,6 +355,11 @@ export class SocialCrmApiClient {
 
   async removeCnvWebhook() {
     const response = await this.http.delete<ApiEnvelope<{ success: boolean; result: unknown }> | { success: boolean; result: unknown }>("/cnv/webhook-admin/remove");
+    return unwrapEnvelope(response.data);
+  }
+
+  async disconnectCnv() {
+    const response = await this.http.delete<ApiEnvelope<{ success: boolean; disconnected: boolean }> | { success: boolean; disconnected: boolean }>("/cnv/webhook-admin/disconnect");
     return unwrapEnvelope(response.data);
   }
 }

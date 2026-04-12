@@ -340,19 +340,39 @@ export function useCnvInfoQuery() {
   });
 }
 
+export function useCnvConnectionStatusQuery() {
+  return useQuery({
+    queryKey: ["cnv", "connection-status"],
+    queryFn: () => apiClient.getCnvConnectionStatus()
+  });
+}
+
 export function useCnvActionMutations() {
   const queryClient = useQueryClient();
   return {
+    connectLink: useMutation({
+      mutationFn: () => apiClient.getCnvConnectLink()
+    }),
     testToken: useMutation({
       mutationFn: () => apiClient.testCnvToken()
     }),
     register: useMutation({
       mutationFn: () => apiClient.registerCnvWebhook(),
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cnv", "info"] })
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["cnv", "info"] });
+        queryClient.invalidateQueries({ queryKey: ["cnv", "connection-status"] });
+      }
     }),
     remove: useMutation({
       mutationFn: () => apiClient.removeCnvWebhook(),
       onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cnv", "info"] })
+    }),
+    disconnect: useMutation({
+      mutationFn: () => apiClient.disconnectCnv(),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["cnv", "info"] });
+        queryClient.invalidateQueries({ queryKey: ["cnv", "connection-status"] });
+      }
     })
   };
 }

@@ -17,6 +17,7 @@ import {
   useAdminSessionsQuery,
   useAdminSystemStatusQuery,
   useCnvActionMutations,
+  useCnvConnectionStatusQuery,
   useCnvInfoQuery,
   useCreateUserMutation,
   useHealthQuery,
@@ -29,11 +30,11 @@ import {
 const ROLE_OPTIONS = ["", "admin", "staff"] as const;
 
 function toneForRole(role: string) {
-  return role === "admin" ? "accent" as const : "neutral" as const;
+  return role === "admin" ? ("accent" as const) : ("neutral" as const);
 }
 
 function toneForStatus(isActive: boolean) {
-  return isActive ? "success" as const : "danger" as const;
+  return isActive ? ("success" as const) : ("danger" as const);
 }
 
 export function AdminPage() {
@@ -67,6 +68,7 @@ export function AdminPage() {
   const systemStatus = useAdminSystemStatusQuery();
   const auditLogs = useAdminAuditLogsQuery({ limit: 8 });
   const sessions = useAdminSessionsQuery({ limit: 8, includeRevoked: false });
+  const cnvConnectionStatus = useCnvConnectionStatusQuery();
   const cnvInfo = useCnvInfoQuery();
   const cnvActions = useCnvActionMutations();
   const revokeSession = useRevokeAdminSessionMutation();
@@ -92,7 +94,7 @@ export function AdminPage() {
     const active = rows.filter((row) => row.isActive).length;
     return {
       admins,
-      active,
+      active
     };
   }, [rows]);
 
@@ -106,8 +108,8 @@ export function AdminPage() {
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>This admin workspace is intentionally limited to identity management and safe integration controls backed by the real API.</span>
-          <Badge tone="warning">System policy settings and audit history are deferred follow-up work</Badge>
+          <span>This admin workspace is intentionally limited to identity management, CNV integration control, and safe operational visibility backed by the real API.</span>
+          <Badge tone="warning">Only backend-enforced controls should live here</Badge>
         </div>
       </InfoStrip>
 
@@ -263,32 +265,82 @@ export function AdminPage() {
                 { label: "Backend", value: <Badge tone={health.data?.status === "ok" ? "success" : "warning"}>{health.data?.status ?? "Unknown"}</Badge> },
                 { label: "Active sessions", value: String(systemStatus.data?.auth.activeSessions ?? "—") },
                 { label: "Active users", value: String(systemStatus.data?.auth.activeUsers ?? "—") },
+                { label: "CNV OAuth", value: <Badge tone={cnvConnectionStatus.data?.connected ? "success" : "warning"}>{cnvConnectionStatus.data?.connected ? "Connected" : "Not connected"}</Badge> },
                 { label: "CNV webhook info", value: cnvInfo.data?.result ? "Loaded" : "Not loaded yet" },
                 { label: "Token check", value: cnvActions.testToken.data?.tokenPrefix ? `Token ${cnvActions.testToken.data.tokenPrefix}` : "Not tested yet" }
               ]}
             />
-            <pre className="mt-4 overflow-auto rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify({ health: health.data ?? {}, status: systemStatus.data ?? {} }, null, 2)}</pre>
+            <pre className="mt-4 overflow-auto rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+              {JSON.stringify(
+                {
+                  health: health.data ?? {},
+                  status: systemStatus.data ?? {},
+                  cnvConnection: cnvConnectionStatus.data ?? {}
+                },
+                null,
+                2
+              )}
+            </pre>
           </Panel>
 
-          <Panel title="CNV integration controls" subtitle="Safe reuse of the existing backend webhook-admin actions from the admin workspace.">
+          <Panel title="CNV integration controls" subtitle="Use the stored CNV OAuth connection before testing tokens or changing webhook registration.">
             <div className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-3">
+              {cnvConnectionStatus.isError ? (
+                <InfoStrip className="border-amber-300 bg-amber-50 text-amber-900">
+                  <span>CRM could not load CNV connection status from the backend. The connect action is still available, but test/register/remove may stay disabled until the status endpoint succeeds.</span>
+                </InfoStrip>
+              ) : null}
+              <div className="grid gap-3 md:grid-cols-4">
+                <ActionState label="SSO" state={cnvConnectionStatus.data?.connected ? "Connected" : "Not connected"} />
                 <ActionState label="Token test" state={cnvActions.testToken.isSuccess ? "Completed" : cnvActions.testToken.isPending ? "Running" : "Idle"} />
                 <ActionState label="Register" state={cnvActions.register.isSuccess ? "Completed" : cnvActions.register.isPending ? "Running" : "Idle"} />
                 <ActionState label="Remove" state={cnvActions.remove.isSuccess ? "Completed" : cnvActions.remove.isPending ? "Running" : "Idle"} />
               </div>
+              <DescriptionList
+                items={[
+                  { label: "SSO host", value: cnvConnectionStatus.data?.ssoBaseUrl ?? "Unknown" },
+                  { label: "API host", value: cnvConnectionStatus.data?.apiBaseUrl ?? "Unknown" },
+                  { label: "Redirect URI configured", value: cnvConnectionStatus.data?.redirectUriConfigured ? "yes" : "no" },
+                  { label: "Scope", value: cnvConnectionStatus.data?.scope || "(empty)" },
+                  { label: "Connected user", value: cnvConnectionStatus.data?.connection?.verifiedUsername ?? cnvConnectionStatus.data?.connection?.verifiedUserId ?? "Not connected" }
+                ]}
+              />
               <div className="flex flex-wrap gap-3">
-                <Button onClick={() => cnvActions.testToken.mutate()} disabled={cnvActions.testToken.isPending}>
+                <Button
+                  onClick={() =>
+                    cnvActions.connectLink.mutate(undefined, {
+                      onSuccess: (result) => {
+                        window.open(result.url, "_blank", "noopener,noreferrer");
+                      }
+                    })
+                  }
+                  disabled={cnvActions.connectLink.isPending}
+                >
+                  {cnvActions.connectLink.isPending ? "Opening SSO..." : cnvConnectionStatus.data?.connected ? "Reconnect CNV SSO" : "Connect CNV SSO"}
+                </Button>
+                <Button onClick={() => cnvActions.testToken.mutate()} disabled={cnvActions.testToken.isPending || !cnvConnectionStatus.data?.connected}>
                   {cnvActions.testToken.isPending ? "Testing token..." : "Test token"}
                 </Button>
-                <Button variant="secondary" onClick={() => cnvActions.register.mutate()} disabled={cnvActions.register.isPending}>
+                <Button variant="secondary" onClick={() => cnvActions.register.mutate()} disabled={cnvActions.register.isPending || !cnvConnectionStatus.data?.connected}>
                   {cnvActions.register.isPending ? "Registering..." : "Register webhook"}
                 </Button>
-                <Button variant="danger" onClick={() => cnvActions.remove.mutate()} disabled={cnvActions.remove.isPending}>
+                <Button variant="danger" onClick={() => cnvActions.remove.mutate()} disabled={cnvActions.remove.isPending || !cnvConnectionStatus.data?.connected}>
                   {cnvActions.remove.isPending ? "Removing..." : "Remove webhook"}
                 </Button>
+                <Button variant="danger" onClick={() => cnvActions.disconnect.mutate()} disabled={cnvActions.disconnect.isPending || !cnvConnectionStatus.data?.connected}>
+                  {cnvActions.disconnect.isPending ? "Disconnecting..." : "Disconnect CNV"}
+                </Button>
               </div>
-              <pre className="overflow-auto rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(cnvInfo.data?.result ?? {}, null, 2)}</pre>
+              <pre className="overflow-auto rounded-[22px] border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                {JSON.stringify(
+                  {
+                    status: cnvConnectionStatus.data ?? {},
+                    webhookInfo: cnvInfo.data?.result ?? {}
+                  },
+                  null,
+                  2
+                )}
+              </pre>
             </div>
           </Panel>
 

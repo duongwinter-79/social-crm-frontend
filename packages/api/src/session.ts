@@ -13,6 +13,29 @@ export function readStoredTokens(): AuthTokens | null {
   return { access_token, refresh_token };
 }
 
+function decodeJwtPayload(token: string): AuthUser | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const base64 = token.split(".")[1];
+    const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(window.atob(normalized));
+    return {
+      userId: payload.sub,
+      username: payload.username,
+      roles: payload.roles ?? []
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function readStoredUser(): AuthUser | null {
+  const tokens = readStoredTokens();
+  if (!tokens?.access_token) return null;
+  return decodeJwtPayload(tokens.access_token);
+}
+
 export function storeTokens(tokens: AuthTokens | null) {
   if (typeof window === "undefined") return;
   if (!tokens) {
@@ -32,7 +55,7 @@ interface SessionState {
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
-  user: null,
+  user: readStoredUser(),
   tokens: readStoredTokens(),
   setSession: (tokens, user = null) => {
     storeTokens(tokens);

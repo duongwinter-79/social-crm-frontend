@@ -75,9 +75,18 @@ npm run build
 Runtime check:
 
 ```bash
+Copy apps/crm-admin/.env.example apps/crm-admin/.env.local
 VITE_API_BASE_URL=http://localhost:3000
 npm run dev:admin
 ```
+
+The admin app reads:
+
+- `VITE_API_BASE_URL`
+
+Default example file:
+
+- [apps/crm-admin/.env.example](C:/Users/Admin/Desktop/CRM/social_crm_frontend/apps/crm-admin/.env.example)
 
 ## Notes
 

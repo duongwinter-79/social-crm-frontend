@@ -83,12 +83,36 @@ export interface AdminSystemStatus {
     cnvEnabled: boolean;
   };
   cnv: {
+    ssoBaseUrl?: string;
     apiBaseUrl: string;
     webhookUrlConfigured: boolean;
     verifyTokenConfigured: boolean;
     clientIdConfigured: boolean;
+    redirectUriConfigured?: boolean;
+    scope?: string;
+    tokenGrantType?: string;
     accountIdSuffix?: string | null;
   };
+}
+
+export interface CnvConnectionStatus {
+  connected: boolean;
+  accountId?: string | null;
+  accountIdSuffix?: string | null;
+  redirectUriConfigured: boolean;
+  ssoBaseUrl: string;
+  apiBaseUrl: string;
+  scope: string;
+  tokenGrantType: string;
+  connection?: {
+    connectedAt?: string;
+    expiresAt?: string | null;
+    lastVerifiedAt?: string | null;
+    verifiedUserId?: string | null;
+    verifiedUsername?: string | null;
+    connectedByUserId?: string;
+    connectedByUsername?: string;
+  } | null;
 }
 
 export interface DashboardStats {
