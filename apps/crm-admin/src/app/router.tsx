@@ -42,8 +42,9 @@ function ProtectedLayout() {
   const { user, clearSession } = useSessionStore();
   const health = useHealthQuery();
   const pageTitle = titleForPath(location.pathname);
-  const primaryItems = navItems.slice(0, 9);
-  const secondaryItems = navItems.slice(9);
+  const visibleNavItems = navItems.filter((item) => item.to !== "/admin" || user?.roles?.includes("admin"));
+  const primaryItems = visibleNavItems.slice(0, 9);
+  const secondaryItems = visibleNavItems.slice(9);
 
   return (
     <ShellFrame
@@ -160,6 +161,11 @@ function RequireAuth() {
   return tokens?.access_token ? <ProtectedLayout /> : <Navigate to="/login" replace />;
 }
 
+function RequireAdmin(props: { children: ReactNode }) {
+  const user = useSessionStore((state) => state.user);
+  return user?.roles?.includes("admin") ? <>{props.children}</> : <Navigate to="/dashboard" replace />;
+}
+
 function RouteFallback() {
   return (
     <div className="rounded-[24px] border border-slate-200 bg-white px-6 py-10 text-center shadow-[0_18px_34px_rgba(15,23,42,0.05)]">
@@ -190,7 +196,7 @@ export function AppRouter() {
         <Route path="/documents" element={<LazyRoute><DocumentsPage /></LazyRoute>} />
         <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
         <Route path="/integrations" element={<LazyRoute><IntegrationsPage /></LazyRoute>} />
-        <Route path="/admin" element={<LazyRoute><AdminPage /></LazyRoute>} />
+        <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
       </Route>
     </Routes>
   );

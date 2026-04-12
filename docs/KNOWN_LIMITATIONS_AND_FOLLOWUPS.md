@@ -61,6 +61,7 @@ Current state:
 - role and activation management are backend-backed
 - readonly backend/CNV status and webhook-admin controls are available
 - admin audit history and session revocation are available
+- `/admin` nav and route are now role-aware for admin users only
 
 Missing later work:
 
