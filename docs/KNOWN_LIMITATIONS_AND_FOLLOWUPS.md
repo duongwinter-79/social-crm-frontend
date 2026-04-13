@@ -20,7 +20,7 @@ Missing later work:
 
 Related docs:
 
-- `docs/QUALIFICATION_WORKBENCH.md`
+- `docs/OPERATOR_WORKBENCHES.md`
 - `social_crm_backend/docs/E2E_VALIDATION_AND_CI.md`
 
 ### 2. Applications creation is only available from lead workbench candidate context
@@ -51,7 +51,7 @@ Missing later work:
 
 Related doc:
 
-- `docs/DOCUMENTS_WORKBENCH.md`
+- `docs/OPERATOR_WORKBENCHES.md`
 
 ### 4. Admin is only at the identity layer
 
@@ -70,7 +70,7 @@ Missing later work:
 
 Related doc:
 
-- `docs/ADMIN_WORKBENCH.md`
+- `docs/OPERATOR_WORKBENCHES.md`
 
 ### 5. True runtime settings remain intentionally absent
 

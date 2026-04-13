@@ -26,35 +26,58 @@ That includes:
 - AI extraction query
 - matching triage
 - CNV integration admin actions
+- applications
+- documents
+- training-finance
+- pipeline
+- admin identity and audit/session surfaces
 
-Modules without stable backend CRUD remain capability-gated or read-only in the UI.
+There are no remaining capability-gated modules in the main internal CRM operator flow.
 
-## Matching Workbench
+## Architecture And UX Direction
 
-The current matching page in `crm-admin` is a lead-triage screen, not a final candidate-matching screen.
+Workspace structure:
 
-Current backend route used by the UI:
+- `apps/crm-admin`
+  - staff-facing CRM console
+- `apps/candidate-portal`
+  - separate candidate-facing surface for later self-service flows
+- `packages/ui`
+  - shared visual primitives
+- `packages/api`
+  - shared API client, query hooks, session handling, and frontend types
 
-- `POST /api/matching/triage`
+Admin shell characteristics:
 
-The UI currently shows:
+- persistent left sidebar for workspace navigation
+- top header for page context and runtime summaries
+- route-level lazy loading for heavy CRM workspaces
+- light operational surfaces, compact toolbars, dense panels, and backend-truth-first workflows
 
-- eligibility and conclusion
-- score breakdown
-- data quality
-- missing requirements
-- warnings
-- preliminary fit
-- suggested next action
-- flags and reject reason
+The current visual direction was adapted from `taiwan-xklđ-crm-1` as a source-style reference, but the frontend only exposes flows that the current backend actually supports.
 
-Formal candidate matching exists in the backend as:
+Reuse rules applied in this repo:
 
-- `POST /api/matching/evaluate-candidate`
+- reuse visual language, not source business logic
+- keep backend truth first for active modules
+- do not simulate unsupported workflows
+- prefer shared primitives in `packages/ui` over one-off page styling where possible
 
-That route is intended for qualified candidate evaluation, not the current lead-stage workbench.
+## Operator Workbenches
 
-See [docs/ADMIN_MATCHING_WORKBENCH.md](C:\Users\Admin\Desktop\CRM\social_crm_frontend\docs\ADMIN_MATCHING_WORKBENCH.md).
+The detailed frontend behavior for the live CRM admin modules is consolidated in:
+
+- [docs/OPERATOR_WORKBENCHES.md](C:/Users/Admin/Desktop/CRM/social_crm_frontend/docs/OPERATOR_WORKBENCHES.md)
+
+That document covers:
+
+- matching
+- lead qualification
+- applications
+- documents
+- training-finance
+- pipeline
+- admin
 
 ## Verification
 
@@ -93,3 +116,4 @@ Default example file:
 - candidate portal remains intentionally lighter because external-facing backend auth and resource coverage are still incomplete
 - matching UI text should distinguish clearly between lead triage and formal candidate matching
 - API-driven state and business rules should always come from the backend rather than being hardcoded in the UI
+- use `docs/CRM_ADMIN_IMPLEMENTATION_STATUS.md` for current completion status and `docs/KNOWN_LIMITATIONS_AND_FOLLOWUPS.md` for deferred work

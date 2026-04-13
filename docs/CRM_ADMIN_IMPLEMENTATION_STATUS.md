@@ -74,7 +74,7 @@ None in the main CRM operator flow.
 - the lead workbench now includes a staff-verified qualification overlay backed by `/api/leads/:id/qualification`
 - this overlay bridges sparse CNV intake and downstream lead score and matching behavior
 - CI workflow template added at `.github/workflows/frontend-verify.yml`
-- detailed qualification flow notes live in `docs/QUALIFICATION_WORKBENCH.md`
+- detailed operator workspace notes now live in `docs/OPERATOR_WORKBENCHES.md`
 
 ## Recent Applications Update
 
