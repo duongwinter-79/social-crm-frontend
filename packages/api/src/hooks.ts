@@ -333,10 +333,11 @@ export function useRevokeAdminSessionMutation() {
   });
 }
 
-export function useCnvInfoQuery() {
+export function useCnvInfoQuery(enabled = true) {
   return useQuery({
     queryKey: ["cnv", "info"],
-    queryFn: () => apiClient.getCnvInfo()
+    queryFn: () => apiClient.getCnvInfo(),
+    enabled
   });
 }
 
@@ -344,6 +345,14 @@ export function useCnvConnectionStatusQuery() {
   return useQuery({
     queryKey: ["cnv", "connection-status"],
     queryFn: () => apiClient.getCnvConnectionStatus()
+  });
+}
+
+export function useCnvCustomersQuery(enabled = true) {
+  return useQuery({
+    queryKey: ["cnv", "customers"],
+    queryFn: () => apiClient.listCnvCustomers(),
+    enabled
   });
 }
 

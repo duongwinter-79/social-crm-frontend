@@ -213,12 +213,13 @@ The admin workspace currently covers:
 - role and activation management
 - readonly backend/CNV system status
 - CNV token test and webhook registration lifecycle actions
+- CNV customer-read verification with refresh, total count, top customer rows, and raw payload output
 - recent admin audit log entries
 - recent auth session review and revocation
 
 ### Current Boundary
 
-This workspace is intentionally limited to the identity-and-access layer plus safe integration control surfaces.
+This workspace is intentionally limited to the identity-and-access layer plus safe integration control surfaces. The CNV customer-read panel validates SSO scope and API connectivity; it does not create CRM leads automatically.
 
 It does not yet include broader runtime configuration controls or general policy editing.
 

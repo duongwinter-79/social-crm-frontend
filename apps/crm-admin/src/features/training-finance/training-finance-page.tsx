@@ -4,6 +4,8 @@ import {
   Button,
   DescriptionList,
   EmptyState,
+  FieldGroup,
+  InfoCard,
   InfoStrip,
   Input,
   Panel,
@@ -17,6 +19,7 @@ import {
   useUpdateTrainingFinanceMutation
 } from "@social-crm/api";
 import type { TrainingFinanceRecord } from "@social-crm/api";
+import { useI18n } from "../../i18n";
 
 function toneForMilestone(record: TrainingFinanceRecord) {
   if (record.departureDate) return "success" as const;
@@ -35,6 +38,7 @@ function milestoneLabel(record: TrainingFinanceRecord) {
 }
 
 export function TrainingFinancePage() {
+  const { copy, formatTrainingMilestone } = useI18n();
   const [filters, setFilters] = useState({
     leadId: "",
     orderId: "",
@@ -83,39 +87,53 @@ export function TrainingFinancePage() {
     );
   }, [records, filters.search]);
 
-  const selected = filteredRecords.find((record: TrainingFinanceRecord) => record.id === selectedId) ?? filteredRecords[0] ?? null;
+  const selected =
+    filteredRecords.find((record: TrainingFinanceRecord) => record.id === selectedId) ?? filteredRecords[0] ?? null;
 
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="Training & Finance"
-        title="Commitment, training, visa, and departure tracking"
-        description="Track downstream milestones after matching and application progression with real backend training-finance records."
+        eyebrow={copy({ en: "Training & Finance", vi: "Đào tạo & tài chính" })}
+        title={copy({ en: "Commitment, training, visa, and departure tracking", vi: "Theo dõi đặt cọc, đào tạo, visa và xuất cảnh" })}
+        description={copy({
+          en: "Track downstream milestones after matching and application progression with real backend records.",
+          vi: "Theo dõi các mốc vận hành sau khi ghép đơn và xử lý hồ sơ bằng dữ liệu thực từ backend."
+        })}
       />
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>The current module is milestone-driven rather than payment-infrastructure heavy.</span>
-          <Badge tone="warning">Use it to manage operational readiness, not full accounting</Badge>
+          <span>
+            {copy({
+              en: "This module is milestone-driven rather than full accounting.",
+              vi: "Phân hệ này tập trung vào các mốc vận hành, không phải hệ thống kế toán đầy đủ."
+            })}
+          </span>
+          <Badge tone="warning">
+            {copy({ en: "Operational readiness only", vi: "Chỉ phục vụ mức độ sẵn sàng vận hành" })}
+          </Badge>
         </div>
       </InfoStrip>
 
       <Toolbar compact className="border-slate-200/90">
-        <div className="grid gap-3 md:grid-cols-3">
-          <Input label="Lead ID" value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
-          <Input label="Order ID" value={filters.orderId} onChange={(e) => setFilters((s) => ({ ...s, orderId: e.target.value }))} />
-          <Input label="Search" value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
-        </div>
+        <FieldGroup columns={3}>
+          <Input label={copy({ en: "Lead ID", vi: "Lead ID" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
+          <Input label={copy({ en: "Order ID", vi: "Order ID" })} value={filters.orderId} onChange={(e) => setFilters((s) => ({ ...s, orderId: e.target.value }))} />
+          <Input label={copy({ en: "Search", vi: "Tìm kiếm" })} value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
+        </FieldGroup>
         <ToolbarActions>
-          <Badge tone="neutral">{filteredRecords.length} visible records</Badge>
+          <Badge tone="neutral">{copy({ en: `${filteredRecords.length} visible records`, vi: `${filteredRecords.length} bản ghi hiển thị` })}</Badge>
         </ToolbarActions>
       </Toolbar>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_360px]">
         <div className="space-y-6">
           <Panel
-            title="Milestone ledger"
-            subtitle="Each record ties deposit, training, visa, and departure progress back to a lead and optional order."
+            title={copy({ en: "Milestone ledger", vi: "Sổ theo dõi mốc tiến độ" })}
+            subtitle={copy({
+              en: "Each record ties deposit, training, visa, and departure progress back to a lead and optional order.",
+              vi: "Mỗi bản ghi liên kết đặt cọc, đào tạo, visa và xuất cảnh với lead và đơn hàng nếu có."
+            })}
           >
             {filteredRecords.length ? (
               <div className="space-y-3">
@@ -142,42 +160,53 @@ export function TrainingFinancePage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="font-semibold text-slate-900">{record.orderType || record.order?.name || "Training-finance record"}</div>
+                          <div className="font-semibold text-slate-900">
+                            {record.orderType || record.order?.name || copy({ en: "Training-finance record", vi: "Bản ghi đào tạo - tài chính" })}
+                          </div>
                           <div className="mt-1 text-xs text-slate-500">{record.lead?.fullName || record.lead_id}</div>
                         </div>
-                        <Badge tone={toneForMilestone(record)}>{milestoneLabel(record)}</Badge>
+                        <Badge tone={toneForMilestone(record)}>{formatTrainingMilestone(milestoneLabel(record))}</Badge>
                       </div>
                       <div className="mt-3 grid gap-3 md:grid-cols-4">
-                        <LedgerMeta label="Deposit" value={record.depositStatus || "Not set"} />
-                        <LedgerMeta label="Amount paid" value={record.amountPaid != null ? String(record.amountPaid) : "0"} />
-                        <LedgerMeta label="Visa" value={record.visaDate || "Pending"} />
-                        <LedgerMeta label="Departure" value={record.departureDate || "Pending"} />
+                        <InfoCard label={copy({ en: "Deposit", vi: "Đặt cọc" })} value={record.depositStatus || copy({ en: "Not set", vi: "Chưa cập nhật" })} />
+                        <InfoCard label={copy({ en: "Amount paid", vi: "Đã thanh toán" })} value={record.amountPaid != null ? String(record.amountPaid) : "0"} />
+                        <InfoCard label={copy({ en: "Visa", vi: "Visa" })} value={record.visaDate || copy({ en: "Pending", vi: "Chờ xử lý" })} />
+                        <InfoCard label={copy({ en: "Departure", vi: "Xuất cảnh" })} value={record.departureDate || copy({ en: "Pending", vi: "Chờ xử lý" })} />
                       </div>
                     </button>
                   );
                 })}
               </div>
             ) : (
-              <EmptyState title="No training-finance records found" description="Create the first milestone record for a lead once downstream processing begins." />
+              <EmptyState
+                title={copy({ en: "No training-finance records found", vi: "Không tìm thấy bản ghi đào tạo - tài chính" })}
+                description={copy({
+                  en: "Create the first milestone record once downstream processing begins.",
+                  vi: "Tạo bản ghi mốc tiến độ đầu tiên khi quy trình hậu kỳ bắt đầu."
+                })}
+              />
             )}
           </Panel>
         </div>
 
         <div className="space-y-6">
           <Panel
-            title="Create milestone record"
-            subtitle="This is the first operational record for deposits, training, visa, and departure readiness."
+            title={copy({ en: "Create milestone record", vi: "Tạo bản ghi mốc tiến độ" })}
+            subtitle={copy({
+              en: "First operational record for deposits, training, visa, and departure readiness.",
+              vi: "Bản ghi vận hành đầu tiên cho đặt cọc, đào tạo, visa và mức độ sẵn sàng xuất cảnh."
+            })}
           >
             <div className="space-y-4">
-              <Input label="Lead ID" value={createForm.leadId} onChange={(e) => setCreateForm((s) => ({ ...s, leadId: e.target.value }))} />
-              <Input label="Order ID" value={createForm.orderId} onChange={(e) => setCreateForm((s) => ({ ...s, orderId: e.target.value }))} />
-              <Input label="Order type" value={createForm.orderType} onChange={(e) => setCreateForm((s) => ({ ...s, orderType: e.target.value }))} />
-              <Input label="Deposit status" value={createForm.depositStatus} onChange={(e) => setCreateForm((s) => ({ ...s, depositStatus: e.target.value }))} />
-              <Input label="Amount paid" value={createForm.amountPaid} onChange={(e) => setCreateForm((s) => ({ ...s, amountPaid: e.target.value }))} />
-              <Input label="Training start" type="date" value={createForm.trainingStartDate} onChange={(e) => setCreateForm((s) => ({ ...s, trainingStartDate: e.target.value }))} />
-              <Input label="Training progress" value={createForm.trainingProgress} onChange={(e) => setCreateForm((s) => ({ ...s, trainingProgress: e.target.value }))} />
-              <Input label="Visa date" type="date" value={createForm.visaDate} onChange={(e) => setCreateForm((s) => ({ ...s, visaDate: e.target.value }))} />
-              <Input label="Departure date" type="date" value={createForm.departureDate} onChange={(e) => setCreateForm((s) => ({ ...s, departureDate: e.target.value }))} />
+              <Input label={copy({ en: "Lead ID", vi: "Lead ID" })} value={createForm.leadId} onChange={(e) => setCreateForm((s) => ({ ...s, leadId: e.target.value }))} />
+              <Input label={copy({ en: "Order ID", vi: "Order ID" })} value={createForm.orderId} onChange={(e) => setCreateForm((s) => ({ ...s, orderId: e.target.value }))} />
+              <Input label={copy({ en: "Order type", vi: "Loại đơn hàng" })} value={createForm.orderType} onChange={(e) => setCreateForm((s) => ({ ...s, orderType: e.target.value }))} />
+              <Input label={copy({ en: "Deposit status", vi: "Trạng thái đặt cọc" })} value={createForm.depositStatus} onChange={(e) => setCreateForm((s) => ({ ...s, depositStatus: e.target.value }))} />
+              <Input label={copy({ en: "Amount paid", vi: "Số tiền đã đóng" })} value={createForm.amountPaid} onChange={(e) => setCreateForm((s) => ({ ...s, amountPaid: e.target.value }))} />
+              <Input label={copy({ en: "Training start", vi: "Bắt đầu đào tạo" })} type="date" value={createForm.trainingStartDate} onChange={(e) => setCreateForm((s) => ({ ...s, trainingStartDate: e.target.value }))} />
+              <Input label={copy({ en: "Training progress", vi: "Tiến độ đào tạo" })} value={createForm.trainingProgress} onChange={(e) => setCreateForm((s) => ({ ...s, trainingProgress: e.target.value }))} />
+              <Input label={copy({ en: "Visa date", vi: "Ngày visa" })} type="date" value={createForm.visaDate} onChange={(e) => setCreateForm((s) => ({ ...s, visaDate: e.target.value }))} />
+              <Input label={copy({ en: "Departure date", vi: "Ngày xuất cảnh" })} type="date" value={createForm.departureDate} onChange={(e) => setCreateForm((s) => ({ ...s, departureDate: e.target.value }))} />
               <Button
                 onClick={() =>
                   createTrainingFinance.mutate({
@@ -194,33 +223,36 @@ export function TrainingFinancePage() {
                 }
                 disabled={!createForm.leadId || createTrainingFinance.isPending}
               >
-                {createTrainingFinance.isPending ? "Creating..." : "Create milestone record"}
+                {createTrainingFinance.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create milestone record", vi: "Tạo bản ghi mốc tiến độ" })}
               </Button>
             </div>
           </Panel>
 
           <Panel
-            title="Selected record"
-            subtitle="Update live milestone fields and let backend side effects advance the downstream workflow."
+            title={copy({ en: "Selected record", vi: "Bản ghi được chọn" })}
+            subtitle={copy({
+              en: "Update live milestone fields and downstream workflow state.",
+              vi: "Cập nhật các trường tiến độ và trạng thái vận hành liên quan."
+            })}
           >
             {selected ? (
               <div className="space-y-4">
                 <DescriptionList
                   items={[
-                    { label: "Record ID", value: selected.id },
-                    { label: "Lead", value: selected.lead?.fullName || selected.lead_id },
-                    { label: "Order", value: selected.order?.name || selected.order_id || "No order" },
-                    { label: "Updated", value: selected.updatedAt || "Unknown" }
+                    { label: copy({ en: "Record ID", vi: "Record ID" }), value: selected.id },
+                    { label: copy({ en: "Lead", vi: "Lead" }), value: selected.lead?.fullName || selected.lead_id },
+                    { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name || selected.order_id || copy({ en: "No order", vi: "Không có đơn hàng" }) },
+                    { label: copy({ en: "Updated", vi: "Cập nhật" }), value: selected.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
                   ]}
                 />
-                <Input label="Order ID" value={editForm.orderId} onChange={(e) => setEditForm((s) => ({ ...s, orderId: e.target.value }))} />
-                <Input label="Order type" value={editForm.orderType} onChange={(e) => setEditForm((s) => ({ ...s, orderType: e.target.value }))} />
-                <Input label="Deposit status" value={editForm.depositStatus} onChange={(e) => setEditForm((s) => ({ ...s, depositStatus: e.target.value }))} />
-                <Input label="Amount paid" value={editForm.amountPaid} onChange={(e) => setEditForm((s) => ({ ...s, amountPaid: e.target.value }))} />
-                <Input label="Training start" type="date" value={editForm.trainingStartDate} onChange={(e) => setEditForm((s) => ({ ...s, trainingStartDate: e.target.value }))} />
-                <Input label="Training progress" value={editForm.trainingProgress} onChange={(e) => setEditForm((s) => ({ ...s, trainingProgress: e.target.value }))} />
-                <Input label="Visa date" type="date" value={editForm.visaDate} onChange={(e) => setEditForm((s) => ({ ...s, visaDate: e.target.value }))} />
-                <Input label="Departure date" type="date" value={editForm.departureDate} onChange={(e) => setEditForm((s) => ({ ...s, departureDate: e.target.value }))} />
+                <Input label={copy({ en: "Order ID", vi: "Order ID" })} value={editForm.orderId} onChange={(e) => setEditForm((s) => ({ ...s, orderId: e.target.value }))} />
+                <Input label={copy({ en: "Order type", vi: "Loại đơn hàng" })} value={editForm.orderType} onChange={(e) => setEditForm((s) => ({ ...s, orderType: e.target.value }))} />
+                <Input label={copy({ en: "Deposit status", vi: "Trạng thái đặt cọc" })} value={editForm.depositStatus} onChange={(e) => setEditForm((s) => ({ ...s, depositStatus: e.target.value }))} />
+                <Input label={copy({ en: "Amount paid", vi: "Số tiền đã đóng" })} value={editForm.amountPaid} onChange={(e) => setEditForm((s) => ({ ...s, amountPaid: e.target.value }))} />
+                <Input label={copy({ en: "Training start", vi: "Bắt đầu đào tạo" })} type="date" value={editForm.trainingStartDate} onChange={(e) => setEditForm((s) => ({ ...s, trainingStartDate: e.target.value }))} />
+                <Input label={copy({ en: "Training progress", vi: "Tiến độ đào tạo" })} value={editForm.trainingProgress} onChange={(e) => setEditForm((s) => ({ ...s, trainingProgress: e.target.value }))} />
+                <Input label={copy({ en: "Visa date", vi: "Ngày visa" })} type="date" value={editForm.visaDate} onChange={(e) => setEditForm((s) => ({ ...s, visaDate: e.target.value }))} />
+                <Input label={copy({ en: "Departure date", vi: "Ngày xuất cảnh" })} type="date" value={editForm.departureDate} onChange={(e) => setEditForm((s) => ({ ...s, departureDate: e.target.value }))} />
                 <Button
                   onClick={() =>
                     updateTrainingFinance.mutate({
@@ -239,24 +271,21 @@ export function TrainingFinancePage() {
                   }
                   disabled={updateTrainingFinance.isPending}
                 >
-                  {updateTrainingFinance.isPending ? "Saving..." : "Save milestone update"}
+                  {updateTrainingFinance.isPending ? copy({ en: "Saving...", vi: "Đang lưu..." }) : copy({ en: "Save milestone update", vi: "Lưu cập nhật mốc tiến độ" })}
                 </Button>
               </div>
             ) : (
-              <EmptyState title="No record selected" description="Select a record from the ledger to update milestone progress." />
+              <EmptyState
+                title={copy({ en: "No record selected", vi: "Chưa chọn bản ghi" })}
+                description={copy({
+                  en: "Select a record from the ledger to update milestone progress.",
+                  vi: "Chọn một bản ghi trong danh sách để cập nhật tiến độ."
+                })}
+              />
             )}
           </Panel>
         </div>
       </div>
-    </div>
-  );
-}
-
-function LedgerMeta(props: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{props.label}</div>
-      <div className="mt-2 text-sm font-medium text-slate-800">{props.value}</div>
     </div>
   );
 }

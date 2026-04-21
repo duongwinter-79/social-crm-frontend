@@ -12,6 +12,7 @@ import {
   ToolbarActions
 } from "@social-crm/ui";
 import { useLeadsQuery, useMatchingEvaluationMutation, useOrdersQuery } from "@social-crm/api";
+import { useI18n } from "@/i18n";
 
 function toneForStatus(status: string) {
   if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
@@ -21,6 +22,7 @@ function toneForStatus(status: string) {
 }
 
 export function MatchingPage() {
+  const { copy, formatLeadStatus } = useI18n();
   const leads = useLeadsQuery({ offset: 0, limit: 50 });
   const orders = useOrdersQuery();
   const evaluation = useMatchingEvaluationMutation();
@@ -33,104 +35,93 @@ export function MatchingPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="Matching"
-        title="Matching workbench"
-        description="Run the backend triage engine against one lead and one order, then inspect scoring, hard fails, missing inputs, and next-action guidance in a source-style operator surface."
+        eyebrow={copy({ en: "Matching", vi: "Ghép đơn" })}
+        title={copy({ en: "Matching workbench", vi: "Bàn xử lý ghép đơn" })}
+        description={copy({ en: "Run the backend triage engine against one lead and one order, then inspect scoring, hard fails, missing inputs, and next-action guidance in a source-style operator surface.", vi: "Chạy máy triage của backend cho một lead và một đơn hàng, sau đó xem điểm số, lỗi cứng, dữ liệu còn thiếu và gợi ý hành động tiếp theo trên bề mặt vận hành theo phong cách CRM gốc." })}
       />
 
       <div className="grid gap-3 md:grid-cols-4">
-        <TopStat label="Leads loaded" value={leads.data?.data?.length ?? 0} />
-        <TopStat label="Orders loaded" value={orders.data?.length ?? 0} />
-        <TopStat label="Mode" value="Lead triage" tone="accent" />
-        <TopStat label="Result" value={evaluation.data?.matching.isEligible ? "Eligible" : evaluation.data ? "Rejected" : "Waiting"} tone={evaluation.data ? (evaluation.data.matching.isEligible ? "success" : "danger") : "neutral"} />
+        <TopStat label={copy({ en: "Leads loaded", vi: "Lead đã tải" })} value={leads.data?.data?.length ?? 0} />
+        <TopStat label={copy({ en: "Orders loaded", vi: "Đơn hàng đã tải" })} value={orders.data?.length ?? 0} />
+        <TopStat label={copy({ en: "Mode", vi: "Chế độ" })} value={copy({ en: "Lead triage", vi: "Triage lead" })} tone="accent" />
+        <TopStat label={copy({ en: "Result", vi: "Kết quả" })} value={evaluation.data?.matching.isEligible ? copy({ en: "Eligible", vi: "Đủ điều kiện" }) : evaluation.data ? copy({ en: "Rejected", vi: "Từ chối" }) : copy({ en: "Waiting", vi: "Đang chờ" })} tone={evaluation.data ? (evaluation.data.matching.isEligible ? "success" : "danger") : "neutral"} />
       </div>
 
       <Toolbar className="border-slate-200/90">
         <div className="grid gap-4 xl:grid-cols-[1fr_1fr_auto]">
-          <Select label="Lead" value={leadId} onChange={(e) => setLeadId(e.target.value)}>
-            <option value="">Select a lead</option>
+          <Select label={copy({ en: "Lead", vi: "Lead" })} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
+            <option value="">{copy({ en: "Select a lead", vi: "Chọn lead" })}</option>
             {(leads.data?.data ?? []).map((lead) => (
               <option key={lead.id} value={lead.id}>
-                {lead.fullName || "Unnamed lead"} - {lead.status}
+                {(lead.fullName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" }))} - {formatLeadStatus(lead.status)}
               </option>
             ))}
           </Select>
-          <Select label="Order" value={orderId} onChange={(e) => setOrderId(e.target.value)}>
-            <option value="">Select an order</option>
+          <Select label={copy({ en: "Order", vi: "Đơn hàng" })} value={orderId} onChange={(e) => setOrderId(e.target.value)}>
+            <option value="">{copy({ en: "Select an order", vi: "Chọn đơn hàng" })}</option>
             {(orders.data ?? []).map((order) => (
               <option key={order.id} value={order.id}>
-                {order.name} - {order.region || "No region"}
+                {order.name} - {order.region || copy({ en: "No region", vi: "Chưa có khu vực" })}
               </option>
             ))}
           </Select>
           <ToolbarActions className="justify-start xl:justify-end">
             <Button onClick={() => evaluation.mutate({ leadId, orderId })} disabled={!leadId || !orderId || evaluation.isPending}>
-              {evaluation.isPending ? "Evaluating..." : "Evaluate match"}
+              {evaluation.isPending ? copy({ en: "Evaluating...", vi: "Đang đánh giá..." }) : copy({ en: "Evaluate match", vi: "Đánh giá ghép đơn" })}
             </Button>
           </ToolbarActions>
         </div>
       </Toolbar>
 
       <InfoStrip>
-        Matching is currently driven by structured lead data and AI extraction quality. If a result looks weak, correct the lead profile and extracted snapshot before making an order decision.
+        {copy({ en: "Matching is currently driven by structured lead data and AI extraction quality. If a result looks weak, correct the lead profile and extracted snapshot before making an order decision.", vi: "Kết quả ghép đơn hiện phụ thuộc vào dữ liệu lead có cấu trúc và chất lượng trích xuất AI. Nếu kết quả chưa tốt, hãy chỉnh lại hồ sơ lead và dữ liệu trích xuất trước khi ra quyết định." })}
       </InfoStrip>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">
-          <Panel title="Selected context" subtitle="Operator-side summary before running backend triage.">
+          <Panel title={copy({ en: "Selected context", vi: "Ngữ cảnh đã chọn" })} subtitle={copy({ en: "Operator-side summary before running backend triage.", vi: "Tóm tắt phía vận hành trước khi chạy triage backend." })}>
             {selectedLead && selectedOrder ? (
               <div className="space-y-5">
                 <div className="grid gap-3 md:grid-cols-2">
-                  <ContextCard label="Lead" value={selectedLead.fullName || "Unnamed lead"} note={selectedLead.phone || "No phone"} />
-                  <ContextCard label="Order" value={selectedOrder.name} note={selectedOrder.region || "No region"} />
+                  <ContextCard label={copy({ en: "Lead", vi: "Lead" })} value={selectedLead.fullName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })} note={selectedLead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} />
+                  <ContextCard label={copy({ en: "Order", vi: "Đơn hàng" })} value={selectedOrder.name} note={selectedOrder.region || copy({ en: "No region", vi: "Chưa có khu vực" })} />
                 </div>
                 <DescriptionList
                   items={[
-                    { label: "Lead status", value: <Badge tone={toneForStatus(selectedLead.status)}>{selectedLead.status}</Badge> },
-                    { label: "Lead score", value: selectedLead.leadScore ?? "-" },
-                    { label: "Classification", value: selectedLead.leadClassification ?? "Unclassified" },
-                    { label: "Industry", value: selectedOrder.industry || "No industry" },
-                    { label: "Gender rule", value: selectedOrder.genderRequired },
-                    { label: "Experience", value: selectedOrder.experienceRequired ? "Required" : "Open" }
+                    { label: copy({ en: "Lead status", vi: "Trạng thái lead" }), value: <Badge tone={toneForStatus(selectedLead.status)}>{formatLeadStatus(selectedLead.status)}</Badge> },
+                    { label: copy({ en: "Lead score", vi: "Điểm lead" }), value: selectedLead.leadScore ?? "-" },
+                    { label: copy({ en: "Classification", vi: "Phân loại" }), value: selectedLead.leadClassification ?? copy({ en: "Unclassified", vi: "Chưa phân loại" }) },
+                    { label: copy({ en: "Industry", vi: "Ngành" }), value: selectedOrder.industry || copy({ en: "No industry", vi: "Chưa có ngành" }) },
+                    { label: copy({ en: "Gender rule", vi: "Yêu cầu giới tính" }), value: selectedOrder.genderRequired },
+                    { label: copy({ en: "Experience", vi: "Kinh nghiệm" }), value: selectedOrder.experienceRequired ? copy({ en: "Required", vi: "Bắt buộc" }) : copy({ en: "Open", vi: "Mở" }) }
                   ]}
                 />
-                <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">
-                  Lead triage is preliminary. It relies on profile completeness and extracted signal quality, so weak source data should trigger operator review instead of blind rejection.
-                </div>
               </div>
             ) : (
-              <EmptyState title="Choose lead and order" description="Select both entities to inspect a preliminary triage result." />
+              <EmptyState title={copy({ en: "Choose lead and order", vi: "Chọn lead và đơn hàng" })} description={copy({ en: "Select both entities to inspect a preliminary triage result.", vi: "Chọn cả hai đối tượng để xem kết quả triage sơ bộ." })} />
             )}
-          </Panel>
-
-          <Panel title="Operator guidance" subtitle="Read this before changing lead status based on a triage outcome.">
-            <div className="space-y-3">
-              <GuidanceRow title="Use triage as a decision aid" body="A low-quality or incomplete profile can lower confidence. Confirm profile quality before treating a rejection as final." />
-              <GuidanceRow title="Watch hard-fail reasons first" body="Reject reasons and missing requirements matter more than raw score when deciding whether to recover or disqualify." />
-              <GuidanceRow title="Route weak data back to enrichment" body="If the result says `request_profile_completion`, send the lead back through operator enrichment before escalating." />
-            </div>
           </Panel>
         </div>
 
         <div className="space-y-6">
-          <Panel title="Triage result" subtitle="The backend result exposes hard-fail reasons, flex penalties, missing inputs, and data quality.">
+          <Panel title={copy({ en: "Triage result", vi: "Kết quả triage" })} subtitle={copy({ en: "The backend result exposes hard-fail reasons, flex penalties, missing inputs, and data quality.", vi: "Kết quả backend hiển thị lý do fail cứng, điểm trừ mềm, dữ liệu thiếu và chất lượng dữ liệu." })}>
             {evaluation.data ? (
               <div className="space-y-5">
                 <div className="flex flex-wrap gap-2">
                   <Badge tone={evaluation.data.matching.isEligible ? "success" : "danger"}>
-                    {evaluation.data.matching.isEligible ? "Eligible" : "Rejected"}
+                    {evaluation.data.matching.isEligible ? copy({ en: "Eligible", vi: "Đủ điều kiện" }) : copy({ en: "Rejected", vi: "Từ chối" })}
                   </Badge>
                   <Badge tone="accent">{evaluation.data.matching.conclusion}</Badge>
                   <Badge tone="neutral">{evaluation.data.preliminaryFit.replace(/_/g, " ")}</Badge>
-                  <Badge tone="neutral">Data quality {evaluation.data.dataQuality.completeness}%</Badge>
-                  {evaluation.data.matching.requiresManagerApproval ? <Badge tone="warning">Manager approval required</Badge> : null}
+                  <Badge tone="neutral">{copy({ en: `Data quality ${evaluation.data.dataQuality.completeness}%`, vi: `Chất lượng dữ liệu ${evaluation.data.dataQuality.completeness}%` })}</Badge>
+                  {evaluation.data.matching.requiresManagerApproval ? <Badge tone="warning">{copy({ en: "Manager approval required", vi: "Cần quản lý phê duyệt" })}</Badge> : null}
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-4">
-                  <Metric label="Score" value={evaluation.data.matching.totalScore} />
-                  <Metric label="Foundation" value={evaluation.data.matching.breakdown.foundation} />
-                  <Metric label="Experience" value={evaluation.data.matching.breakdown.experience} />
-                  <Metric label="Penalties" value={evaluation.data.matching.breakdown.penalties} />
+                  <Metric label={copy({ en: "Score", vi: "Điểm" })} value={evaluation.data.matching.totalScore} />
+                  <Metric label={copy({ en: "Foundation", vi: "Nền tảng" })} value={evaluation.data.matching.breakdown.foundation} />
+                  <Metric label={copy({ en: "Experience", vi: "Kinh nghiệm" })} value={evaluation.data.matching.breakdown.experience} />
+                  <Metric label={copy({ en: "Penalties", vi: "Điểm trừ" })} value={evaluation.data.matching.breakdown.penalties} />
                 </div>
 
                 {evaluation.data.matching.rejectReason ? (
@@ -138,26 +129,16 @@ export function MatchingPage() {
                 ) : null}
 
                 <div className="rounded-[22px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  <div className="font-semibold">Missing requirements</div>
+                  <div className="font-semibold">{copy({ en: "Missing requirements", vi: "Yêu cầu còn thiếu" })}</div>
                   <div className="mt-1">
                     {evaluation.data.missingRequirements.length
                       ? evaluation.data.missingRequirements.join(", ")
-                      : "No required triage signals are missing."}
+                      : copy({ en: "No required triage signals are missing.", vi: "Không thiếu tín hiệu triage bắt buộc nào." })}
                   </div>
-                </div>
-
-                <div className="rounded-[22px] border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-800">
-                  <div className="font-semibold">Suggested next action</div>
-                  <div className="mt-1">{evaluation.data.suggestedAction.replace(/_/g, " ")}</div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TagGroup title="Warnings" tone="warning" items={evaluation.data.warnings} emptyLabel="No warnings" />
-                  <TagGroup title="Flags" tone="neutral" items={evaluation.data.matching.flags} emptyLabel="No flags" />
                 </div>
               </div>
             ) : (
-              <EmptyState title="No triage yet" description="Run lead triage to see score, flags, penalties, missing inputs, and reject reasons." />
+              <EmptyState title={copy({ en: "No triage yet", vi: "Chưa có triage" })} description={copy({ en: "Run lead triage to see score, flags, penalties, missing inputs, and reject reasons.", vi: "Hãy chạy triage lead để xem điểm, cờ cảnh báo, điểm trừ, dữ liệu thiếu và lý do từ chối." })} />
             )}
           </Panel>
         </div>
@@ -190,32 +171,6 @@ function ContextCard(props: { label: string; value: string; note: string }) {
       <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{props.label}</div>
       <div className="mt-2 text-sm font-semibold text-slate-900">{props.value}</div>
       <div className="mt-1 text-xs text-slate-500">{props.note}</div>
-    </div>
-  );
-}
-
-function GuidanceRow(props: { title: string; body: string }) {
-  return (
-    <div className="rounded-[22px] border border-slate-200 bg-slate-50 px-4 py-4">
-      <div className="text-sm font-semibold text-slate-800">{props.title}</div>
-      <div className="mt-2 text-sm leading-7 text-slate-600">{props.body}</div>
-    </div>
-  );
-}
-
-function TagGroup(props: { title: string; items: string[]; emptyLabel: string; tone: "neutral" | "warning" }) {
-  return (
-    <div>
-      <div className="text-sm text-slate-500">{props.title}</div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {props.items.length
-          ? props.items.map((item) => (
-              <Badge key={item} tone={props.tone}>
-                {item}
-              </Badge>
-            ))
-          : <span className="text-sm text-slate-500">{props.emptyLabel}</span>}
-      </div>
     </div>
   );
 }

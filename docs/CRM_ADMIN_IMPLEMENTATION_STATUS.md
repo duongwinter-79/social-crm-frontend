@@ -29,6 +29,8 @@ The admin frontend has been refactored into a source-aligned operator UI backed 
 - Matching redesigned into a denser operator workbench
 - Integrations aligned to the same layout language
 - Login aligned with the current admin visual system
+- EN/VN language toggle rolled out across shell, auth, and operator screens
+- Shared UI primitives expanded to reduce repeated page-local metric and field patterns
 
 ## Active Backend-Backed Modules
 
@@ -55,12 +57,14 @@ None in the main CRM operator flow.
 - Tailwind workspace config fixed for per-app builds
 - Route-level lazy loading added to `crm-admin`
 - stale capability-registry flags corrected for applications, documents, and training-finance
+- shared metric/info/field primitives now cover the main repeated admin summary and form patterns
+- visible placeholder separators and corrupted operator-facing status text removed from admin surfaces
 
 ## Known Technical Debt
 
 - `crm-admin` still emits a large bundle warning even after lazy loading
 - Further manual chunking may still be worthwhile if startup performance becomes an issue
-- Some UI duplication still exists across operator guidance and stat-card patterns
+- Some UI duplication still exists across a few guidance and content panels, though the core stat/meta patterns are now shared
 
 ## Recommended Next Work
 
@@ -105,5 +109,13 @@ None in the main CRM operator flow.
 - `/admin` is now a live backend-backed identity-and-access workspace
 - the page supports real operator list/filter/create/update flows against the backend `users` module
 - the page now also includes readonly backend/CNV status plus safe CNV webhook-admin controls
+- the integrations surface now includes CNV customer-read verification through `GET /api/cnv/webhook-admin/customers`, including refresh state, customer count, top rows, and raw payload output
+- CNV customer reads are inspection-only in the frontend; they do not import customers into leads or trigger scoring/matching
 - the page now also includes admin audit history and auth-session review/revocation
 - broader system-policy controls remain later admin phases
+
+## Recent Localization Update
+
+- the CRM admin shell now supports a persistent EN/VN toggle backed by local storage
+- login, dashboard, leads, lead workbench, pipeline, matching, orders, applications, documents, training-finance, integrations, and admin now consume the shared i18n layer
+- the rollout also removed broken placeholder separators and aligned repeated field/stat structures to shared UI primitives

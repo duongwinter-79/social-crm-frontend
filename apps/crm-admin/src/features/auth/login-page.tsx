@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "@social-crm/api";
+import { getRequestErrorMessage, useRequestNotifications } from "@/app/request-notifications";
+import { useI18n } from "@/i18n";
 import "./login-page.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { lang, setLang, copy } = useI18n();
+  const { notifyError } = useRequestNotifications();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin");
   const [loading, setLoading] = useState(false);
@@ -18,8 +22,10 @@ export function LoginPage() {
     try {
       await apiClient.login(username, password);
       navigate("/dashboard");
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? "Login failed");
+    } catch (err: unknown) {
+      const message = getRequestErrorMessage(err, copy({ en: "Login failed", vi: "Đăng nhập thất bại" }));
+      setError(message);
+      notifyError(err, copy({ en: "Login failed", vi: "Đăng nhập thất bại" }));
     } finally {
       setLoading(false);
     }
@@ -33,74 +39,114 @@ export function LoginPage() {
             <div className="login-brand-mark">SC</div>
             <div>
               <div className="login-brand-kicker">Social CRM</div>
-              <div className="login-brand-title">Admin Console</div>
-              <div className="login-brand-subtitle">Internal recruitment operations</div>
+              <div className="login-brand-title">{copy({ en: "Admin Console", vi: "Bảng điều khiển quản trị" })}</div>
+              <div className="login-brand-subtitle">{copy({ en: "Internal recruitment operations", vi: "Vận hành tuyển dụng nội bộ" })}</div>
             </div>
           </div>
 
           <div className="login-hero">
-            <h1>Lead operations, matching control, and recruiting decisions in one CRM workspace.</h1>
+            <div className="login-lang-toggle" role="group" aria-label={copy({ en: "Language", vi: "Ngôn ngữ" })}>
+              <button type="button" className={`login-lang-button ${lang === "en" ? "is-active" : ""}`} onClick={() => setLang("en")}>
+                EN
+              </button>
+              <button type="button" className={`login-lang-button ${lang === "vi" ? "is-active" : ""}`} onClick={() => setLang("vi")}>
+                VN
+              </button>
+            </div>
+            <h1>
+              {copy({
+                en: "Lead operations, matching control, and recruiting decisions in one CRM workspace.",
+                vi: "Vận hành lead, kiểm soát ghép đơn và quyết định tuyển dụng trong một không gian CRM duy nhất."
+              })}
+            </h1>
             <p>
-              Use this admin console to process inbound candidates, review structured profile data, evaluate order fit, and monitor the backend integration layer without jumping across disconnected tools.
+              {copy({
+                en: "Use this admin console to process inbound candidates, review structured profile data, evaluate order fit, and monitor the backend integration layer without jumping across disconnected tools.",
+                vi: "Dùng bảng điều khiển này để xử lý ứng viên đầu vào, rà soát hồ sơ có cấu trúc, đánh giá độ phù hợp với đơn hàng và theo dõi lớp tích hợp backend mà không phải chuyển qua nhiều công cụ rời rạc."
+              })}
             </p>
           </div>
 
           <div className="login-feature-grid">
             <div className="login-feature-card sky">
-              <h3>Lead triage queue</h3>
-              <p>Search, filter, and move candidates through the backend state machine with clear next actions.</p>
+              <h3>{copy({ en: "Lead triage queue", vi: "Hàng đợi phân loại lead" })}</h3>
+              <p>
+                {copy({
+                  en: "Search, filter, and move candidates through the backend state machine with clear next actions.",
+                  vi: "Tìm kiếm, lọc và đẩy ứng viên qua state machine của backend với các bước tiếp theo rõ ràng."
+                })}
+              </p>
             </div>
             <div className="login-feature-card white">
-              <h3>Structured review</h3>
-              <p>Validate AI extraction, update profile fields, and compare operator judgment with backend data.</p>
+              <h3>{copy({ en: "Structured review", vi: "Rà soát có cấu trúc" })}</h3>
+              <p>
+                {copy({
+                  en: "Validate AI extraction, update profile fields, and compare operator judgment with backend data.",
+                  vi: "Xác thực dữ liệu AI trích xuất, cập nhật trường hồ sơ và đối chiếu đánh giá nhân sự với dữ liệu backend."
+                })}
+              </p>
             </div>
             <div className="login-feature-card amber">
-              <h3>Matching control</h3>
-              <p>Evaluate order eligibility, surface reject reasons, and review approval-risk cases in one place.</p>
+              <h3>{copy({ en: "Matching control", vi: "Kiểm soát ghép đơn" })}</h3>
+              <p>
+                {copy({
+                  en: "Evaluate order eligibility, surface reject reasons, and review approval-risk cases in one place.",
+                  vi: "Đánh giá điều kiện ghép đơn, hiển thị lý do từ chối và rà soát các ca cần phê duyệt tại một nơi."
+                })}
+              </p>
             </div>
           </div>
 
           <div className="login-meta-grid">
-            <SystemPoint label="Auth model" value="JWT + refresh token" />
-            <SystemPoint label="Operator surface" value="Admin-only CRM console" />
-            <SystemPoint label="Backend dependency" value="Live API connection required" />
+            <SystemPoint label={copy({ en: "Auth model", vi: "Mô hình xác thực" })} value="JWT + refresh token" />
+            <SystemPoint label={copy({ en: "Operator surface", vi: "Bề mặt vận hành" })} value={copy({ en: "Admin-only CRM console", vi: "CRM chỉ dành cho quản trị nội bộ" })} />
+            <SystemPoint label={copy({ en: "Backend dependency", vi: "Phụ thuộc backend" })} value={copy({ en: "Live API connection required", vi: "Yêu cầu kết nối API trực tiếp" })} />
           </div>
         </section>
 
         <aside className="login-form-card">
           <div className="login-form-header">
-            <h2>Sign in</h2>
-            <p>Use your staff credentials to enter the CRM admin console.</p>
+            <h2>{copy({ en: "Sign in", vi: "Đăng nhập" })}</h2>
+            <p>{copy({ en: "Use your staff credentials to enter the CRM admin console.", vi: "Dùng tài khoản nhân sự để truy cập bảng điều khiển quản trị CRM." })}</p>
           </div>
 
           <div className="login-access-note">
-            <strong>Access scope</strong>
-            <span>This screen authenticates internal operators only. Candidate-facing flows stay on a separate app boundary.</span>
+            <strong>{copy({ en: "Access scope", vi: "Phạm vi truy cập" })}</strong>
+            <span>
+              {copy({
+                en: "This screen authenticates internal operators only. Candidate-facing flows stay on a separate app boundary.",
+                vi: "Màn hình này chỉ xác thực cho nhân sự nội bộ. Các luồng dành cho ứng viên vẫn nằm trên ứng dụng riêng."
+              })}
+            </span>
           </div>
 
           <form className="login-form" onSubmit={handleSubmit}>
             <div className="login-form-group">
-              <label className="login-form-label" htmlFor="username">Username</label>
+              <label className="login-form-label" htmlFor="username">
+                {copy({ en: "Username", vi: "Tên đăng nhập" })}
+              </label>
               <input
                 id="username"
                 className="login-form-control"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your operator username"
+                placeholder={copy({ en: "Enter your operator username", vi: "Nhập tên đăng nhập nhân sự" })}
                 autoComplete="username"
               />
-              <div className="login-inline-help">Use the account provided for your staff role.</div>
+              <div className="login-inline-help">{copy({ en: "Use the account provided for your staff role.", vi: "Dùng tài khoản được cấp cho vai trò nhân sự của bạn." })}</div>
             </div>
 
             <div className="login-form-group">
-              <label className="login-form-label" htmlFor="password">Password</label>
+              <label className="login-form-label" htmlFor="password">
+                {copy({ en: "Password", vi: "Mật khẩu" })}
+              </label>
               <input
                 id="password"
                 className="login-form-control"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={copy({ en: "Enter your password", vi: "Nhập mật khẩu" })}
                 autoComplete="current-password"
               />
             </div>
@@ -108,13 +154,18 @@ export function LoginPage() {
             {error ? <div className="login-error">{error}</div> : null}
 
             <button className="login-submit" type="submit" disabled={loading}>
-              {loading ? "Signing in..." : "Enter admin console"}
+              {loading ? copy({ en: "Signing in...", vi: "Đang đăng nhập..." }) : copy({ en: "Enter admin console", vi: "Vào bảng điều khiển" })}
             </button>
           </form>
 
           <div className="login-footnote">
-            <strong>Verification note</strong>
-            <span>If authentication fails here, verify backend health and JWT configuration before reviewing protected routes.</span>
+            <strong>{copy({ en: "Verification note", vi: "Ghi chú xác minh" })}</strong>
+            <span>
+              {copy({
+                en: "If authentication fails here, verify backend health and JWT configuration before reviewing protected routes.",
+                vi: "Nếu đăng nhập thất bại tại đây, hãy kiểm tra tình trạng backend và cấu hình JWT trước khi rà soát các route được bảo vệ."
+              })}
+            </span>
           </div>
         </aside>
       </div>

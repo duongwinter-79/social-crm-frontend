@@ -13,19 +13,19 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 6px 0;
+  padding: 4px 6px 2px;
 }
 
 .admin-shell-brand-mark {
   display: inline-flex;
-  height: 42px;
-  width: 42px;
+  height: 44px;
+  width: 44px;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.08em;
   box-shadow: 0 18px 34px rgba(79, 70, 229, 0.34);
@@ -39,16 +39,16 @@
 }
 
 .admin-shell-brand-title {
-  margin-top: 3px;
-  font-size: 18px;
+  margin-top: 2px;
+  font-size: 17px;
   font-weight: 700;
   color: #f8fafc;
 }
 
 .admin-shell-brand-text {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-size: 12px;
-  line-height: 1.55;
+  line-height: 1.45;
   color: #94a3b8;
 }
 
@@ -109,7 +109,9 @@
 
 .admin-shell-navitem {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   overflow: hidden;
   border-radius: 16px;
   border: 1px solid transparent;
@@ -143,12 +145,36 @@
   background: #6366f1;
 }
 
+.admin-shell-navicon {
+  display: inline-flex;
+  height: 26px;
+  width: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+}
+
+.admin-shell-navicon svg {
+  height: 14px;
+  width: 14px;
+}
+
+.admin-shell-navcopy {
+  min-width: 0;
+  flex: 1;
+}
+
 .admin-shell-navtitle {
+  display: block;
   font-size: 14px;
   font-weight: 600;
 }
 
 .admin-shell-navhint {
+  display: block;
   margin-top: 3px;
   font-size: 12px;
   line-height: 1.45;
@@ -156,40 +182,79 @@
   opacity: 0.72;
 }
 
-.admin-shell-status {
+.admin-shell-footer {
   margin-top: auto;
-  border-radius: 22px;
-  border: 1px solid rgba(51, 65, 85, 0.96);
-  background: rgba(15, 23, 42, 0.8);
-  padding: 16px;
-  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
-}
-
-.admin-shell-status-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(51, 65, 85, 0.95);
+  padding: 14px 2px 0;
 }
 
-.admin-shell-status-name {
+.admin-shell-footer-label {
+  padding: 0 10px;
+}
+
+.admin-shell-footer-link {
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  text-align: left;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-shell-footer-profile-wrap {
+  border-top: 1px solid rgba(51, 65, 85, 0.95);
+  padding-top: 6px;
+}
+
+.admin-shell-profile {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.admin-shell-profile-avatar {
+  height: 42px;
+  width: 42px;
+  flex: 0 0 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(79, 70, 229, 0.08));
   color: #fff;
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.admin-shell-status-role {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #94a3b8;
+.admin-shell-profile-copy {
+  min-width: 0;
+  flex: 1;
 }
 
-.admin-shell-status-note {
-  margin-top: 10px;
-  font-size: 12px;
-  line-height: 1.6;
-  color: #94a3b8;
+.admin-shell-footer .w-full {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-shell-footer .w-full.inline-flex {
+  justify-content: center;
+  border-radius: 16px;
+}
+
+.admin-shell-profile-name {
+  color: inherit;
+}
+
+.admin-shell-profile-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .admin-shell-header {
@@ -220,6 +285,34 @@
   gap: 10px;
   font-size: 13px;
   color: #64748b;
+}
+
+.admin-shell-lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  border: 1px solid #dbe4f0;
+  background: #f8fafc;
+  padding: 4px;
+}
+
+.admin-shell-lang-button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-shell-lang-button.is-active {
+  background: #0f172a;
+  color: #fff;
 }
 
 .admin-shell-header-strip {

@@ -44,7 +44,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: s
   const { label, className, ...rest } = props;
   return (
     <label className="flex flex-col gap-2 text-sm text-slate-600">
-      {label ? <span>{label}</span> : null}
+      {label ? <span className="font-medium text-slate-600">{label}</span> : null}
       <input
         className={cx(
           "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
@@ -60,7 +60,7 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement> & { label?
   const { label, className, children, ...rest } = props;
   return (
     <label className="flex flex-col gap-2 text-sm text-slate-600">
-      {label ? <span>{label}</span> : null}
+      {label ? <span className="font-medium text-slate-600">{label}</span> : null}
       <select
         className={cx(
           "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
@@ -71,6 +71,29 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement> & { label?
         {children}
       </select>
     </label>
+  );
+}
+
+export function FieldGroup(props: PropsWithChildren<{ className?: string; columns?: 1 | 2 | 3 | 4 }>) {
+  const gridClass =
+    props.columns === 4
+      ? "md:grid-cols-2 xl:grid-cols-4"
+      : props.columns === 3
+        ? "md:grid-cols-2 xl:grid-cols-3"
+        : props.columns === 2
+          ? "md:grid-cols-2"
+          : "";
+
+  return <div className={cx("grid gap-4", gridClass, props.className)}>{props.children}</div>;
+}
+
+export function Field(props: PropsWithChildren<{ label: string; hint?: string; className?: string }>) {
+  return (
+    <div className={cx("flex flex-col gap-2", props.className)}>
+      <div className="text-sm font-medium text-slate-600">{props.label}</div>
+      {props.children}
+      {props.hint ? <div className="text-xs leading-5 text-slate-500">{props.hint}</div> : null}
+    </div>
   );
 }
 
@@ -111,6 +134,43 @@ export function StatCard(props: { label: string; value: string | number; hint?: 
       <div className="text-sm text-slate-500">{props.label}</div>
       <div className="mt-3 text-3xl font-semibold text-slate-900">{props.value}</div>
       {props.hint ? <div className="mt-2 text-sm text-slate-400">{props.hint}</div> : null}
+    </div>
+  );
+}
+
+export function MetricCard(props: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  tone?: "neutral" | "accent" | "success" | "warning" | "danger";
+  className?: string;
+}) {
+  const accentClass =
+    props.tone === "accent"
+      ? "border-indigo-200 bg-indigo-50"
+      : props.tone === "success"
+        ? "border-emerald-200 bg-emerald-50"
+        : props.tone === "warning"
+          ? "border-amber-200 bg-amber-50"
+          : props.tone === "danger"
+            ? "border-rose-200 bg-rose-50"
+            : "border-slate-200 bg-white";
+
+  return (
+    <div className={cx("rounded-[22px] border px-4 py-4 shadow-[0_14px_26px_rgba(15,23,42,0.04)]", accentClass, props.className)}>
+      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{props.label}</div>
+      <div className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">{props.value}</div>
+      {props.hint ? <div className="mt-2 text-xs text-slate-500">{props.hint}</div> : null}
+    </div>
+  );
+}
+
+export function InfoCard(props: { label: string; value: ReactNode; hint?: ReactNode; className?: string }) {
+  return (
+    <div className={cx("rounded-2xl border border-slate-200 bg-white px-4 py-3", props.className)}>
+      <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{props.label}</div>
+      <div className="mt-2 text-sm font-medium text-slate-800">{props.value}</div>
+      {props.hint ? <div className="mt-1 text-xs leading-5 text-slate-500">{props.hint}</div> : null}
     </div>
   );
 }

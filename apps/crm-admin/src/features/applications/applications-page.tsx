@@ -4,6 +4,8 @@ import {
   Button,
   DescriptionList,
   EmptyState,
+  FieldGroup,
+  InfoCard,
   InfoStrip,
   Input,
   Panel,
@@ -17,6 +19,7 @@ import {
   useApplicationsQuery,
   useUpdateApplicationMutation
 } from "@social-crm/api";
+import { useI18n } from "@/i18n";
 
 const STATUS_OPTIONS = [
   "",
@@ -37,11 +40,8 @@ function toneForApplicationStatus(status: string) {
   return "accent" as const;
 }
 
-function formatStatus(status: string) {
-  return status.replaceAll("_", " ");
-}
-
 export function ApplicationsPage() {
+  const { copy, formatApplicationStatus } = useI18n();
   const [filters, setFilters] = useState({
     leadId: "",
     candidateId: "",
@@ -94,41 +94,41 @@ export function ApplicationsPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="Applications"
-        title="Placement progress workspace"
-        description="Track candidate-to-order progression with real backend application records, interview state, and downstream placement readiness."
+        eyebrow={copy({ en: "Applications", vi: "Hồ sơ ứng tuyển" })}
+        title={copy({ en: "Placement progress workspace", vi: "Không gian tiến độ bố trí" })}
+        description={copy({ en: "Track candidate-to-order progression with real backend application records, interview state, and downstream placement readiness.", vi: "Theo dõi tiến trình ứng viên tới đơn hàng bằng hồ sơ ứng tuyển thật từ backend, trạng thái phỏng vấn và mức sẵn sàng bố trí ở các bước tiếp theo." })}
       />
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>The backend applications module is now live for list, detail, and lifecycle updates.</span>
-          <Badge tone="warning">Creation is deferred until candidate context is exposed cleanly in the frontend</Badge>
+          <span>{copy({ en: "The backend applications module is now live for list, detail, and lifecycle updates.", vi: "Mô-đun hồ sơ ứng tuyển phía backend hiện đã hoạt động cho danh sách, chi tiết và cập nhật vòng đời." })}</span>
+          <Badge tone="warning">{copy({ en: "Creation is deferred until candidate context is exposed cleanly in the frontend", vi: "Chức năng tạo mới được hoãn cho tới khi ngữ cảnh ứng viên được hiển thị rõ ràng ở frontend" })}</Badge>
         </div>
       </InfoStrip>
 
       <Toolbar compact className="border-slate-200/90">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <Input label="Lead ID" value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
-          <Input label="Candidate ID" value={filters.candidateId} onChange={(e) => setFilters((s) => ({ ...s, candidateId: e.target.value }))} />
-          <Input label="Order ID" value={filters.orderId} onChange={(e) => setFilters((s) => ({ ...s, orderId: e.target.value }))} />
-          <Select label="Status" value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))}>
-            <option value="">All statuses</option>
+        <FieldGroup columns={4} className="xl:grid-cols-5">
+          <Input label={copy({ en: "Lead ID", vi: "ID lead" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
+          <Input label={copy({ en: "Candidate ID", vi: "ID ứng viên" })} value={filters.candidateId} onChange={(e) => setFilters((s) => ({ ...s, candidateId: e.target.value }))} />
+          <Input label={copy({ en: "Order ID", vi: "ID đơn hàng" })} value={filters.orderId} onChange={(e) => setFilters((s) => ({ ...s, orderId: e.target.value }))} />
+          <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))}>
+            <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
             {STATUS_OPTIONS.filter(Boolean).map((status) => (
-              <option key={status} value={status}>{formatStatus(status)}</option>
+              <option key={status} value={status}>{formatApplicationStatus(status)}</option>
             ))}
           </Select>
-          <Input label="Search" value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
-        </div>
+          <Input label={copy({ en: "Search", vi: "Tìm kiếm" })} value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
+        </FieldGroup>
         <ToolbarActions>
-          <Badge tone="neutral">{filteredRecords.length} visible applications</Badge>
-          <Badge tone="neutral">{applicationQuery.data?.total ?? 0} total from backend</Badge>
+          <Badge tone="neutral">{copy({ en: `${filteredRecords.length} visible applications`, vi: `${filteredRecords.length} hồ sơ đang hiển thị` })}</Badge>
+          <Badge tone="neutral">{copy({ en: `${applicationQuery.data?.total ?? 0} total from backend`, vi: `${applicationQuery.data?.total ?? 0} tổng từ backend` })}</Badge>
         </ToolbarActions>
       </Toolbar>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
         <Panel
-          title="Application queue"
-          subtitle="Each record is a real candidate-to-order application from the backend workflow."
+          title={copy({ en: "Application queue", vi: "Hàng đợi hồ sơ ứng tuyển" })}
+          subtitle={copy({ en: "Each record is a real candidate-to-order application from the backend workflow.", vi: "Mỗi bản ghi là một hồ sơ ứng tuyển ứng viên-đơn hàng thật từ luồng backend." })}
         >
           {filteredRecords.length ? (
             <div className="space-y-3">
@@ -143,54 +143,54 @@ export function ApplicationsPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-semibold text-slate-900">{record.order?.name ?? "Unknown order"}</div>
+                        <div className="font-semibold text-slate-900">{record.order?.name ?? copy({ en: "Unknown order", vi: "Đơn hàng chưa rõ" })}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">
-                          {record.lead?.fullName ?? "Unknown lead"} · {record.candidate?.code ?? record.candidate_id ?? "No candidate code"}
+                          {(record.lead?.fullName ?? copy({ en: "Unknown lead", vi: "Lead chưa rõ" }))} · {(record.candidate?.code ?? record.candidate_id ?? copy({ en: "No candidate code", vi: "Chưa có mã ứng viên" }))}
                         </div>
                       </div>
-                      <Badge tone={toneForApplicationStatus(record.status)}>{formatStatus(record.status)}</Badge>
+                      <Badge tone={toneForApplicationStatus(record.status)}>{formatApplicationStatus(record.status)}</Badge>
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <ApplicationMeta label="Lead" value={record.lead?.phone ?? record.lead_id} />
-                      <ApplicationMeta label="Interview" value={record.interviewDate ? record.interviewDate.slice(0, 10) : "Not set"} />
-                      <ApplicationMeta label="Updated" value={record.updatedAt ? record.updatedAt.slice(0, 10) : "Unknown"} />
+                      <InfoCard label={copy({ en: "Lead", vi: "Lead" })} value={record.lead?.phone ?? record.lead_id} />
+                      <InfoCard label={copy({ en: "Interview", vi: "Phỏng vấn" })} value={record.interviewDate ? record.interviewDate.slice(0, 10) : copy({ en: "Not set", vi: "Chưa đặt" })} />
+                      <InfoCard label={copy({ en: "Updated", vi: "Cập nhật" })} value={record.updatedAt ? record.updatedAt.slice(0, 10) : copy({ en: "Unknown", vi: "Chưa rõ" })} />
                     </div>
                   </button>
                 );
               })}
             </div>
           ) : (
-            <EmptyState title="No applications found" description="Adjust the filters or wait until backend application records are created from the matching workflow." />
+            <EmptyState title={copy({ en: "No applications found", vi: "Không tìm thấy hồ sơ ứng tuyển" })} description={copy({ en: "Adjust the filters or wait until backend application records are created from the matching workflow.", vi: "Hãy điều chỉnh bộ lọc hoặc chờ backend tạo hồ sơ ứng tuyển từ luồng ghép đơn." })} />
           )}
         </Panel>
 
         <div className="space-y-6">
           <Panel
-            title="Application detail"
-            subtitle="Update live backend status, interview metadata, and rejection context from the same operator surface."
+            title={copy({ en: "Application detail", vi: "Chi tiết hồ sơ ứng tuyển" })}
+            subtitle={copy({ en: "Update live backend status, interview metadata, and rejection context from the same operator surface.", vi: "Cập nhật trạng thái backend trực tiếp, dữ liệu phỏng vấn và ngữ cảnh từ chối ngay trên cùng bề mặt vận hành." })}
           >
             {selected ? (
               <div className="space-y-4">
                 <DescriptionList
                   items={[
-                    { label: "Application ID", value: selected.id },
-                    { label: "Lead", value: selected.lead?.fullName ?? selected.lead_id },
-                    { label: "Candidate", value: selected.candidate?.code ?? selected.candidate_id ?? "Unknown" },
-                    { label: "Order", value: selected.order?.name ?? selected.order_id },
-                    { label: "Created", value: selected.createdAt ?? "Unknown" }
+                    { label: copy({ en: "Application ID", vi: "ID hồ sơ ứng tuyển" }), value: selected.id },
+                    { label: copy({ en: "Lead", vi: "Lead" }), value: selected.lead?.fullName ?? selected.lead_id },
+                    { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: selected.candidate?.code ?? selected.candidate_id ?? copy({ en: "Unknown", vi: "Chưa rõ" }) },
+                    { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name ?? selected.order_id },
+                    { label: copy({ en: "Created", vi: "Đã tạo" }), value: selected.createdAt ?? copy({ en: "Unknown", vi: "Chưa rõ" }) }
                   ]}
                 />
 
-                <div className="grid gap-4">
-                  <Select label="Status" value={detailForm.status} onChange={(e) => setDetailForm((s) => ({ ...s, status: e.target.value }))}>
+                <FieldGroup>
+                  <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={detailForm.status} onChange={(e) => setDetailForm((s) => ({ ...s, status: e.target.value }))}>
                     {STATUS_OPTIONS.filter(Boolean).map((status) => (
-                      <option key={status} value={status}>{formatStatus(status)}</option>
+                      <option key={status} value={status}>{formatApplicationStatus(status)}</option>
                     ))}
                   </Select>
-                  <Input label="Interview date" type="date" value={detailForm.interviewDate} onChange={(e) => setDetailForm((s) => ({ ...s, interviewDate: e.target.value }))} />
-                  <Input label="Interview result" value={detailForm.interviewResult} onChange={(e) => setDetailForm((s) => ({ ...s, interviewResult: e.target.value }))} />
-                  <Input label="Reject reason" value={detailForm.rejectReason} onChange={(e) => setDetailForm((s) => ({ ...s, rejectReason: e.target.value }))} />
-                </div>
+                  <Input label={copy({ en: "Interview date", vi: "Ngày phỏng vấn" })} type="date" value={detailForm.interviewDate} onChange={(e) => setDetailForm((s) => ({ ...s, interviewDate: e.target.value }))} />
+                  <Input label={copy({ en: "Interview result", vi: "Kết quả phỏng vấn" })} value={detailForm.interviewResult} onChange={(e) => setDetailForm((s) => ({ ...s, interviewResult: e.target.value }))} />
+                  <Input label={copy({ en: "Reject reason", vi: "Lý do từ chối" })} value={detailForm.rejectReason} onChange={(e) => setDetailForm((s) => ({ ...s, rejectReason: e.target.value }))} />
+                </FieldGroup>
 
                 <Button
                   onClick={() =>
@@ -206,40 +206,29 @@ export function ApplicationsPage() {
                   }
                   disabled={updateApplication.isPending}
                 >
-                  {updateApplication.isPending ? "Saving application..." : "Save application update"}
+                  {updateApplication.isPending ? copy({ en: "Saving application...", vi: "Đang lưu hồ sơ..." }) : copy({ en: "Save application update", vi: "Lưu cập nhật hồ sơ" })}
                 </Button>
               </div>
             ) : (
-              <EmptyState title="No application selected" description="Select a record from the queue to inspect and update the live backend application state." />
+              <EmptyState title={copy({ en: "No application selected", vi: "Chưa chọn hồ sơ ứng tuyển" })} description={copy({ en: "Select a record from the queue to inspect and update the live backend application state.", vi: "Chọn một bản ghi trong hàng đợi để xem và cập nhật trạng thái hồ sơ trực tiếp từ backend." })} />
             )}
           </Panel>
 
           <Panel
-            title="Operator notes"
-            subtitle="Current backend limitation and expected next integration step."
+            title={copy({ en: "Operator notes", vi: "Ghi chú vận hành" })}
+            subtitle={copy({ en: "Current backend limitation and expected next integration step.", vi: "Giới hạn backend hiện tại và bước tích hợp dự kiến tiếp theo." })}
           >
             <div className="space-y-3 text-sm leading-7 text-slate-600">
               <p>
-                The backend supports application creation, but the frontend does not yet have a clean candidate lookup surface.
-                For now, this workspace focuses on real queue visibility and lifecycle updates instead of inventing a candidate picker.
+                {copy({ en: "The backend supports application creation, but the frontend does not yet have a clean candidate lookup surface. For now, this workspace focuses on real queue visibility and lifecycle updates instead of inventing a candidate picker.", vi: "Backend đã hỗ trợ tạo hồ sơ ứng tuyển, nhưng frontend vẫn chưa có bề mặt tra cứu ứng viên đủ sạch. Hiện tại, không gian này tập trung vào khả năng nhìn thấy hàng đợi thật và cập nhật vòng đời thay vì dựng bộ chọn ứng viên giả." })}
               </p>
               <p>
-                The next upgrade should expose candidate context in the lead workbench or add a recruitment listing API so
-                application creation can be performed without manual IDs.
+                {copy({ en: "The next upgrade should expose candidate context in the lead workbench or add a recruitment listing API so application creation can be performed without manual IDs.", vi: "Bản nâng cấp tiếp theo nên hiển thị ngữ cảnh ứng viên trong lead workbench hoặc bổ sung API danh sách tuyển dụng để việc tạo hồ sơ có thể thực hiện mà không cần nhập ID thủ công." })}
               </p>
             </div>
           </Panel>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ApplicationMeta(props: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{props.label}</div>
-      <div className="mt-2 text-sm font-medium text-slate-800">{props.value}</div>
     </div>
   );
 }

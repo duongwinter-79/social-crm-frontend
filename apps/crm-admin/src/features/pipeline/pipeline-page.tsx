@@ -12,6 +12,7 @@ import {
   ToolbarActions
 } from "@social-crm/ui";
 import { usePipelineQuery } from "@social-crm/api";
+import { useI18n } from "@/i18n";
 import type { PipelineRow } from "@social-crm/api";
 
 function toneForStage(stage: string) {
@@ -21,11 +22,8 @@ function toneForStage(stage: string) {
   return "accent" as const;
 }
 
-function formatLabel(value: string) {
-  return value.replaceAll("_", " ");
-}
-
 export function PipelinePage() {
+  const { copy, formatPipelineStage, formatApplicationStatus } = useI18n();
   const [filters, setFilters] = useState({
     stage: "",
     search: ""
@@ -45,38 +43,38 @@ export function PipelinePage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="Pipeline"
-        title="Cross-stage case flow"
-        description="One operational view across lead stage, candidate linkage, application status, document blockers, and training-finance readiness."
+        eyebrow={copy({ en: "Pipeline", vi: "Pipeline" })}
+        title={copy({ en: "Cross-stage case flow", vi: "Luồng hồ sơ liên giai đoạn" })}
+        description={copy({ en: "One operational view across lead stage, candidate linkage, application status, document blockers, and training-finance readiness.", vi: "Một góc nhìn vận hành xuyên suốt giữa giai đoạn lead, liên kết ứng viên, trạng thái ứng tuyển, điểm nghẽn hồ sơ và mức sẵn sàng đào tạo - tài chính." })}
       />
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>This workspace is backed by the aggregated `/pipeline` endpoint, not by frontend-only stitching.</span>
-          <Badge tone="neutral">{pipelineQuery.data?.total ?? 0} cases</Badge>
+          <span>{copy({ en: "This workspace is backed by the aggregated `/pipeline` endpoint, not by frontend-only stitching.", vi: "Không gian này chạy từ endpoint tổng hợp `/pipeline`, không phải ghép nối chỉ ở frontend." })}</span>
+          <Badge tone="neutral">{pipelineQuery.data?.total ?? 0} {copy({ en: "cases", vi: "hồ sơ" })}</Badge>
         </div>
       </InfoStrip>
 
       <Toolbar compact className="border-slate-200/90">
         <div className="grid gap-3 md:grid-cols-2">
-          <Select label="Stage" value={filters.stage} onChange={(e) => setFilters((s) => ({ ...s, stage: e.target.value }))}>
-            <option value="">All stages</option>
+          <Select label={copy({ en: "Stage", vi: "Giai đoạn" })} value={filters.stage} onChange={(e) => setFilters((s) => ({ ...s, stage: e.target.value }))}>
+            <option value="">{copy({ en: "All stages", vi: "Tất cả giai đoạn" })}</option>
             {orderedGroups.map(([stage]) => (
-              <option key={stage} value={stage}>{formatLabel(stage)}</option>
+              <option key={stage} value={stage}>{formatPipelineStage(stage)}</option>
             ))}
           </Select>
-          <Input label="Search" value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
+          <Input label={copy({ en: "Search", vi: "Tìm kiếm" })} value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
         </div>
         <ToolbarActions>
           {orderedGroups.slice(0, 5).map(([stage, count]) => (
-            <Badge key={stage} tone="neutral">{formatLabel(stage)}: {count}</Badge>
+            <Badge key={stage} tone="neutral">{formatPipelineStage(stage)}: {count}</Badge>
           ))}
         </ToolbarActions>
       </Toolbar>
 
       <Panel
-        title="Case queue"
-        subtitle="Rows are keyed by lead and summarize the active operational state across modules."
+        title={copy({ en: "Case queue", vi: "Hàng đợi hồ sơ" })}
+        subtitle={copy({ en: "Rows are keyed by lead and summarize the active operational state across modules.", vi: "Mỗi dòng gắn với một lead và tóm tắt trạng thái vận hành hiện tại trên nhiều mô-đun." })}
       >
         {rows.length ? (
           <div className="space-y-3">
@@ -84,20 +82,20 @@ export function PipelinePage() {
               <div key={row.leadId} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="font-semibold text-slate-900">{row.leadName || "Unnamed lead"}</div>
-                    <div className="mt-1 text-xs text-slate-500">{row.phone || "No phone"} · {row.source}</div>
+                    <div className="font-semibold text-slate-900">{row.leadName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })}</div>
+                    <div className="mt-1 text-xs text-slate-500">{row.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · {row.source}</div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge tone={toneForStage(row.currentStage)}>{formatLabel(row.currentStage)}</Badge>
-                    {row.applicationStatus ? <Badge tone="warning">{formatLabel(row.applicationStatus)}</Badge> : null}
+                    <Badge tone={toneForStage(row.currentStage)}>{formatPipelineStage(row.currentStage)}</Badge>
+                    {row.applicationStatus ? <Badge tone="warning">{formatApplicationStatus(row.applicationStatus)}</Badge> : null}
                   </div>
                 </div>
 
                 <div className="mt-4 grid gap-3 md:grid-cols-4">
-                  <PipelineMeta label="Candidate" value={row.candidateCode || row.candidateId || "Not created"} />
-                  <PipelineMeta label="Order" value={row.applicationOrderName || "No application"} />
-                  <PipelineMeta label="Documents" value={row.documents.missingRequired.length ? `${row.documents.missingRequired.length} missing` : "Complete"} />
-                  <PipelineMeta label="Next action" value={row.nextAction} />
+                  <PipelineMeta label={copy({ en: "Candidate", vi: "Ứng viên" })} value={row.candidateCode || row.candidateId || copy({ en: "Not created", vi: "Chưa tạo" })} />
+                  <PipelineMeta label={copy({ en: "Order", vi: "Đơn hàng" })} value={row.applicationOrderName || copy({ en: "No application", vi: "Chưa có hồ sơ ứng tuyển" })} />
+                  <PipelineMeta label={copy({ en: "Documents", vi: "Hồ sơ" })} value={row.documents.missingRequired.length ? copy({ en: `${row.documents.missingRequired.length} missing`, vi: `Thiếu ${row.documents.missingRequired.length}` }) : copy({ en: "Complete", vi: "Đầy đủ" })} />
+                  <PipelineMeta label={copy({ en: "Next action", vi: "Hành động tiếp theo" })} value={row.nextAction} />
                 </div>
 
                 {row.blockers.length ? (
@@ -110,21 +108,21 @@ export function PipelinePage() {
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Link className="text-sm font-medium text-indigo-700 hover:text-indigo-800" to={`/leads/${row.leadId}`}>
-                    Open lead workbench
+                    {copy({ en: "Open lead workbench", vi: "Mở bàn xử lý lead" })}
                   </Link>
                   <span className="text-xs text-slate-500">
                     {row.trainingFinance?.departureDate
-                      ? `Departure ${row.trainingFinance.departureDate}`
+                      ? copy({ en: `Departure ${row.trainingFinance.departureDate}`, vi: `Xuất cảnh ${row.trainingFinance.departureDate}` })
                       : row.trainingFinance?.visaDate
-                        ? `Visa ${row.trainingFinance.visaDate}`
-                        : row.trainingFinance?.trainingProgress || "No downstream milestone yet"}
+                        ? copy({ en: `Visa ${row.trainingFinance.visaDate}`, vi: `Visa ${row.trainingFinance.visaDate}` })
+                        : row.trainingFinance?.trainingProgress || copy({ en: "No downstream milestone yet", vi: "Chưa có cột mốc tiếp theo" })}
                   </span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <EmptyState title="No pipeline rows found" description="Adjust the filters or wait until lead and downstream workflow data is available." />
+          <EmptyState title={copy({ en: "No pipeline rows found", vi: "Không tìm thấy dòng pipeline" })} description={copy({ en: "Adjust the filters or wait until lead and downstream workflow data is available.", vi: "Hãy điều chỉnh bộ lọc hoặc chờ đến khi dữ liệu lead và luồng xử lý phía sau sẵn sàng." })} />
         )}
       </Panel>
     </div>

@@ -5,6 +5,8 @@ import {
   Button,
   DescriptionList,
   EmptyState,
+  FieldGroup,
+  InfoCard,
   InfoStrip,
   Input,
   Panel,
@@ -18,8 +20,8 @@ import {
   useCandidateByLeadQuery,
   useCreateApplicationMutation,
   useLeadDetailQuery,
-  useLeadQualificationQuery,
   useLeadProfileQuery,
+  useLeadQualificationQuery,
   useLeadTransitionsQuery,
   useOrdersQuery,
   useSuggestedOrdersQuery,
@@ -28,6 +30,7 @@ import {
   useUpsertLeadProfileMutation
 } from "@social-crm/api";
 import type { CandidateSuggestion, Order } from "@social-crm/api";
+import { useI18n } from "../../i18n";
 
 function toneForStatus(status: string) {
   if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
@@ -37,6 +40,7 @@ function toneForStatus(status: string) {
 }
 
 export function LeadWorkbenchPage() {
+  const { copy, formatLeadStatus, formatEnum, yesNoUnknown } = useI18n();
   const { leadId = "" } = useParams();
   const leadQuery = useLeadDetailQuery(leadId);
   const candidateQuery = useCandidateByLeadQuery(leadId);
@@ -136,35 +140,29 @@ export function LeadWorkbenchPage() {
   const fallbackOrders = useMemo(() => allOrders.slice(0, 4), [allOrders]);
 
   if (!lead) {
-    return <Panel title="Lead workbench"><EmptyState title="Lead not loaded" description="The selected lead could not be loaded from the backend." /></Panel>;
+    return <Panel title={copy({ en: "Lead workbench", vi: "Ban lam viec lead" })}><EmptyState title={copy({ en: "Lead not loaded", vi: "Chua tai duoc lead" })} description={copy({ en: "The selected lead could not be loaded from the backend.", vi: "Khong tai duoc lead da chon tu backend." })} /></Panel>;
   }
 
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="Lead workbench"
-        title={lead.fullName || "Unnamed lead"}
-        description={`${lead.source.toUpperCase()} channel · ${lead.phone || "No phone"} · ${lead.region || "No region"}`}
+        eyebrow={copy({ en: "Lead workbench", vi: "Ban lam viec lead" })}
+        title={lead.fullName || copy({ en: "Unnamed lead", vi: "Lead chua co ten" })}
+        description={`${lead.source.toUpperCase()} · ${lead.phone || copy({ en: "No phone", vi: "Khong co so dien thoai" })} · ${lead.region || copy({ en: "No region", vi: "Khong co khu vuc" })}`}
       />
 
       <Toolbar compact className="border-slate-200/90">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid gap-3 md:grid-cols-4 xl:flex-1">
-            <WorkbenchStrip label="Status" value={<Badge tone={toneForStatus(lead.status)}>{lead.status}</Badge>} />
-            <WorkbenchStrip label="Lead score" value={<Badge tone={(lead.leadScore ?? 0) >= 80 ? "success" : (lead.leadScore ?? 0) >= 60 ? "warning" : "neutral"}>{lead.leadScore ?? "-"}</Badge>} />
-            <WorkbenchStrip label="Classification" value={lead.leadClassification ?? "Unclassified"} />
-            <WorkbenchStrip label="Threads" value={lead.threads?.length ?? 0} />
+            <InfoCard label={copy({ en: "Status", vi: "Trang thai" })} value={<Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>} className="bg-slate-50" />
+            <InfoCard label={copy({ en: "Lead score", vi: "Diem lead" })} value={<Badge tone={(lead.leadScore ?? 0) >= 80 ? "success" : (lead.leadScore ?? 0) >= 60 ? "warning" : "neutral"}>{lead.leadScore ?? "-"}</Badge>} className="bg-slate-50" />
+            <InfoCard label={copy({ en: "Classification", vi: "Phan loai" })} value={lead.leadClassification ?? copy({ en: "Unclassified", vi: "Chua phan loai" })} className="bg-slate-50" />
+            <InfoCard label={copy({ en: "Threads", vi: "Luong hoi thoai" })} value={lead.threads?.length ?? 0} className="bg-slate-50" />
           </div>
           <ToolbarActions className="xl:justify-end">
             {(transitionsQuery.data?.allowed ?? []).map((next) => (
-              <Button
-                key={next}
-                variant={next.includes("FAILED") || next === "DISQUALIFIED" ? "danger" : "secondary"}
-                size="sm"
-                onClick={() => updateLead.mutate({ id: leadId, patch: { status: next } })}
-                disabled={updateLead.isPending}
-              >
-                Move to {next}
+              <Button key={next} variant={next.includes("FAILED") || next === "DISQUALIFIED" ? "danger" : "secondary"} size="sm" onClick={() => updateLead.mutate({ id: leadId, patch: { status: next } })} disabled={updateLead.isPending}>
+                {copy({ en: "Move to", vi: "Chuyen sang" })} {formatLeadStatus(next)}
               </Button>
             ))}
           </ToolbarActions>
@@ -173,19 +171,16 @@ export function LeadWorkbenchPage() {
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>Use transitions from the backend state machine first.</span>
-          <Badge tone="neutral">Profile completeness drives matching quality</Badge>
-          <Badge tone="neutral">{suggestedOrders.length ? `${suggestedOrders.length} suggested orders` : "No backend suggestions yet"}</Badge>
-          <Badge tone={candidate ? "success" : "warning"}>{candidate ? `Candidate ${candidate.code ?? candidate.id}` : "No candidate created yet"}</Badge>
+          <span>{copy({ en: "Use backend state transitions first.", vi: "Uu tien dung luong chuyen trang thai tu backend." })}</span>
+          <Badge tone="neutral">{copy({ en: "Profile completeness drives matching quality", vi: "Do day du ho so anh huong chat luong ghep don" })}</Badge>
+          <Badge tone="neutral">{suggestedOrders.length ? copy({ en: `${suggestedOrders.length} suggested orders`, vi: `${suggestedOrders.length} don hang de xuat` }) : copy({ en: "No backend suggestions yet", vi: "Chua co de xuat tu backend" })}</Badge>
+          <Badge tone={candidate ? "success" : "warning"}>{candidate ? `Candidate ${candidate.code ?? candidate.id}` : copy({ en: "No candidate created yet", vi: "Chua tao candidate" })}</Badge>
         </div>
       </InfoStrip>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
         <div className="space-y-6">
-          <Panel
-            title="Conversation and thread context"
-            subtitle="Message history is not exposed yet, so this workbench focuses on thread health, AI extraction timing, and operator review."
-          >
+          <Panel title={copy({ en: "Conversation and thread context", vi: "Ngu canh hoi thoai va thread" })} subtitle={copy({ en: "Focus on thread health, AI extraction timing, and operator review.", vi: "Tap trung vao suc khoe thread, thoi diem AI trich xuat va danh gia cua nhan vien." })}>
             {lead.threads?.length ? (
               <div className="space-y-4">
                 {lead.threads.map((thread) => (
@@ -196,196 +191,153 @@ export function LeadWorkbenchPage() {
                       <span className="text-xs text-slate-500">Thread {thread.id}</span>
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-2">
-                      <ThreadMeta label="Last message" value={thread.lastMessageAt ?? "Unknown"} />
-                      <ThreadMeta label="Last AI extraction" value={thread.lastAiExtractedAt ?? "Never"} />
+                      <InfoCard label={copy({ en: "Last message", vi: "Tin nhan cuoi" })} value={thread.lastMessageAt ?? copy({ en: "Unknown", vi: "Chua ro" })} />
+                      <InfoCard label={copy({ en: "Last AI extraction", vi: "Lan AI trich xuat cuoi" })} value={thread.lastAiExtractedAt ?? copy({ en: "Never", vi: "Chua tung" })} />
                     </div>
-                    {thread.metadata ? (
-                      <details className="mt-3 text-sm text-slate-500">
-                        <summary className="cursor-pointer font-medium text-slate-700">Raw metadata</summary>
-                        <pre className="mt-3 overflow-auto rounded-2xl border border-slate-200 bg-white p-3 text-xs text-slate-600">{JSON.stringify(thread.metadata, null, 2)}</pre>
-                      </details>
-                    ) : null}
                   </div>
                 ))}
               </div>
             ) : (
-              <EmptyState title="No threads on this lead" description="Webhook ingestion may not have attached conversation threads yet." />
+              <EmptyState title={copy({ en: "No threads on this lead", vi: "Lead nay chua co thread" })} description={copy({ en: "Webhook ingestion may not have attached conversation threads yet.", vi: "Webhook co the chua gan hoi thoai vao lead nay." })} />
             )}
           </Panel>
 
-          <Panel
-            title="AI operator query"
-            subtitle="Run a manual prompt against the first available thread and keep the result attached to the active workbench."
-          >
+          <Panel title={copy({ en: "AI operator query", vi: "Truy van AI cho nhan vien" })} subtitle={copy({ en: "Run a manual prompt against the first available thread.", vi: "Chay prompt thu cong tren thread dau tien co san." })}>
             <div className="space-y-3">
               <Input label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
               <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  onClick={() => {
-                    if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt });
-                  }}
-                  disabled={!selectedThreadId || aiMutation.isPending}
-                >
-                  {aiMutation.isPending ? "Running AI query..." : "Run query"}
+                <Button onClick={() => { if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt }); }} disabled={!selectedThreadId || aiMutation.isPending}>
+                  {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Dang chay truy van AI..." }) : copy({ en: "Run query", vi: "Chay truy van" })}
                 </Button>
-                <span className="text-sm text-slate-500">{selectedThreadId ? `Using thread ${selectedThreadId}` : "No thread available"}</span>
+                <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Dang dung thread ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Khong co thread" })}</span>
               </div>
               {aiMutation.data ? (
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-700">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">AI result</div>
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">AI</div>
                   {aiMutation.data.result}
                 </div>
               ) : null}
             </div>
           </Panel>
 
-          <Panel
-            title="Profile workspace"
-            subtitle="This section maps directly to `/leads/:leadId/profile` and should be treated as the operator-owned structured profile."
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <Input label="Birth year" value={profileForm.birthYear} onChange={(e) => setProfileForm((s) => ({ ...s, birthYear: e.target.value }))} />
-              <Input label="Gender" value={profileForm.gender} onChange={(e) => setProfileForm((s) => ({ ...s, gender: e.target.value }))} />
-              <Input label="Height (cm)" value={profileForm.heightCm} onChange={(e) => setProfileForm((s) => ({ ...s, heightCm: e.target.value }))} />
-              <Input label="Weight (kg)" value={profileForm.weightKg} onChange={(e) => setProfileForm((s) => ({ ...s, weightKg: e.target.value }))} />
-              <Input label="Experience field" value={profileForm.experienceField} onChange={(e) => setProfileForm((s) => ({ ...s, experienceField: e.target.value }))} />
-              <Input label="Desired industry" value={profileForm.desiredIndustry} onChange={(e) => setProfileForm((s) => ({ ...s, desiredIndustry: e.target.value }))} />
-              <Input label="Preferred region" value={profileForm.preferredRegion} onChange={(e) => setProfileForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
-              <Input label="Desired salary" value={profileForm.desiredSalary} onChange={(e) => setProfileForm((s) => ({ ...s, desiredSalary: e.target.value }))} />
-            </div>
+          <Panel title={copy({ en: "Profile workspace", vi: "Khong gian ho so" })} subtitle={copy({ en: "Operator-owned structured profile mapped to the backend profile endpoint.", vi: "Ho so cau truc do nhan vien cap nhat va dong bo voi endpoint profile cua backend." })}>
+            <FieldGroup columns={2}>
+              <Input label={copy({ en: "Birth year", vi: "Nam sinh" })} value={profileForm.birthYear} onChange={(e) => setProfileForm((s) => ({ ...s, birthYear: e.target.value }))} />
+              <Input label={copy({ en: "Gender", vi: "Gioi tinh" })} value={profileForm.gender} onChange={(e) => setProfileForm((s) => ({ ...s, gender: e.target.value }))} />
+              <Input label={copy({ en: "Height (cm)", vi: "Chieu cao (cm)" })} value={profileForm.heightCm} onChange={(e) => setProfileForm((s) => ({ ...s, heightCm: e.target.value }))} />
+              <Input label={copy({ en: "Weight (kg)", vi: "Can nang (kg)" })} value={profileForm.weightKg} onChange={(e) => setProfileForm((s) => ({ ...s, weightKg: e.target.value }))} />
+              <Input label={copy({ en: "Experience field", vi: "Linh vuc kinh nghiem" })} value={profileForm.experienceField} onChange={(e) => setProfileForm((s) => ({ ...s, experienceField: e.target.value }))} />
+              <Input label={copy({ en: "Desired industry", vi: "Nganh mong muon" })} value={profileForm.desiredIndustry} onChange={(e) => setProfileForm((s) => ({ ...s, desiredIndustry: e.target.value }))} />
+              <Input label={copy({ en: "Preferred region", vi: "Khu vuc mong muon" })} value={profileForm.preferredRegion} onChange={(e) => setProfileForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
+              <Input label={copy({ en: "Desired salary", vi: "Muc luong mong muon" })} value={profileForm.desiredSalary} onChange={(e) => setProfileForm((s) => ({ ...s, desiredSalary: e.target.value }))} />
+            </FieldGroup>
             <div className="mt-4">
-              <Button
-                onClick={() =>
-                  profileMutation.mutate({
-                    birthYear: profileForm.birthYear ? Number(profileForm.birthYear) : null,
-                    gender: profileForm.gender || null,
-                    heightCm: profileForm.heightCm ? Number(profileForm.heightCm) : null,
-                    weightKg: profileForm.weightKg ? Number(profileForm.weightKg) : null,
-                    experienceField: profileForm.experienceField || null,
-                    desiredIndustry: profileForm.desiredIndustry || null,
-                    preferredRegion: profileForm.preferredRegion || null,
-                    desiredSalary: profileForm.desiredSalary || null
-                  })
-                }
-                disabled={profileMutation.isPending}
-              >
-                {profileMutation.isPending ? "Saving profile..." : "Save profile"}
+              <Button onClick={() => profileMutation.mutate({ birthYear: profileForm.birthYear ? Number(profileForm.birthYear) : null, gender: profileForm.gender || null, heightCm: profileForm.heightCm ? Number(profileForm.heightCm) : null, weightKg: profileForm.weightKg ? Number(profileForm.weightKg) : null, experienceField: profileForm.experienceField || null, desiredIndustry: profileForm.desiredIndustry || null, preferredRegion: profileForm.preferredRegion || null, desiredSalary: profileForm.desiredSalary || null })} disabled={profileMutation.isPending}>
+                {profileMutation.isPending ? copy({ en: "Saving profile...", vi: "Dang luu ho so..." }) : copy({ en: "Save profile", vi: "Luu ho so" })}
               </Button>
             </div>
           </Panel>
 
-          <Panel
-            title="Qualification overlay"
-            subtitle="Staff-verified fields override sparse CNV intake and directly influence lead score and formal matching."
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <Input label="Verified age" value={qualificationForm.age} onChange={(e) => setQualificationForm((s) => ({ ...s, age: e.target.value }))} />
-              <Select label="Verified gender" value={qualificationForm.gender} onChange={(e) => setQualificationForm((s) => ({ ...s, gender: e.target.value }))}>
-                <option value="">Unspecified</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+          <Panel title={copy({ en: "Qualification overlay", vi: "Lop xac minh dieu kien" })} subtitle={copy({ en: "Staff-verified fields directly influence lead score and matching.", vi: "Cac truong da xac minh boi nhan vien anh huong truc tiep den diem lead va ghep don." })}>
+            <FieldGroup columns={2}>
+              <Input label={copy({ en: "Verified age", vi: "Tuoi da xac minh" })} value={qualificationForm.age} onChange={(e) => setQualificationForm((s) => ({ ...s, age: e.target.value }))} />
+              <Select label={copy({ en: "Verified gender", vi: "Gioi tinh da xac minh" })} value={qualificationForm.gender} onChange={(e) => setQualificationForm((s) => ({ ...s, gender: e.target.value }))}>
+                <option value="">{copy({ en: "Unspecified", vi: "Chua xac dinh" })}</option>
+                <option value="male">{copy({ en: "Male", vi: "Nam" })}</option>
+                <option value="female">{copy({ en: "Female", vi: "Nu" })}</option>
+                <option value="other">{copy({ en: "Other", vi: "Khac" })}</option>
               </Select>
-              <Select label="Has passport" value={qualificationForm.hasPassport} onChange={(e) => setQualificationForm((s) => ({ ...s, hasPassport: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+              <Select label={copy({ en: "Has passport", vi: "Co ho chieu" })} value={qualificationForm.hasPassport} onChange={(e) => setQualificationForm((s) => ({ ...s, hasPassport: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="true">{copy({ en: "Yes", vi: "Co" })}</option>
+                <option value="false">{copy({ en: "No", vi: "Khong" })}</option>
               </Select>
-              <Input label="Verified height (cm)" value={qualificationForm.height} onChange={(e) => setQualificationForm((s) => ({ ...s, height: e.target.value }))} />
-              <Input label="Verified weight (kg)" value={qualificationForm.weight} onChange={(e) => setQualificationForm((s) => ({ ...s, weight: e.target.value }))} />
-              <Select label="Experience level" value={qualificationForm.experienceLevel} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceLevel: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="excellent">Excellent</option>
-                <option value="good">Good</option>
-                <option value="basic">Basic</option>
-                <option value="none">None</option>
-                <option value="undisclosed">Undisclosed</option>
+              <Input label={copy({ en: "Verified height (cm)", vi: "Chieu cao da xac minh (cm)" })} value={qualificationForm.height} onChange={(e) => setQualificationForm((s) => ({ ...s, height: e.target.value }))} />
+              <Input label={copy({ en: "Verified weight (kg)", vi: "Can nang da xac minh (kg)" })} value={qualificationForm.weight} onChange={(e) => setQualificationForm((s) => ({ ...s, weight: e.target.value }))} />
+              <Select label={copy({ en: "Experience level", vi: "Muc do kinh nghiem" })} value={qualificationForm.experienceLevel} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceLevel: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="excellent">{copy({ en: "Excellent", vi: "Rat tot" })}</option>
+                <option value="good">{copy({ en: "Good", vi: "Tot" })}</option>
+                <option value="basic">{copy({ en: "Basic", vi: "Co ban" })}</option>
+                <option value="none">{copy({ en: "None", vi: "Khong co" })}</option>
+                <option value="undisclosed">{copy({ en: "Undisclosed", vi: "Chua khai bao" })}</option>
               </Select>
-              <Input label="Experience years" value={qualificationForm.experienceYears} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceYears: e.target.value }))} />
-              <Select label="Strong skills" value={qualificationForm.hasStrongSkills} onChange={(e) => setQualificationForm((s) => ({ ...s, hasStrongSkills: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+              <Input label={copy({ en: "Experience years", vi: "So nam kinh nghiem" })} value={qualificationForm.experienceYears} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceYears: e.target.value }))} />
+              <Select label={copy({ en: "Strong skills", vi: "Ky nang tot" })} value={qualificationForm.hasStrongSkills} onChange={(e) => setQualificationForm((s) => ({ ...s, hasStrongSkills: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="true">{copy({ en: "Yes", vi: "Co" })}</option>
+                <option value="false">{copy({ en: "No", vi: "Khong" })}</option>
               </Select>
-              <Input label="Ready to depart (months)" value={qualificationForm.readyToDepartInMonths} onChange={(e) => setQualificationForm((s) => ({ ...s, readyToDepartInMonths: e.target.value }))} />
-              <Select label="Understands job nature" value={qualificationForm.understandsJobNature} onChange={(e) => setQualificationForm((s) => ({ ...s, understandsJobNature: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+              <Input label={copy({ en: "Ready to depart (months)", vi: "San sang xuat canh (thang)" })} value={qualificationForm.readyToDepartInMonths} onChange={(e) => setQualificationForm((s) => ({ ...s, readyToDepartInMonths: e.target.value }))} />
+              <Select label={copy({ en: "Understands job nature", vi: "Hieu tinh chat cong viec" })} value={qualificationForm.understandsJobNature} onChange={(e) => setQualificationForm((s) => ({ ...s, understandsJobNature: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="true">{copy({ en: "Yes", vi: "Co" })}</option>
+                <option value="false">{copy({ en: "No", vi: "Khong" })}</option>
               </Select>
-              <Input label="Preferred region(s)" value={qualificationForm.preferredRegion} onChange={(e) => setQualificationForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
-              <Select label="Worked abroad before" value={qualificationForm.hasWorkedAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasWorkedAbroad: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+              <Input label={copy({ en: "Preferred region(s)", vi: "Khu vuc mong muon" })} value={qualificationForm.preferredRegion} onChange={(e) => setQualificationForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
+              <Select label={copy({ en: "Worked abroad before", vi: "Tung di nuoc ngoai" })} value={qualificationForm.hasWorkedAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasWorkedAbroad: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="true">{copy({ en: "Yes", vi: "Co" })}</option>
+                <option value="false">{copy({ en: "No", vi: "Khong" })}</option>
               </Select>
-              <Select label="Returnee history clean" value={qualificationForm.hasCleanHistoryAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasCleanHistoryAbroad: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="true">Yes</option>
-                <option value="false">No</option>
+              <Select label={copy({ en: "Returnee history clean", vi: "Lich su lao dong nuoc ngoai tot" })} value={qualificationForm.hasCleanHistoryAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasCleanHistoryAbroad: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="true">{copy({ en: "Yes", vi: "Co" })}</option>
+                <option value="false">{copy({ en: "No", vi: "Khong" })}</option>
               </Select>
-              <Select label="Tattoo risk" value={qualificationForm.tattooStatus} onChange={(e) => setQualificationForm((s) => ({ ...s, tattooStatus: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="none">None</option>
-                <option value="hidden">Hidden</option>
-                <option value="small">Small / coverable</option>
-                <option value="visible">Visible</option>
-                <option value="offensive">Offensive</option>
-                <option value="forbidden_zone">Forbidden zone</option>
+              <Select label={copy({ en: "Tattoo risk", vi: "Rui ro hinh xam" })} value={qualificationForm.tattooStatus} onChange={(e) => setQualificationForm((s) => ({ ...s, tattooStatus: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="none">{copy({ en: "None", vi: "Khong co" })}</option>
+                <option value="hidden">{copy({ en: "Hidden", vi: "An" })}</option>
+                <option value="small">{copy({ en: "Small / coverable", vi: "Nho / che duoc" })}</option>
+                <option value="visible">{copy({ en: "Visible", vi: "Lo ro" })}</option>
+                <option value="offensive">{copy({ en: "Offensive", vi: "Phan cam" })}</option>
+                <option value="forbidden_zone">{copy({ en: "Forbidden zone", vi: "Vung cam" })}</option>
               </Select>
-              <Select label="Mandatory health fit" value={qualificationForm.healthMeetsCriteria} onChange={(e) => setQualificationForm((s) => ({ ...s, healthMeetsCriteria: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="true">Pass</option>
-                <option value="false">Fail</option>
+              <Select label={copy({ en: "Mandatory health fit", vi: "Suc khoe dat yeu cau" })} value={qualificationForm.healthMeetsCriteria} onChange={(e) => setQualificationForm((s) => ({ ...s, healthMeetsCriteria: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="true">{copy({ en: "Pass", vi: "Dat" })}</option>
+                <option value="false">{copy({ en: "Fail", vi: "Khong dat" })}</option>
               </Select>
-              <Select label="Risk history" value={qualificationForm.hasRiskHistory} onChange={(e) => setQualificationForm((s) => ({ ...s, hasRiskHistory: e.target.value }))}>
-                <option value="">Unknown</option>
-                <option value="none">None</option>
-                <option value="dropped_deposit">Dropped deposit</option>
-                <option value="canceled_late">Canceled late</option>
-                <option value="fake_profile">Fake profile</option>
+              <Select label={copy({ en: "Risk history", vi: "Lich su rui ro" })} value={qualificationForm.hasRiskHistory} onChange={(e) => setQualificationForm((s) => ({ ...s, hasRiskHistory: e.target.value }))}>
+                <option value="">{copy({ en: "Unknown", vi: "Chua ro" })}</option>
+                <option value="none">{copy({ en: "None", vi: "Khong co" })}</option>
+                <option value="dropped_deposit">{copy({ en: "Dropped deposit", vi: "Bo coc" })}</option>
+                <option value="canceled_late">{copy({ en: "Canceled late", vi: "Huy muon" })}</option>
+                <option value="fake_profile">{copy({ en: "Fake profile", vi: "Ho so gia" })}</option>
               </Select>
-              <Input label="Late cancellation count" value={qualificationForm.lateCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, lateCancellationCount: e.target.value }))} />
-              <Input label="No-show count" value={qualificationForm.noShowCount} onChange={(e) => setQualificationForm((s) => ({ ...s, noShowCount: e.target.value }))} />
-              <Input label="Unreasonable cancellation count" value={qualificationForm.unreasonableCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, unreasonableCancellationCount: e.target.value }))} />
-              <Input label="Verified inconsistency count" value={qualificationForm.inconsistentInfoCount} onChange={(e) => setQualificationForm((s) => ({ ...s, inconsistentInfoCount: e.target.value }))} />
-            </div>
+              <Input label={copy({ en: "Late cancellation count", vi: "So lan huy muon" })} value={qualificationForm.lateCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, lateCancellationCount: e.target.value }))} />
+              <Input label={copy({ en: "No-show count", vi: "So lan vang mat" })} value={qualificationForm.noShowCount} onChange={(e) => setQualificationForm((s) => ({ ...s, noShowCount: e.target.value }))} />
+              <Input label={copy({ en: "Unreasonable cancellation count", vi: "So lan huy vo ly" })} value={qualificationForm.unreasonableCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, unreasonableCancellationCount: e.target.value }))} />
+              <Input label={copy({ en: "Verified inconsistency count", vi: "So lan thong tin khong nhat quan" })} value={qualificationForm.inconsistentInfoCount} onChange={(e) => setQualificationForm((s) => ({ ...s, inconsistentInfoCount: e.target.value }))} />
+            </FieldGroup>
             <div className="mt-4">
-              <Input label="Qualification note" value={qualificationForm.note} onChange={(e) => setQualificationForm((s) => ({ ...s, note: e.target.value }))} />
+              <Input label={copy({ en: "Qualification note", vi: "Ghi chu xac minh" })} value={qualificationForm.note} onChange={(e) => setQualificationForm((s) => ({ ...s, note: e.target.value }))} />
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Button
-                onClick={() => qualificationMutation.mutate(buildQualificationPatch(qualificationForm))}
-                disabled={qualificationMutation.isPending}
-              >
-                {qualificationMutation.isPending ? "Saving qualification..." : "Save verified qualification"}
+              <Button onClick={() => qualificationMutation.mutate(buildQualificationPatch(qualificationForm))} disabled={qualificationMutation.isPending}>
+                {qualificationMutation.isPending ? copy({ en: "Saving qualification...", vi: "Dang luu du lieu xac minh..." }) : copy({ en: "Save verified qualification", vi: "Luu du lieu xac minh" })}
               </Button>
-              <span className="text-sm text-slate-500">
-                Saving this overlay updates the backend scoring inputs without overwriting the raw CNV intake snapshot.
-              </span>
             </div>
           </Panel>
         </div>
 
         <div className="space-y-6">
-          <Panel title="Lead summary" subtitle="Fast operator snapshot before taking any action.">
+          <Panel title={copy({ en: "Lead summary", vi: "Tom tat lead" })} subtitle={copy({ en: "Fast operator snapshot before taking action.", vi: "Tom tat nhanh truoc khi thao tac." })}>
             <DescriptionList
               items={[
-                { label: "Lead ID", value: lead.id },
-                { label: "Candidate", value: candidate?.code ?? candidate?.id ?? "Not created" },
-                { label: "Source", value: lead.source },
-                { label: "Phone", value: lead.phone || "No phone" },
-                { label: "Region", value: lead.region || "No region" },
-                { label: "Created", value: lead.createdAt || "Unknown" },
-                { label: "Updated", value: lead.updatedAt || "Unknown" }
+                { label: copy({ en: "Lead ID", vi: "Lead ID" }), value: lead.id },
+                { label: copy({ en: "Candidate", vi: "Candidate" }), value: candidate?.code ?? candidate?.id ?? copy({ en: "Not created", vi: "Chua tao" }) },
+                { label: copy({ en: "Source", vi: "Nguon" }), value: lead.source },
+                { label: copy({ en: "Phone", vi: "Dien thoai" }), value: lead.phone || copy({ en: "No phone", vi: "Khong co so dien thoai" }) },
+                { label: copy({ en: "Region", vi: "Khu vuc" }), value: lead.region || copy({ en: "No region", vi: "Khong co khu vuc" }) },
+                { label: copy({ en: "Created", vi: "Tao luc" }), value: lead.createdAt || copy({ en: "Unknown", vi: "Chua ro" }) },
+                { label: copy({ en: "Updated", vi: "Cap nhat luc" }), value: lead.updatedAt || copy({ en: "Unknown", vi: "Chua ro" }) }
               ]}
             />
           </Panel>
 
-          <Panel
-            title="Suggested orders"
-            subtitle="Driven by the backend matching suggestion endpoint when available."
-          >
+          <Panel title={copy({ en: "Suggested orders", vi: "Don hang de xuat" })} subtitle={copy({ en: "Driven by the backend matching suggestion endpoint when available.", vi: "Duoc lay tu endpoint de xuat matching cua backend khi co san." })}>
             {(suggestedOrders.length ? suggestedOrders : fallbackOrders).length ? (
               <div className="space-y-3">
                 {(suggestedOrders.length ? suggestedOrders : fallbackOrders).map((order) => (
@@ -393,69 +345,48 @@ export function LeadWorkbenchPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="font-semibold text-slate-900">{order.name}</div>
-                        <div className="mt-1 text-xs leading-5 text-slate-500">{order.region || "No region"} · {order.industry || "No industry"}</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">{order.region || copy({ en: "No region", vi: "Khong co khu vuc" })} · {order.industry || copy({ en: "No industry", vi: "Khong co nganh" })}</div>
                       </div>
                       {renderOrderBadge(order)}
                     </div>
-                    <div className="mt-3 text-xs leading-5 text-slate-500">{order.description || order.requirements || "No additional order detail available."}</div>
+                    <div className="mt-3 text-xs leading-5 text-slate-500">{order.description || order.requirements || copy({ en: "No additional order detail available.", vi: "Khong co thong tin bo sung cho don hang." })}</div>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          if (!candidate?.id) return;
-                          createApplication.mutate({ candidateId: candidate.id, orderId: order.id });
-                        }}
-                        disabled={!candidate?.id || createApplication.isPending}
-                      >
-                        {createApplication.isPending ? "Creating..." : "Create application"}
+                      <Button size="sm" onClick={() => { if (!candidate?.id) return; createApplication.mutate({ candidateId: candidate.id, orderId: order.id }); }} disabled={!candidate?.id || createApplication.isPending}>
+                        {createApplication.isPending ? copy({ en: "Creating...", vi: "Dang tao..." }) : copy({ en: "Create application", vi: "Tao ho so ung tuyen" })}
                       </Button>
                       <span className="text-xs text-slate-500">
                         {candidate?.id
-                          ? "Uses the linked candidate record from the recruitment API."
-                          : "Create or promote a candidate first before opening an application."}
+                          ? copy({ en: "Uses the linked candidate record from the recruitment API.", vi: "Su dung candidate da lien ket tu recruitment API." })
+                          : copy({ en: "Create or promote a candidate first.", vi: "Can tao hoac nang cap candidate truoc." })}
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <EmptyState title="No orders available" description="No backend suggestions or orders are available for this lead." />
+              <EmptyState title={copy({ en: "No orders available", vi: "Khong co don hang" })} description={copy({ en: "No backend suggestions or orders are available for this lead.", vi: "Khong co de xuat backend hoac don hang phu hop cho lead nay." })} />
             )}
           </Panel>
 
-          <Panel
-            title="Extracted data snapshot"
-            subtitle="What the current AI/matching layer sees before operator corrections."
-          >
+          <Panel title={copy({ en: "Extracted data snapshot", vi: "Anh chup du lieu da trich xuat" })} subtitle={copy({ en: "What the current AI layer sees before operator corrections.", vi: "Nhung gi lop AI hien tai nhin thay truoc khi nhan vien chinh sua." })}>
             <pre className="overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(lead.aiExtractedData ?? {}, null, 2)}</pre>
           </Panel>
 
-          <Panel
-            title="Verified qualification snapshot"
-            subtitle="Staff-confirmed fields that override sparse intake when score and matching are recalculated."
-          >
-            <pre className="overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(qualificationQuery.data?.verifiedData ?? lead.verifiedProfileData ?? {}, null, 2)}</pre>
+          <Panel title={copy({ en: "Verified qualification snapshot", vi: "Anh chup du lieu da xac minh" })} subtitle={copy({ en: "Staff-confirmed fields used for scoring and matching.", vi: "Cac truong da duoc nhan vien xac nhan de tinh diem va ghep don." })}>
+            <DescriptionList
+              items={[
+                { label: copy({ en: "Passport", vi: "Ho chieu" }), value: yesNoUnknown(qualificationForm.hasPassport) },
+                { label: copy({ en: "Strong skills", vi: "Ky nang tot" }), value: yesNoUnknown(qualificationForm.hasStrongSkills) },
+                { label: copy({ en: "Worked abroad", vi: "Tung di nuoc ngoai" }), value: yesNoUnknown(qualificationForm.hasWorkedAbroad) },
+                { label: copy({ en: "Health fit", vi: "Suc khoe dat yeu cau" }), value: yesNoUnknown(qualificationForm.healthMeetsCriteria) },
+                { label: copy({ en: "Experience level", vi: "Muc do kinh nghiem" }), value: qualificationForm.experienceLevel ? formatEnum(qualificationForm.experienceLevel) : copy({ en: "Unknown", vi: "Chua ro" }) },
+                { label: copy({ en: "Risk history", vi: "Lich su rui ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chua ro" }) }
+              ]}
+            />
+            <pre className="mt-4 overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(qualificationQuery.data?.verifiedData ?? lead.verifiedProfileData ?? {}, null, 2)}</pre>
           </Panel>
         </div>
       </div>
-    </div>
-  );
-}
-
-function WorkbenchStrip(props: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{props.label}</div>
-      <div className="mt-2 text-sm font-semibold text-slate-900">{props.value}</div>
-    </div>
-  );
-}
-
-function ThreadMeta(props: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{props.label}</div>
-      <div className="mt-2 text-sm font-medium text-slate-800">{props.value}</div>
     </div>
   );
 }
@@ -503,9 +434,7 @@ function buildQualificationPatch(form: Record<string, string>) {
     hasStrongSkills: parseBoolean(form.hasStrongSkills),
     readyToDepartInMonths: parseNumber(form.readyToDepartInMonths),
     understandsJobNature: parseBoolean(form.understandsJobNature),
-    preferredRegion: form.preferredRegion
-      ? form.preferredRegion.split(",").map((item) => item.trim()).filter(Boolean)
-      : undefined,
+    preferredRegion: form.preferredRegion ? form.preferredRegion.split(",").map((item) => item.trim()).filter(Boolean) : undefined,
     lateCancellationCount: parseNumber(form.lateCancellationCount),
     noShowCount: parseNumber(form.noShowCount),
     unreasonableCancellationCount: parseNumber(form.unreasonableCancellationCount),

@@ -102,11 +102,13 @@ Missing later work:
 Current state:
 
 - CNV creates or updates leads
+- the integrations UI can read and display CNV customers for SSO/API verification
 - qualification overlay completes rule-critical fields
 
 Missing later work:
 
 - richer upstream profile capture if desired
+- automatic enrichment from CNV customer payloads into full recruiting profiles
 - clearer automated vs verified signal provenance in UI
 
 ### 8. Some business-sensitive signals remain human-confirmed

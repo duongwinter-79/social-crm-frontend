@@ -5,6 +5,7 @@ import type {
   AdminUser,
   AdminAuditLogListResponse,
   CnvConnectionStatus,
+  CnvCustomersResponse,
   AdminSessionListResponse,
   AdminSystemStatus,
   AdminUserListResponse,
@@ -345,6 +346,11 @@ export class SocialCrmApiClient {
 
   async getCnvInfo() {
     const response = await this.http.get<ApiEnvelope<{ success: boolean; result: unknown }> | { success: boolean; result: unknown }>("/cnv/webhook-admin/info");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvCustomers(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvCustomersResponse> | CnvCustomersResponse>("/cnv/webhook-admin/customers", { params });
     return unwrapEnvelope(response.data);
   }
 

@@ -115,6 +115,32 @@ export interface CnvConnectionStatus {
   } | null;
 }
 
+export interface CnvCustomer {
+  id: number;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  gender?: string | null;
+  avatar?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  points?: number;
+  exp_points?: number;
+  total_spending?: number;
+  total_points?: number;
+  addresses?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface CnvCustomersResponse {
+  success: boolean;
+  result: {
+    customers?: CnvCustomer[];
+    [key: string]: unknown;
+  };
+}
+
 export interface DashboardStats {
   totalLeads: number;
   totalThreads: number;
