@@ -141,6 +141,11 @@ export interface CnvCustomersResponse {
   };
 }
 
+export interface CnvResourceListResponse {
+  success: boolean;
+  result: Record<string, unknown>;
+}
+
 export interface DashboardStats {
   totalLeads: number;
   totalThreads: number;

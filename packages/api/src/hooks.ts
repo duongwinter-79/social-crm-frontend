@@ -348,10 +348,57 @@ export function useCnvConnectionStatusQuery() {
   });
 }
 
-export function useCnvCustomersQuery(enabled = true) {
+export function useCnvCustomersQuery(
+  params: { limit?: number; offset?: number } = {},
+  enabled = true
+) {
   return useQuery({
-    queryKey: ["cnv", "customers"],
-    queryFn: () => apiClient.listCnvCustomers(),
+    queryKey: ["cnv", "customers", params],
+    queryFn: () => apiClient.listCnvCustomers(params),
+    enabled
+  });
+}
+
+export function useCnvProductsQuery(
+  params: { limit?: number; offset?: number } = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ["cnv", "products", params],
+    queryFn: () => apiClient.listCnvProducts(params),
+    enabled
+  });
+}
+
+export function useCnvOrdersQuery(
+  params: { limit?: number; offset?: number } = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ["cnv", "orders", params],
+    queryFn: () => apiClient.listCnvOrders(params),
+    enabled
+  });
+}
+
+export function useCnvCustomCollectionsQuery(
+  params: { limit?: number; offset?: number } = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ["cnv", "custom-collections", params],
+    queryFn: () => apiClient.listCnvCustomCollections(params),
+    enabled
+  });
+}
+
+export function useCnvSmartCollectionsQuery(
+  params: { limit?: number; offset?: number } = {},
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ["cnv", "smart-collections", params],
+    queryFn: () => apiClient.listCnvSmartCollections(params),
     enabled
   });
 }

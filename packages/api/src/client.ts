@@ -6,6 +6,7 @@ import type {
   AdminAuditLogListResponse,
   CnvConnectionStatus,
   CnvCustomersResponse,
+  CnvResourceListResponse,
   AdminSessionListResponse,
   AdminSystemStatus,
   AdminUserListResponse,
@@ -351,6 +352,26 @@ export class SocialCrmApiClient {
 
   async listCnvCustomers(params: Record<string, string | number | boolean | undefined> = {}) {
     const response = await this.http.get<ApiEnvelope<CnvCustomersResponse> | CnvCustomersResponse>("/cnv/webhook-admin/customers", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvProducts(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/products", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvOrders(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/orders", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvCustomCollections(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/custom-collections", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvSmartCollections(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/smart-collections", { params });
     return unwrapEnvelope(response.data);
   }
 
