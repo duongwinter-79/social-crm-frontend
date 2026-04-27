@@ -237,7 +237,24 @@ export interface Order {
   requirements?: string | null;
   genderRequired: string;
   ageRange?: { min: number; max: number } | null;
+  heightMin?: number | null;
+  acceptsReturnees?: boolean | null;
   experienceRequired: boolean;
+}
+
+export interface OrderMutationPayload {
+  name?: string;
+  description?: string | null;
+  region?: string | null;
+  industry?: string | null;
+  salaryRange?: string | null;
+  salaryConfig?: { min: number; max: number; currency: string } | null;
+  requirements?: string | null;
+  genderRequired?: "male" | "female" | "both";
+  ageRange?: { min: number; max: number } | null;
+  heightMin?: number | null;
+  acceptsReturnees?: boolean | null;
+  experienceRequired?: boolean;
 }
 
 export interface MatchingResult {

@@ -30,8 +30,8 @@ import type {
   LeadProfile,
   LeadTransitions,
   MatchingResult,
-  Order
-  ,
+  Order,
+  OrderMutationPayload,
   PipelineResponse,
   TrainingFinanceListResponse,
   TrainingFinanceRecord
@@ -186,6 +186,21 @@ export class SocialCrmApiClient {
 
   async listOrders() {
     const response = await this.http.get<ApiEnvelope<Order[]> | Order[]>("/orders");
+    return unwrapEnvelope(response.data);
+  }
+
+  async getOrder(id: string) {
+    const response = await this.http.get<ApiEnvelope<Order> | Order>(`/orders/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createOrder(payload: OrderMutationPayload & { name: string }) {
+    const response = await this.http.post<ApiEnvelope<Order> | Order>("/orders", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateOrder(id: string, patch: OrderMutationPayload) {
+    const response = await this.http.patch<ApiEnvelope<Order> | Order>(`/orders/${id}`, patch);
     return unwrapEnvelope(response.data);
   }
 

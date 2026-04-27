@@ -48,7 +48,7 @@ export function LeadWorkbenchPage() {
   const profileQuery = useLeadProfileQuery(leadId);
   const qualificationQuery = useLeadQualificationQuery(leadId);
   const ordersQuery = useOrdersQuery();
-  const suggestedOrdersQuery = useSuggestedOrdersQuery(leadId);
+  const suggestedOrdersQuery = useSuggestedOrdersQuery(candidateQuery.data?.id);
   const updateLead = useUpdateLeadMutation();
   const createApplication = useCreateApplicationMutation();
   const profileMutation = useUpsertLeadProfileMutation(leadId);
@@ -346,6 +346,15 @@ export function LeadWorkbenchPage() {
                       <div>
                         <div className="font-semibold text-slate-900">{order.name}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">{order.region || copy({ en: "No region", vi: "Khong co khu vuc" })} · {order.industry || copy({ en: "No industry", vi: "Khong co nganh" })}</div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          {copy({ en: "Min height", vi: "Chieu cao toi thieu" })}: {order.heightMin ? `${order.heightMin} cm` : copy({ en: "Not set", vi: "Chua dat" })} · {copy({ en: "Returnees", vi: "Lao dong di ve" })}: {
+                            typeof order.acceptsReturnees === "boolean"
+                              ? order.acceptsReturnees
+                                ? copy({ en: "Accepted", vi: "Nhan" })
+                                : copy({ en: "Not accepted", vi: "Khong nhan" })
+                              : copy({ en: "Not set", vi: "Chua dat" })
+                          }
+                        </div>
                       </div>
                       {renderOrderBadge(order)}
                     </div>

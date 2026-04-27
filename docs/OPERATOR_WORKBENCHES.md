@@ -120,6 +120,20 @@ Broad application creation is not yet exposed as a standalone search/picker flow
 
 Application creation currently depends on candidate context resolved from the lead workbench and recruitment APIs.
 
+## Orders
+
+### Current Scope
+
+The orders workspace displays the stored criteria used by matching:
+
+- gender requirement
+- age range
+- minimum height
+- returnee acceptance
+- experience requirement
+
+Admin users can create and edit orders directly from the orders workspace. Staff users keep a read-only demand catalog and quick lead-triage workflow.
+
 ## Documents
 
 ### Current Scope

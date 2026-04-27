@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
+import type { OrderMutationPayload } from "./types";
 
 export function useDashboardStatsQuery() {
   return useQuery({
@@ -59,6 +60,14 @@ export function useOrdersQuery() {
   return useQuery({
     queryKey: ["orders"],
     queryFn: () => apiClient.listOrders()
+  });
+}
+
+export function useOrderDetailQuery(id?: string) {
+  return useQuery({
+    queryKey: ["order", id],
+    queryFn: () => apiClient.getOrder(id as string),
+    enabled: Boolean(id)
   });
 }
 
@@ -166,11 +175,11 @@ export function useAdminSessionsQuery(params: { limit: number; includeRevoked?: 
   });
 }
 
-export function useSuggestedOrdersQuery(leadId?: string) {
+export function useSuggestedOrdersQuery(candidateId?: string) {
   return useQuery({
-    queryKey: ["matching", "suggest", leadId],
-    queryFn: () => apiClient.suggestOrders(leadId as string),
-    enabled: Boolean(leadId)
+    queryKey: ["matching", "suggest", candidateId],
+    queryFn: () => apiClient.suggestOrders(candidateId as string),
+    enabled: Boolean(candidateId)
   });
 }
 
@@ -217,6 +226,28 @@ export function useAiQueryMutation() {
 export function useMatchingEvaluationMutation() {
   return useMutation({
     mutationFn: ({ leadId, orderId }: { leadId: string; orderId: string }) => apiClient.evaluateLeadTriage(leadId, orderId)
+  });
+}
+
+export function useCreateOrderMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: OrderMutationPayload & { name: string }) => apiClient.createOrder(payload),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.setQueryData(["order", order.id], order);
+    }
+  });
+}
+
+export function useUpdateOrderMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: OrderMutationPayload }) => apiClient.updateOrder(id, patch),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.setQueryData(["order", order.id], order);
+    }
   });
 }
 
