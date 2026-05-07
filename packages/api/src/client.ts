@@ -15,6 +15,7 @@ import type {
   ApiEnvelope,
   AuthTokens,
   AuthUser,
+  CandidateFormalEvaluation,
   CandidateListResponse,
   CandidateRef,
   CandidateSuggestion,
@@ -30,9 +31,12 @@ import type {
   LeadProfile,
   LeadTransitions,
   MatchingResult,
+  MessageListResponse,
   Order,
   OrderMutationPayload,
   PipelineResponse,
+  ThreadListResponse,
+  ThreadSummary,
   TrainingFinanceListResponse,
   TrainingFinanceRecord
 } from "./types";
@@ -184,6 +188,26 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async listThreads(params: { offset: number; limit: number; channel?: string; leadId?: string; analyzeStatus?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<ThreadListResponse> | ThreadListResponse>("/interactions/threads", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listLeadThreads(leadId: string, params: { offset: number; limit: number; channel?: string; analyzeStatus?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<ThreadListResponse> | ThreadListResponse>(`/interactions/leads/${leadId}/threads`, { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getThread(id: string) {
+    const response = await this.http.get<ApiEnvelope<ThreadSummary> | ThreadSummary>(`/interactions/threads/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listThreadMessages(threadId: string, params: { offset: number; limit: number; direction?: string; type?: string }) {
+    const response = await this.http.get<ApiEnvelope<MessageListResponse> | MessageListResponse>(`/interactions/threads/${threadId}/messages`, { params });
+    return unwrapEnvelope(response.data);
+  }
+
   async listOrders() {
     const response = await this.http.get<ApiEnvelope<Order[]> | Order[]>("/orders");
     return unwrapEnvelope(response.data);
@@ -235,6 +259,14 @@ export class SocialCrmApiClient {
   async evaluateLeadTriage(leadId: string, orderId: string) {
     const response = await this.http.post<ApiEnvelope<LeadTriageEvaluation> | LeadTriageEvaluation>("/matching/triage", {
       leadId,
+      orderId
+    });
+    return unwrapEnvelope(response.data);
+  }
+
+  async evaluateCandidateMatch(candidateId: string, orderId: string) {
+    const response = await this.http.post<ApiEnvelope<CandidateFormalEvaluation> | CandidateFormalEvaluation>("/matching/evaluate-candidate", {
+      candidateId,
       orderId
     });
     return unwrapEnvelope(response.data);

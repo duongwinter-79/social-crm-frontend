@@ -23,7 +23,6 @@ import {
   useLeadProfileQuery,
   useLeadQualificationQuery,
   useLeadTransitionsQuery,
-  useOrdersQuery,
   useSuggestedOrdersQuery,
   useUpdateLeadMutation,
   useUpdateLeadQualificationMutation,
@@ -47,7 +46,6 @@ export function LeadWorkbenchPage() {
   const transitionsQuery = useLeadTransitionsQuery(leadId);
   const profileQuery = useLeadProfileQuery(leadId);
   const qualificationQuery = useLeadQualificationQuery(leadId);
-  const ordersQuery = useOrdersQuery();
   const suggestedOrdersQuery = useSuggestedOrdersQuery(candidateQuery.data?.id);
   const updateLead = useUpdateLeadMutation();
   const createApplication = useCreateApplicationMutation();
@@ -135,9 +133,8 @@ export function LeadWorkbenchPage() {
   const lead = leadQuery.data;
   const candidate = candidateQuery.data;
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
-  const allOrders = ordersQuery.data ?? [];
   const suggestedOrders = suggestedOrdersQuery.data ?? [];
-  const fallbackOrders = useMemo(() => allOrders.slice(0, 4), [allOrders]);
+  const hasCandidate = Boolean(candidate?.id);
 
   if (!lead) {
     return <Panel title={copy({ en: "Lead workbench", vi: "Ban lam viec lead" })}><EmptyState title={copy({ en: "Lead not loaded", vi: "Chua tai duoc lead" })} description={copy({ en: "The selected lead could not be loaded from the backend.", vi: "Khong tai duoc lead da chon tu backend." })} /></Panel>;
@@ -173,7 +170,13 @@ export function LeadWorkbenchPage() {
         <div className="flex flex-wrap items-center gap-3">
           <span>{copy({ en: "Use backend state transitions first.", vi: "Uu tien dung luong chuyen trang thai tu backend." })}</span>
           <Badge tone="neutral">{copy({ en: "Profile completeness drives matching quality", vi: "Do day du ho so anh huong chat luong ghep don" })}</Badge>
-          <Badge tone="neutral">{suggestedOrders.length ? copy({ en: `${suggestedOrders.length} suggested orders`, vi: `${suggestedOrders.length} don hang de xuat` }) : copy({ en: "No backend suggestions yet", vi: "Chua co de xuat tu backend" })}</Badge>
+          <Badge tone="neutral">
+            {hasCandidate
+              ? suggestedOrders.length
+                ? copy({ en: `${suggestedOrders.length} formal suggestions`, vi: `${suggestedOrders.length} de xuat chinh thuc` })
+                : copy({ en: "No formal suggestions yet", vi: "Chua co de xuat chinh thuc" })
+              : copy({ en: "Qualification required before formal suggestions", vi: "Can xac minh truoc khi de xuat chinh thuc" })}
+          </Badge>
           <Badge tone={candidate ? "success" : "warning"}>{candidate ? `Candidate ${candidate.code ?? candidate.id}` : copy({ en: "No candidate created yet", vi: "Chua tao candidate" })}</Badge>
         </div>
       </InfoStrip>
@@ -337,10 +340,25 @@ export function LeadWorkbenchPage() {
             />
           </Panel>
 
-          <Panel title={copy({ en: "Suggested orders", vi: "Don hang de xuat" })} subtitle={copy({ en: "Driven by the backend matching suggestion endpoint when available.", vi: "Duoc lay tu endpoint de xuat matching cua backend khi co san." })}>
-            {(suggestedOrders.length ? suggestedOrders : fallbackOrders).length ? (
+          <Panel title={copy({ en: "Formal suggested orders", vi: "Don hang de xuat chinh thuc" })} subtitle={copy({ en: "Shown only after this lead has a linked candidate record.", vi: "Chi hien thi sau khi lead co candidate lien ket." })}>
+            {!hasCandidate ? (
+              <div className="space-y-4">
+                <EmptyState
+                  title={copy({ en: "Candidate required before formal suggestions", vi: "Can candidate truoc khi de xuat chinh thuc" })}
+                  description={copy({
+                    en: "Complete the qualification overlay and move the lead through the backend transition to qualified. The backend creates the candidate record before formal matching and application creation.",
+                    vi: "Hoan tat lop xac minh va chuyen lead theo luong backend sang qualified. Backend se tao candidate truoc khi ghep don chinh thuc va tao ho so ung tuyen."
+                  })}
+                />
+                <div className="grid gap-3">
+                  <InfoCard label={copy({ en: "Current lead status", vi: "Trang thai lead hien tai" })} value={<Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>} className="bg-slate-50" />
+                  <InfoCard label={copy({ en: "Required operator action", vi: "Hanh dong can lam" })} value={copy({ en: "Save verified qualification data, then use the allowed backend transition buttons at the top of this page.", vi: "Luu du lieu xac minh, sau do dung nut chuyen trang thai backend o dau trang." })} className="bg-slate-50" />
+                  <InfoCard label={copy({ en: "Why orders are hidden", vi: "Vi sao an don hang" })} value={copy({ en: "Order suggestions here are candidate-stage matching results, not lead-stage catalog previews.", vi: "De xuat don hang o day la ket qua matching giai doan candidate, khong phai preview danh muc cho lead." })} className="bg-slate-50" />
+                </div>
+              </div>
+            ) : suggestedOrders.length ? (
               <div className="space-y-3">
-                {(suggestedOrders.length ? suggestedOrders : fallbackOrders).map((order) => (
+                {suggestedOrders.map((order) => (
                   <div key={order.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -360,20 +378,23 @@ export function LeadWorkbenchPage() {
                     </div>
                     <div className="mt-3 text-xs leading-5 text-slate-500">{order.description || order.requirements || copy({ en: "No additional order detail available.", vi: "Khong co thong tin bo sung cho don hang." })}</div>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <Button size="sm" onClick={() => { if (!candidate?.id) return; createApplication.mutate({ candidateId: candidate.id, orderId: order.id }); }} disabled={!candidate?.id || createApplication.isPending}>
+                      <Button size="sm" onClick={() => { if (!candidate?.id) return; createApplication.mutate({ candidateId: candidate.id, orderId: order.id }); }} disabled={createApplication.isPending}>
                         {createApplication.isPending ? copy({ en: "Creating...", vi: "Dang tao..." }) : copy({ en: "Create application", vi: "Tao ho so ung tuyen" })}
                       </Button>
                       <span className="text-xs text-slate-500">
-                        {candidate?.id
-                          ? copy({ en: "Uses the linked candidate record from the recruitment API.", vi: "Su dung candidate da lien ket tu recruitment API." })
-                          : copy({ en: "Create or promote a candidate first.", vi: "Can tao hoac nang cap candidate truoc." })}
+                        {copy({ en: "Uses the linked candidate record from the recruitment API.", vi: "Su dung candidate da lien ket tu recruitment API." })}
                       </span>
                     </div>
                   </div>
                 ))}
+                {createApplication.error ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {copy({ en: "Application creation failed. Check whether this candidate/order application already exists or whether the backend rejected the request.", vi: "Tao ho so ung tuyen that bai. Kiem tra ho so candidate/don hang da ton tai hoac backend tu choi yeu cau." })}
+                  </div>
+                ) : null}
               </div>
             ) : (
-              <EmptyState title={copy({ en: "No orders available", vi: "Khong co don hang" })} description={copy({ en: "No backend suggestions or orders are available for this lead.", vi: "Khong co de xuat backend hoac don hang phu hop cho lead nay." })} />
+              <EmptyState title={copy({ en: "No formal suggestions returned", vi: "Chua co de xuat chinh thuc" })} description={copy({ en: "The backend candidate matching suggestion endpoint did not return orders for this candidate yet. Review the verified profile and formal matching page if needed.", vi: "Endpoint de xuat matching candidate chua tra ve don hang cho candidate nay. Hay kiem tra ho so da xac minh va trang matching chinh thuc neu can." })} />
             )}
           </Panel>
 

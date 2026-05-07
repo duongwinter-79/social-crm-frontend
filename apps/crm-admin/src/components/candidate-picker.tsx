@@ -1,0 +1,61 @@
+import { useMemo, useState } from "react";
+import { Input, Select } from "@social-crm/ui";
+import { useCandidatesQuery, type CandidateRef } from "@social-crm/api";
+
+type CandidatePickerProps = {
+  value: string;
+  onChange: (candidateId: string, candidate?: CandidateRef) => void;
+  label: string;
+  searchLabel: string;
+  placeholder: string;
+  emptyLabel: string;
+  noLeadDetailLabel: string;
+  disabled?: boolean;
+  className?: string;
+};
+
+export function CandidatePicker(props: CandidatePickerProps) {
+  const [search, setSearch] = useState("");
+  const candidateQuery = useCandidatesQuery({ offset: 0, limit: 50, search: search || undefined });
+  const candidates = candidateQuery.data?.data ?? [];
+  const selectedCandidate = useMemo(() => candidates.find((candidate) => candidate.id === props.value), [candidates, props.value]);
+
+  return (
+    <div className={props.className ?? "space-y-4"}>
+      <Input
+        label={props.searchLabel}
+        placeholder={props.placeholder}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        disabled={props.disabled}
+      />
+      <Select
+        label={props.label}
+        value={props.value}
+        onChange={(event) => {
+          const nextCandidate = candidates.find((candidate) => candidate.id === event.target.value);
+          props.onChange(event.target.value, nextCandidate);
+        }}
+        disabled={props.disabled || candidateQuery.isLoading}
+      >
+        <option value="">{props.emptyLabel}</option>
+        {candidates.map((candidate) => (
+          <option key={candidate.id} value={candidate.id}>
+            {candidateLabel(candidate, props.noLeadDetailLabel)}
+          </option>
+        ))}
+      </Select>
+      <div className="text-xs leading-5 text-slate-500">
+        {candidateQuery.isLoading
+          ? "Loading candidates..."
+          : selectedCandidate
+            ? `Selected ${selectedCandidate.code || selectedCandidate.id.slice(0, 8)}`
+            : `${candidateQuery.data?.total ?? candidates.length} candidates available`}
+      </div>
+    </div>
+  );
+}
+
+function candidateLabel(candidate: CandidateRef, noLeadDetailLabel: string) {
+  return `${candidate.code || candidate.id.slice(0, 8)} - ${candidate.lead?.fullName || candidate.lead?.phone || noLeadDetailLabel}`;
+}

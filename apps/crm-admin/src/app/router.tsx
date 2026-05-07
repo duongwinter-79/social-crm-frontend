@@ -8,6 +8,7 @@ import "./admin-shell.css";
 
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
 const LeadsPage = lazy(() => import("@/features/leads/leads-page").then((m) => ({ default: m.LeadsPage })));
+const ConversationsPage = lazy(() => import("@/features/conversations/conversations-page").then((m) => ({ default: m.ConversationsPage })));
 const PipelinePage = lazy(() => import("@/features/pipeline/pipeline-page").then((m) => ({ default: m.PipelinePage })));
 const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-page").then((m) => ({ default: m.LeadWorkbenchPage })));
 const MatchingPage = lazy(() => import("@/features/matching/matching-page").then((m) => ({ default: m.MatchingPage })));
@@ -21,6 +22,7 @@ const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => (
 type IconName =
   | "dashboard"
   | "leads"
+  | "conversations"
   | "pipeline"
   | "matching"
   | "orders"
@@ -42,6 +44,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { to: "/dashboard", icon: "dashboard", label: { en: "Dashboard", vi: "Tổng quan" }, hint: { en: "Overview and triage", vi: "Tổng quan và phân loại" } },
   { to: "/leads", icon: "leads", label: { en: "Leads", vi: "Lead" }, hint: { en: "Inbox and workbench", vi: "Hộp thư và bàn xử lý" } },
+  { to: "/conversations", icon: "conversations", label: { en: "Conversations", vi: "Hội thoại" }, hint: { en: "Zalo threads and messages", vi: "Luồng và tin nhắn Zalo" } },
   { to: "/pipeline", icon: "pipeline", label: { en: "Pipeline", vi: "Pipeline" }, hint: { en: "Cross-stage flow", vi: "Luồng liên giai đoạn" } },
   { to: "/matching", icon: "matching", label: { en: "Matching", vi: "Ghép đơn" }, hint: { en: "Rules and fit", vi: "Quy tắc và độ phù hợp" } },
   { to: "/orders", icon: "orders", label: { en: "Orders", vi: "Đơn hàng" }, hint: { en: "Demand catalog", vi: "Danh mục nhu cầu" } },
@@ -66,6 +69,8 @@ function NavIcon(props: { name: IconName }) {
       return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5" {...common} /><rect x="13" y="4" width="7" height="5" rx="1.5" {...common} /><rect x="13" y="11" width="7" height="9" rx="1.5" {...common} /><rect x="4" y="13" width="7" height="7" rx="1.5" {...common} /></svg>;
     case "leads":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" {...common} /><circle cx="10" cy="8" r="3" {...common} /><path d="M20 19v-1a3 3 0 0 0-2-2.82" {...common} /><path d="M15 5.2a3 3 0 0 1 0 5.6" {...common} /></svg>;
+    case "conversations":
+      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v4A3.5 3.5 0 0 1 15.5 14H11l-4 3v-3A3.5 3.5 0 0 1 5 10.5z" {...common} /><path d="M9 8h6M9 11h3" {...common} /><path d="M8 18h7l3 3v-3a3 3 0 0 0 3-3v-2" {...common} /></svg>;
     case "pipeline":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h5v10H5zM14 4h5v16h-5z" {...common} /><path d="M10 12h4" {...common} /></svg>;
     case "matching":
@@ -312,6 +317,7 @@ export function AppRouter() {
         <Route path="/dashboard" element={<LazyRoute><DashboardPage /></LazyRoute>} />
         <Route path="/leads" element={<LazyRoute><LeadsPage /></LazyRoute>} />
         <Route path="/leads/:leadId" element={<LazyRoute><LeadWorkbenchPage /></LazyRoute>} />
+        <Route path="/conversations" element={<LazyRoute><ConversationsPage /></LazyRoute>} />
         <Route path="/pipeline" element={<LazyRoute><PipelinePage /></LazyRoute>} />
         <Route path="/matching" element={<LazyRoute><MatchingPage /></LazyRoute>} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />

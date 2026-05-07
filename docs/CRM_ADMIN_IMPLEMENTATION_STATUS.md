@@ -36,6 +36,7 @@ The admin frontend has been refactored into a source-aligned operator UI backed 
 
 - Dashboard
 - Leads
+- Conversations
 - Pipeline
 - Lead workbench
 - Matching
@@ -79,6 +80,13 @@ None in the main CRM operator flow.
 - this overlay bridges sparse CNV intake and downstream lead score and matching behavior
 - CI workflow template added at `.github/workflows/frontend-verify.yml`
 - detailed operator workspace notes now live in `docs/OPERATOR_WORKBENCHES.md`
+
+## Recent Conversations Update
+
+- `/conversations` is now a live backend-backed Zalo OA conversation inbox
+- the page reads CRM threads and messages from `/api/interactions`, not from live Zalo history APIs
+- operators can filter thread queues, page through stored conversations, inspect lead linkage, review extraction status, and open the linked lead workbench
+- message detail includes recent stored messages, AI scan status, and raw webhook payload panels for debugging inbound events
 
 ## Recent Applications Update
 

@@ -2,23 +2,57 @@
 
 This document consolidates the current operator-facing frontend workbench behavior for the live CRM admin modules.
 
+## Conversations
+
+### Purpose
+
+The conversations workspace is the Zalo OA operator inbox for stored CRM interaction data. It lets staff inspect the inbound thread/message history that the webhook has already received and saved.
+
+### Current Backend Contract
+
+The admin app uses:
+
+- `GET /api/interactions/threads`
+- `GET /api/interactions/threads/:id`
+- `GET /api/interactions/threads/:id/messages`
+- `GET /api/interactions/leads/:leadId/threads`
+
+Thread queues support pagination and filters for channel, lead id, analyze status, and search. Message lists support pagination plus optional direction and message type filters.
+
+### UI Responsibilities
+
+The conversations page should surface:
+
+- recent Zalo thread queue and pagination
+- linked lead identity, phone, source, and current lead status
+- last message, total message count, and unscanned inbound text count
+- extraction/analyze status so operators can spot delayed AI processing
+- recent stored messages with inbound/outbound direction and AI scan state
+- raw webhook payload panels for debugging Zalo event shape
+
+### Important Boundary
+
+The page reads CRM database records only. It does not fetch historical Zalo OA messages directly and it does not replace the lead workbench for qualification edits or status transitions.
+
 ## Matching
 
 ### Purpose
 
-The current admin matching screen is a lead-triage interface.
+The admin matching screen supports two distinct workflows:
 
-It is designed for operator screening before a lead has become a fully qualified candidate with a structured profile.
+- preliminary lead triage before a lead has become a fully qualified candidate
+- formal candidate matching after a structured candidate/profile exists
 
-It should not be treated as the final recruitment matching decision.
+Lead triage should not be treated as the final recruitment matching decision. Formal candidate matching is the candidate-stage evaluation operators use for recruitment fit review, manager approval needs, and application decisions.
 
 ### Current Backend Contract
 
 The admin app uses:
 
 - `POST /api/matching/triage`
+- `POST /api/matching/evaluate-candidate`
 
-Request body:
+Lead-triage request body:
 
 ```json
 {
@@ -27,7 +61,16 @@ Request body:
 }
 ```
 
-Response shape includes:
+Candidate-matching request body:
+
+```json
+{
+  "candidateId": "<candidate-uuid>",
+  "orderId": "<order-uuid>"
+}
+```
+
+Lead-triage response shape includes:
 
 - `mode`
 - `dataQuality`
@@ -37,17 +80,24 @@ Response shape includes:
 - `suggestedAction`
 - nested `matching` result with conclusion, total score, breakdown, flags, eligibility, and approval state
 
+Candidate-matching response shape includes:
+
+- `mode`
+- `candidateId`
+- `orderId`
+- nested `matching` result with conclusion, total score, breakdown, flags, eligibility, reject reason, and approval state
+
 ### UI Responsibilities
 
 The matching page should surface:
 
 - eligibility and conclusion
 - score breakdown
-- missing required signals
-- warnings
-- preliminary fit
-- suggested next action
+- missing required signals for lead triage
+- warnings, preliminary fit, and suggested next action for lead triage
 - flags and reject reason
+- manager approval state
+- selected lead/candidate context beside selected order criteria
 
 ### Important Distinction
 
@@ -104,6 +154,12 @@ When this panel changes:
 
 The lead workbench also resolves linked candidate context so suggested orders can create real applications without manual UUID entry.
 
+### Suggested Orders Boundary
+
+The lead workbench only shows formal suggested orders after `GET /api/recruitment/candidates/by-lead/:leadId` returns a candidate.
+
+When no candidate exists, the suggested-order panel shows qualification guidance instead of catalog fallback rows or disabled application buttons. Operators should complete the qualification overlay and use backend lead transitions so the backend can create the candidate record before formal matching.
+
 ## Applications
 
 ### Current Scope
@@ -111,14 +167,26 @@ The lead workbench also resolves linked candidate context so suggested orders ca
 The applications workspace supports:
 
 - real application list and detail retrieval
+- application creation from candidate search and order selection
 - lifecycle updates for application status and interview metadata
 - queue visibility for live backend records
 
-### Current Boundary
+### Creation Rules
 
-Broad application creation is not yet exposed as a standalone search/picker flow in the applications workspace.
+Application creation uses:
 
-Application creation currently depends on candidate context resolved from the lead workbench and recruitment APIs.
+- `GET /api/recruitment/candidates`
+- `GET /api/orders`
+- `POST /api/applications`
+
+The frontend validates the same status-specific fields enforced by the backend:
+
+- `interview_scheduled` requires `interviewDate`
+- `interview_failed`, `rejected`, and `withdrawn` require `rejectReason`
+
+The lead workbench can still create applications from resolved candidate context when operators are working directly from suggested orders.
+
+The applications workspace and matching workspace share the same candidate picker component for candidate search by code, linked lead name, or phone.
 
 ## Orders
 

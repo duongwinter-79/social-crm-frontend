@@ -23,17 +23,17 @@ Related docs:
 - `docs/OPERATOR_WORKBENCHES.md`
 - `social_crm_backend/docs/E2E_VALIDATION_AND_CI.md`
 
-### 2. Applications creation is only available from lead workbench candidate context
+### 2. Recruitment browsing is still narrow
 
 Current state:
 
 - the lead workbench can resolve a linked candidate through the recruitment API
 - suggested orders can create applications from that context
-- the `/applications` page supports list/detail/update, not broad candidate search-based creation
+- the `/applications` page supports list/detail/update plus candidate-search-based creation
+- applications and matching reuse a shared candidate picker component
 
 Missing later work:
 
-- dedicated candidate search/picker in the applications workspace
 - broader recruitment browsing UI
 
 ### 3. Documents workflow is metadata-first

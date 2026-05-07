@@ -56,6 +56,37 @@ export function useLeadQualificationQuery(leadId?: string) {
   });
 }
 
+export function useThreadsQuery(params: { offset: number; limit: number; channel?: string; leadId?: string; analyzeStatus?: string; search?: string }) {
+  return useQuery({
+    queryKey: ["threads", params],
+    queryFn: () => apiClient.listThreads(params)
+  });
+}
+
+export function useLeadThreadsQuery(leadId?: string, params: { offset: number; limit: number; channel?: string; analyzeStatus?: string; search?: string } = { offset: 0, limit: 20 }) {
+  return useQuery({
+    queryKey: ["threads", "lead", leadId, params],
+    queryFn: () => apiClient.listLeadThreads(leadId as string, params),
+    enabled: Boolean(leadId)
+  });
+}
+
+export function useThreadDetailQuery(id?: string) {
+  return useQuery({
+    queryKey: ["threads", id],
+    queryFn: () => apiClient.getThread(id as string),
+    enabled: Boolean(id)
+  });
+}
+
+export function useThreadMessagesQuery(threadId?: string, params: { offset: number; limit: number; direction?: string; type?: string } = { offset: 0, limit: 50 }) {
+  return useQuery({
+    queryKey: ["threads", threadId, "messages", params],
+    queryFn: () => apiClient.listThreadMessages(threadId as string, params),
+    enabled: Boolean(threadId)
+  });
+}
+
 export function useOrdersQuery() {
   return useQuery({
     queryKey: ["orders"],
@@ -91,6 +122,13 @@ export function useCandidateByLeadQuery(leadId?: string) {
     queryKey: ["candidate", "by-lead", leadId],
     queryFn: () => apiClient.getCandidateByLead(leadId as string),
     enabled: Boolean(leadId)
+  });
+}
+
+export function useCandidatesQuery(params: { offset: number; limit: number; leadId?: string; lifecycleStatus?: string; search?: string }) {
+  return useQuery({
+    queryKey: ["candidates", params],
+    queryFn: () => apiClient.listCandidates(params)
   });
 }
 
@@ -226,6 +264,12 @@ export function useAiQueryMutation() {
 export function useMatchingEvaluationMutation() {
   return useMutation({
     mutationFn: ({ leadId, orderId }: { leadId: string; orderId: string }) => apiClient.evaluateLeadTriage(leadId, orderId)
+  });
+}
+
+export function useCandidateMatchingEvaluationMutation() {
+  return useMutation({
+    mutationFn: ({ candidateId, orderId }: { candidateId: string; orderId: string }) => apiClient.evaluateCandidateMatch(candidateId, orderId)
   });
 }
 

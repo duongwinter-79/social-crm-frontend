@@ -171,9 +171,26 @@ export interface Thread {
   channel: string;
   status: string;
   analyzeStatus: string;
+  externalId?: string | null;
   lastMessageAt?: string | null;
   lastAiExtractedAt?: string | null;
   metadata?: Record<string, unknown> | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MessageRecord {
+  id: string;
+  thread_id: string;
+  direction: string;
+  type: string;
+  content?: string | null;
+  mediaUrl?: string | null;
+  rawPayload?: Record<string, unknown> | null;
+  externalId?: string | null;
+  aiScannedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Lead {
@@ -192,6 +209,23 @@ export interface Lead {
   createdAt?: string;
   updatedAt?: string;
   threads?: Thread[];
+}
+
+export interface ThreadSummary extends Thread {
+  lead?: Lead | null;
+  lastMessage?: MessageRecord | null;
+  messageCount: number;
+  unscannedTextCount: number;
+}
+
+export interface ThreadListResponse {
+  data: ThreadSummary[];
+  total: number;
+}
+
+export interface MessageListResponse {
+  data: MessageRecord[];
+  total: number;
 }
 
 export interface LeadListResponse {
@@ -289,6 +323,13 @@ export interface LeadTriageEvaluation {
     | "request_profile_completion"
     | "request_risk_review"
     | "disqualify_or_reconfirm";
+  matching: MatchingResult;
+}
+
+export interface CandidateFormalEvaluation {
+  mode: "candidate_formal";
+  candidateId: string;
+  orderId: string;
   matching: MatchingResult;
 }
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-05-07
+
+### Zalo conversation inbox
+
+- Added frontend API types, client methods, and React Query hooks for CRM interaction threads and messages.
+- Added `/conversations` to the admin shell as a backend-backed Zalo OA conversation inbox.
+- The page supports thread search/filtering, pagination, lead linkage, extraction status, recent message review, raw webhook payload inspection, and extracted/verified lead data review.
+- Kept CNV resource inspection under Integrations as a deprecated read source rather than mixing it into the Zalo OA conversation workflow.
+
 ## 2026-04-27
 
 ### Order matching criteria visibility
@@ -8,6 +17,10 @@
 - Updated the order catalog and lead workbench suggested-order cards to display minimum height and returnee acceptance policy.
 - Added frontend API client methods and query/mutation hooks for order detail, create, and update endpoints.
 - Added an admin-only order create/edit panel to the orders workspace for maintaining matching criteria.
+- Added a formal candidate matching mode beside preliminary lead triage in the matching workspace.
+- Added application creation from the applications workspace with candidate search, order selection, and status-required field validation.
+- Tightened lead workbench order suggestions so no-candidate leads show qualification guidance instead of disabled formal order actions.
+- Extracted a shared candidate picker for the applications and matching workspaces.
 
 ## 2026-04-21
 
