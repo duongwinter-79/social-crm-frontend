@@ -25,6 +25,7 @@ import {
   useLeadProfileQuery,
   useLeadQualificationQuery,
   useLeadTransitionsQuery,
+  useProcessThreadExtractionMutation,
   useSuggestedOrdersQuery,
   useUpdateLeadMutation,
   useUpdateLeadQualificationMutation,
@@ -62,6 +63,7 @@ export function LeadWorkbenchPage() {
   const profileMutation = useUpsertLeadProfileMutation(leadId);
   const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
   const aiMutation = useAiQueryMutation();
+  const runExtraction = useProcessThreadExtractionMutation();
 
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
   const [profileForm, setProfileForm] = useState({
@@ -279,14 +281,32 @@ export function LeadWorkbenchPage() {
             ) : null}
           </Panel>
 
-          <Panel title={copy({ en: "AI operator query", vi: "Truy van AI cho nhan vien" })} subtitle={copy({ en: "Run a manual prompt against the first available thread.", vi: "Chay prompt thu cong tren thread dau tien co san." })}>
+          <Panel title={copy({ en: "AI operator query", vi: "Truy van AI cho nhan vien" })} subtitle={copy({ en: "Run a manual prompt against the first available thread, or trigger structured extraction now.", vi: "Chạy prompt thủ công trên thread đầu tiên, hoặc kích hoạt trích xuất AI có cấu trúc ngay." })}>
             <div className="space-y-3">
               <Input label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
               <div className="flex flex-wrap items-center gap-3">
                 <Button onClick={() => { if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt }); }} disabled={!selectedThreadId || aiMutation.isPending}>
-                  {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Dang chay truy van AI..." }) : copy({ en: "Run query", vi: "Chay truy van" })}
+                  {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Đang chạy truy vấn AI..." }) : copy({ en: "Run query", vi: "Chạy truy vấn" })}
                 </Button>
-                <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Dang dung thread ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Khong co thread" })}</span>
+                <span title={copy({
+                  en: "Re-runs structured extraction on this thread (debounce ignored). Updates suggestions, typed columns, lead score.",
+                  vi: "Chạy lại trích xuất AI có cấu trúc trên thread này (bỏ qua debounce). Cập nhật gợi ý, cột typed và điểm lead."
+                })}>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      if (selectedThreadId) {
+                        runExtraction.mutate({ leadId, threadId: selectedThreadId });
+                      }
+                    }}
+                    disabled={!selectedThreadId || runExtraction.isPending}
+                  >
+                    {runExtraction.isPending
+                      ? copy({ en: "Extracting…", vi: "Đang trích xuất…" })
+                      : copy({ en: "Run AI extraction now", vi: "Trích xuất AI ngay" })}
+                  </Button>
+                </span>
+                <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng thread ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có thread" })}</span>
               </div>
               {aiMutation.data ? (
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-700">

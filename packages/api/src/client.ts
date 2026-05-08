@@ -318,6 +318,20 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  /**
+   * Operator-triggered structured AI extraction. Runs the same processThread
+   * path the event listener and worker use, with per-thread debounce ignored.
+   * Writes LeadAiSuggestion rows + applies the auto-apply allowlist + recomputes
+   * lead score.
+   */
+  async processThreadExtraction(args: { leadId: string; threadId: string; maxBatches?: number }) {
+    const response = await this.http.post<
+      | ApiEnvelope<{ threadId: string; leadId: string; triggered: boolean }>
+      | { threadId: string; leadId: string; triggered: boolean }
+    >("/ai-extraction/process-thread", args);
+    return unwrapEnvelope(response.data);
+  }
+
   async evaluateLeadTriage(leadId: string, orderId: string) {
     const response = await this.http.post<ApiEnvelope<LeadTriageEvaluation> | LeadTriageEvaluation>("/matching/triage", {
       leadId,

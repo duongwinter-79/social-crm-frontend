@@ -285,6 +285,31 @@ export function useAiQueryMutation() {
   });
 }
 
+/**
+ * Operator-triggered structured extraction. After the run, every read surface
+ * touched by extraction must be re-fetched: lead row (typed cols + score),
+ * AI suggestions, qualification snapshot, profile, thread messages (aiScannedAt
+ * stamps), allowed transitions (gatekeeper checks may have flipped).
+ */
+export function useProcessThreadExtractionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { leadId: string; threadId: string; maxBatches?: number }) =>
+      apiClient.processThreadExtraction(args),
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId] });
+      queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "ai-suggestions"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "qualification"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "transitions"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "order-suggestions"] });
+      queryClient.invalidateQueries({ queryKey: ["thread", vars.threadId, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    meta: { successMessage: "AI extraction completed" }
+  });
+}
+
 export function useMatchingEvaluationMutation() {
   return useMutation({
     mutationFn: ({ leadId, orderId }: { leadId: string; orderId: string }) => apiClient.evaluateLeadTriage(leadId, orderId)
