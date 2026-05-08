@@ -56,6 +56,26 @@ export function useLeadQualificationQuery(leadId?: string) {
   });
 }
 
+export function useLeadAiSuggestionsQuery(leadId?: string) {
+  return useQuery({
+    queryKey: ["lead", leadId, "ai-suggestions"],
+    queryFn: () => apiClient.getLeadAiSuggestions(leadId as string),
+    enabled: Boolean(leadId)
+  });
+}
+
+/**
+ * Lead-stage order suggestions — top-N orders ranked by the triage engine.
+ * Available immediately at screening stage; does not require a candidate.
+ */
+export function useLeadOrderSuggestionsQuery(leadId?: string, limit = 5) {
+  return useQuery({
+    queryKey: ["lead", leadId, "order-suggestions", limit],
+    queryFn: () => apiClient.suggestOrdersForLead(leadId as string, { limit }),
+    enabled: Boolean(leadId)
+  });
+}
+
 export function useThreadsQuery(params: { offset: number; limit: number; channel?: string; leadId?: string; analyzeStatus?: string; search?: string }) {
   return useQuery({
     queryKey: ["threads", params],
@@ -229,7 +249,8 @@ export function useUpdateLeadMutation() {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.setQueryData(["lead", lead.id], lead);
       queryClient.invalidateQueries({ queryKey: ["lead", lead.id, "transitions"] });
-    }
+    },
+    meta: { successMessage: "Lead updated" }
   });
 }
 
@@ -239,7 +260,8 @@ export function useUpsertLeadProfileMutation(leadId: string) {
     mutationFn: (patch: Record<string, unknown>) => apiClient.upsertLeadProfile(leadId, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lead", leadId, "profile"] });
-    }
+    },
+    meta: { successMessage: "Profile saved" }
   });
 }
 
@@ -251,7 +273,9 @@ export function useUpdateLeadQualificationMutation(leadId: string) {
       queryClient.setQueryData(["lead", lead.id], lead);
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["lead", leadId, "qualification"] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId, "ai-suggestions"] });
+    },
+    meta: { successMessage: "Qualification saved" }
   });
 }
 
@@ -280,7 +304,8 @@ export function useCreateOrderMutation() {
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.setQueryData(["order", order.id], order);
-    }
+    },
+    meta: { successMessage: "Order created" }
   });
 }
 
@@ -291,7 +316,8 @@ export function useUpdateOrderMutation() {
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.setQueryData(["order", order.id], order);
-    }
+    },
+    meta: { successMessage: "Order updated" }
   });
 }
 
@@ -302,7 +328,8 @@ export function useUpdateApplicationMutation() {
     onSuccess: (application) => {
       queryClient.setQueryData(["application", application.id], application);
       queryClient.invalidateQueries({ queryKey: ["applications"] });
-    }
+    },
+    meta: { successMessage: "Application updated" }
   });
 }
 
@@ -314,7 +341,8 @@ export function useCreateApplicationMutation() {
     onSuccess: (application) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.setQueryData(["application", application.id], application);
-    }
+    },
+    meta: { successMessage: "Application created" }
   });
 }
 
@@ -331,7 +359,8 @@ export function useCreateDocumentMutation() {
       if (document.candidate_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
       }
-    }
+    },
+    meta: { successMessage: "Document added" }
   });
 }
 
@@ -347,7 +376,8 @@ export function useUpdateDocumentMutation() {
       if (document.candidate_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
       }
-    }
+    },
+    meta: { successMessage: "Document updated" }
   });
 }
 
@@ -359,7 +389,8 @@ export function useCreateTrainingFinanceMutation() {
     onSuccess: (record) => {
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });
       queryClient.invalidateQueries({ queryKey: ["training-finance", "lead", record.lead_id] });
-    }
+    },
+    meta: { successMessage: "Training/finance record created" }
   });
 }
 
@@ -370,7 +401,8 @@ export function useUpdateTrainingFinanceMutation() {
     onSuccess: (record) => {
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });
       queryClient.invalidateQueries({ queryKey: ["training-finance", "lead", record.lead_id] });
-    }
+    },
+    meta: { successMessage: "Training/finance record updated" }
   });
 }
 
@@ -380,7 +412,8 @@ export function useCreateUserMutation() {
     mutationFn: (payload: { username: string; password: string; role?: string; isActive?: boolean }) => apiClient.createUser(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
-    }
+    },
+    meta: { successMessage: "User created" }
   });
 }
 
@@ -392,7 +425,8 @@ export function useUpdateUserMutation() {
     onSuccess: (user) => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.setQueryData(["users", user.id], user);
-    }
+    },
+    meta: { successMessage: "User updated" }
   });
 }
 
@@ -404,7 +438,8 @@ export function useRevokeAdminSessionMutation() {
       queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "system-status"] });
-    }
+    },
+    meta: { successMessage: "Session revoked" }
   });
 }
 

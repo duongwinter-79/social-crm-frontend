@@ -258,6 +258,47 @@ export interface LeadTransitions {
   current: string;
   allowed: string[];
   isTerminal: boolean;
+  /** Step 6 — gatekeeper-blocked transitions with operator-facing reasons. */
+  blocked?: { status: string; reason: string }[];
+}
+
+/**
+ * Per-field AI extraction provenance returned by GET /leads/:id/ai-suggestions.
+ * Drives the FieldWithProvenance UI on the lead workbench.
+ */
+export interface AiSuggestion {
+  fieldName: string;
+  value: unknown;
+  confidence: "high" | "medium" | "low";
+  source: "ai_llm" | "deterministic" | "webhook";
+  sourceMessageIds: string[] | null;
+  reason: string | null;
+  extractedAt: string;
+  appliedToVerifiedAt: string | null;
+}
+
+/**
+ * One ranked order returned by GET /matching/suggest-for-lead/:leadId.
+ * Implements PDF automation #2 (auto-suggest 3-5 best orders during screening).
+ */
+export interface LeadOrderSuggestion {
+  id: string;
+  name: string;
+  description: string | null;
+  region: string | null;
+  industry: string | null;
+  salaryRange: string | null;
+  heightMin: number | null;
+  acceptsReturnees: boolean | null;
+  matchScore: number;
+  isEligible: boolean;
+  conclusion: string;
+  preliminaryFit: "promising" | "needs_review" | "insufficient_data" | "not_fit";
+  suggestedAction: string;
+  missingRequirements: string[];
+  flags: string[];
+  rejectReason?: string;
+  requiresManagerApproval: boolean;
 }
 
 export interface Order {

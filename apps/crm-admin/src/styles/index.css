@@ -60,6 +60,28 @@ a {
   background:
     linear-gradient(135deg, rgba(244, 63, 94, 0.18), rgba(15, 23, 42, 0) 42%),
     rgba(15, 23, 42, 0.96);
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.request-notice--success {
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(15, 23, 42, 0) 42%),
+    rgba(15, 23, 42, 0.96);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.request-notice--info {
+  background:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(15, 23, 42, 0) 42%),
+    rgba(15, 23, 42, 0.96);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.request-notice--warning {
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.20), rgba(15, 23, 42, 0) 42%),
+    rgba(15, 23, 42, 0.96);
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .request-notice__title {
@@ -68,8 +90,12 @@ a {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #fda4af;
 }
+
+.request-notice--error .request-notice__title { color: #fda4af; }
+.request-notice--success .request-notice__title { color: #6ee7b7; }
+.request-notice--info .request-notice__title { color: #a5b4fc; }
+.request-notice--warning .request-notice__title { color: #fcd34d; }
 
 .request-notice__message {
   padding: 8px 16px 16px;

@@ -1,7 +1,7 @@
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation, Link } from "react-router-dom";
-import { Badge, Button, ShellFrame } from "@social-crm/ui";
-import { useHealthQuery, useSessionStore } from "@social-crm/api";
+import { Badge, ShellFrame } from "@social-crm/ui";
+import { apiClient, startSessionLifecycle, useHealthQuery, useSessionStore } from "@social-crm/api";
 import { LoginPage } from "@/features/auth/login-page";
 import { useI18n } from "@/i18n";
 import "./admin-shell.css";
@@ -117,7 +117,7 @@ function titleForPath(pathname: string, copy: (value: { en: string; vi: string }
 
 function ProtectedLayout() {
   const location = useLocation();
-  const { user, clearSession } = useSessionStore();
+  const { user } = useSessionStore();
   const health = useHealthQuery();
   const { lang, setLang, copy } = useI18n();
   const pageTitle = titleForPath(location.pathname, copy);
@@ -226,9 +226,9 @@ function ProtectedLayout() {
                 </Badge>
               </div>
             </div>
-            <Button className="w-full" variant="secondary" size="sm" onClick={clearSession}>
+            <button type="button" className="admin-shell-signout" onClick={() => apiClient.logout()}>
               {copy({ en: "Sign out", vi: "Đăng xuất" })}
-            </Button>
+            </button>
           </div>
         </div>
       }
@@ -279,8 +279,8 @@ function ProtectedLayout() {
 }
 
 function RequireAuth() {
-  const tokens = useSessionStore((state) => state.tokens);
-  return tokens?.access_token ? <ProtectedLayout /> : <Navigate to="/login" replace />;
+  const accessToken = useSessionStore((state) => state.accessToken);
+  return accessToken ? <ProtectedLayout /> : <Navigate to="/login" replace />;
 }
 
 function RequireAdmin(props: { children: ReactNode }) {
@@ -309,6 +309,30 @@ function LazyRoute(props: { children: ReactNode }) {
 }
 
 export function AppRouter() {
+  // Cross-tab logout sync, idle timeout, visibility-aware session check.
+  useEffect(() => startSessionLifecycle(), []);
+
+  // On first load there is no in-memory access token. Try the httpOnly refresh
+  // cookie once; show a tiny loading state until we know if a session exists.
+  const [bootstrapping, setBootstrapping] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.bootstrapSession().finally(() => {
+      if (!cancelled) setBootstrapping(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (bootstrapping) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
+        Restoring session…
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

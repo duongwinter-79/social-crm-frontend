@@ -1,22 +1,27 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from "react";
 import type { AxiosError } from "axios";
 
-type NoticeTone = "error";
+type NoticeTone = "error" | "success" | "info" | "warning";
 
 type Notice = {
   id: number;
   message: string;
   tone: NoticeTone;
+  title?: string;
 };
 
 type NoticeInput = {
   message: string;
   tone?: NoticeTone;
+  title?: string;
 };
 
 type NotificationContextValue = {
   notify: (input: NoticeInput) => void;
   notifyError: (error: unknown, fallback?: string) => void;
+  notifySuccess: (message: string, title?: string) => void;
+  notifyInfo: (message: string, title?: string) => void;
+  notifyWarning: (message: string, title?: string) => void;
 };
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -121,32 +126,49 @@ function parseErrorMessage(error: unknown, fallback = "Unable to complete the re
   return detail;
 }
 
+const TONE_DEFAULT_TITLES: Record<NoticeTone, string> = {
+  error: "Backend request issue",
+  success: "Saved",
+  info: "Notice",
+  warning: "Warning"
+};
+
+const TONE_DEFAULT_TIMEOUT_MS: Record<NoticeTone, number> = {
+  error: 4500,
+  success: 3000,
+  info: 3500,
+  warning: 4000
+};
+
 export function RequestNotificationsProvider(props: PropsWithChildren) {
   const [notices, setNotices] = useState<Notice[]>([]);
-  const lastMessageRef = useRef<{ message: string; at: number } | null>(null);
+  const lastMessageRef = useRef<{ message: string; tone: NoticeTone; at: number } | null>(null);
 
   const notify = useMemo<NotificationContextValue["notify"]>(
     () => (input) => {
       const message = input.message.trim();
       if (!message) return;
 
+      const tone = input.tone ?? "error";
+
       const now = Date.now();
       if (
         lastMessageRef.current &&
         lastMessageRef.current.message === message &&
+        lastMessageRef.current.tone === tone &&
         now - lastMessageRef.current.at < 2500
       ) {
         return;
       }
 
-      lastMessageRef.current = { message, at: now };
+      lastMessageRef.current = { message, tone, at: now };
       const id = now + Math.floor(Math.random() * 1000);
 
-      setNotices((current) => [...current, { id, message, tone: input.tone ?? "error" }]);
+      setNotices((current) => [...current, { id, message, tone, title: input.title }]);
 
       window.setTimeout(() => {
         setNotices((current) => current.filter((notice) => notice.id !== id));
-      }, 4500);
+      }, TONE_DEFAULT_TIMEOUT_MS[tone]);
     },
     []
   );
@@ -155,6 +177,21 @@ export function RequestNotificationsProvider(props: PropsWithChildren) {
     () => (error, fallback) => {
       notify({ message: parseErrorMessage(error, fallback), tone: "error" });
     },
+    [notify]
+  );
+
+  const notifySuccess = useMemo<NotificationContextValue["notifySuccess"]>(
+    () => (message, title) => notify({ message, tone: "success", title }),
+    [notify]
+  );
+
+  const notifyInfo = useMemo<NotificationContextValue["notifyInfo"]>(
+    () => (message, title) => notify({ message, tone: "info", title }),
+    [notify]
+  );
+
+  const notifyWarning = useMemo<NotificationContextValue["notifyWarning"]>(
+    () => (message, title) => notify({ message, tone: "warning", title }),
     [notify]
   );
 
@@ -170,9 +207,12 @@ export function RequestNotificationsProvider(props: PropsWithChildren) {
   const value = useMemo<NotificationContextValue>(
     () => ({
       notify,
-      notifyError
+      notifyError,
+      notifySuccess,
+      notifyInfo,
+      notifyWarning
     }),
-    [notify, notifyError]
+    [notify, notifyError, notifySuccess, notifyInfo, notifyWarning]
   );
 
   return (
@@ -181,7 +221,7 @@ export function RequestNotificationsProvider(props: PropsWithChildren) {
       <div className="request-notice-stack" aria-live="polite" aria-atomic="true">
         {notices.map((notice) => (
           <div key={notice.id} className={`request-notice request-notice--${notice.tone}`} role="status">
-            <div className="request-notice__title">Backend request issue</div>
+            <div className="request-notice__title">{notice.title ?? TONE_DEFAULT_TITLES[notice.tone]}</div>
             <div className="request-notice__message">{notice.message}</div>
           </div>
         ))}

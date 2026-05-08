@@ -7,6 +7,15 @@ import { RequestNotificationsProvider, emitRequestNotification, getRequestErrorM
 import { I18nProvider } from "./i18n";
 import "./styles/index.css";
 
+/**
+ * Mutations opt into success toasts by passing
+ *   meta: { successMessage: 'Lead saved' }
+ * (or successMessage as a function of the mutation result for dynamic copy).
+ *
+ * This avoids the spammy alternative of toasting every mutation by default.
+ */
+type SuccessMessageInput = string | ((data: unknown) => string | null | undefined);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -26,6 +35,17 @@ const queryClient = new QueryClient({
     }
   }),
   mutationCache: new MutationCache({
+    onSuccess: (data, _variables, _context, mutation) => {
+      const meta = mutation.meta as { successMessage?: SuccessMessageInput } | undefined;
+      const raw = meta?.successMessage;
+      const message =
+        typeof raw === "function"
+          ? raw(data)
+          : raw;
+      if (message) {
+        emitRequestNotification({ message, tone: "success" });
+      }
+    },
     onError: (error) => {
       emitRequestNotification({
         message: getRequestErrorMessage(error, "Unable to complete the backend request.")

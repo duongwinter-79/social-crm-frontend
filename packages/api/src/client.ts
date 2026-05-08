@@ -1,7 +1,14 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
-import { readStoredTokens, storeTokens, useSessionStore } from "./session";
+import {
+  decodeJwtUser,
+  isAccessTokenStale,
+  notifyLoginAcrossTabs,
+  useSessionStore
+} from "./session";
 import type {
   AiQueryResult,
+  AiSuggestion,
+  LeadOrderSuggestion,
   AdminUser,
   AdminAuditLogListResponse,
   CnvConnectionStatus,
@@ -13,8 +20,6 @@ import type {
   ApplicationListResponse,
   ApplicationRecord,
   ApiEnvelope,
-  AuthTokens,
-  AuthUser,
   CandidateFormalEvaluation,
   CandidateListResponse,
   CandidateRef,
@@ -30,7 +35,6 @@ import type {
   LeadListResponse,
   LeadProfile,
   LeadTransitions,
-  MatchingResult,
   MessageListResponse,
   Order,
   OrderMutationPayload,
@@ -52,28 +56,24 @@ function unwrapEnvelope<T>(value: ApiEnvelope<T> | T): T {
   return value as T;
 }
 
-function decodeJwtPayload(token: string): AuthUser | null {
-  try {
-    const base64 = token.split(".")[1];
-    const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(window.atob(normalized));
-    return {
-      userId: payload.sub,
-      username: payload.username,
-      roles: payload.roles ?? []
-    };
-  } catch {
-    return null;
-  }
+/**
+ * Server response shape after Step 7F: refresh token lives in an httpOnly
+ * cookie, so the JSON body only carries the access token.
+ */
+interface AccessTokenResponse {
+  access_token: string;
 }
 
 export class SocialCrmApiClient {
   private readonly http: AxiosInstance;
-  private refreshPromise: Promise<AuthTokens> | null = null;
+  /** In-flight refresh request shared across concurrent callers (single-flight). */
+  private refreshPromise: Promise<string> | null = null;
 
   constructor() {
     this.http = axios.create({
-      baseURL: `${API_BASE_URL}/api`
+      baseURL: `${API_BASE_URL}/api`,
+      // Required so the httpOnly refresh cookie travels with /auth/refresh and /auth/logout.
+      withCredentials: true
     });
 
     this.http.interceptors.request.use((config) => this.attachToken(config));
@@ -83,11 +83,31 @@ export class SocialCrmApiClient {
     );
   }
 
-  private attachToken(config: InternalAxiosRequestConfig) {
-    const tokens = useSessionStore.getState().tokens ?? readStoredTokens();
-    if (tokens?.access_token) {
-      config.headers.Authorization = `Bearer ${tokens.access_token}`;
+  /**
+   * Attach the bearer token. If the access token is within 30 seconds of
+   * expiry, refresh proactively to avoid a 401-then-retry round trip.
+   *
+   * Skips refresh on the auth endpoints (no token to attach for login;
+   * /auth/refresh manages its own flow via the cookie).
+   */
+  private async attachToken(config: InternalAxiosRequestConfig) {
+    const url = config.url ?? "";
+    const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/refresh");
+
+    const accessToken = useSessionStore.getState().accessToken;
+    if (!accessToken) return config;
+
+    if (!isAuthEndpoint && isAccessTokenStale(30, accessToken)) {
+      try {
+        const fresh = await this.runRefresh();
+        config.headers.Authorization = `Bearer ${fresh}`;
+        return config;
+      } catch {
+        // Fall through and let the request 401 — handleAuthError will clean up.
+      }
     }
+
+    config.headers.Authorization = `Bearer ${accessToken}`;
     return config;
   }
 
@@ -97,45 +117,82 @@ export class SocialCrmApiClient {
       return Promise.reject(error);
     }
 
-    const tokens = useSessionStore.getState().tokens ?? readStoredTokens();
-    if (!tokens?.refresh_token) {
-      useSessionStore.getState().clearSession();
+    const accessToken = useSessionStore.getState().accessToken;
+    if (!accessToken) {
+      // Already cleared — propagate the error so the caller sees the 401.
       return Promise.reject(error);
     }
 
     original._retry = true;
 
-    if (!this.refreshPromise) {
-      this.refreshPromise = this.http
-        .post<ApiEnvelope<AuthTokens> | AuthTokens>(
-          "/auth/refresh",
-          { refresh_token: tokens.refresh_token }
-        )
-        .then((response) => unwrapEnvelope(response.data))
-        .finally(() => {
-          this.refreshPromise = null;
-        });
-    }
-
     try {
-      const nextTokens = await this.refreshPromise;
-      storeTokens(nextTokens);
-      const user = decodeJwtPayload(nextTokens.access_token);
-      useSessionStore.getState().setSession(nextTokens, user);
-      original.headers.Authorization = `Bearer ${nextTokens.access_token}`;
+      const nextAccess = await this.runRefresh();
+      original.headers.Authorization = `Bearer ${nextAccess}`;
       return this.http.request(original);
     } catch (refreshError) {
-      useSessionStore.getState().clearSession();
+      useSessionStore.getState().clearSession("expired");
       return Promise.reject(refreshError);
     }
   }
 
+  /**
+   * Single-flight refresh. The httpOnly cookie carries the refresh token
+   * automatically — we POST an empty body. Returns the fresh access token.
+   */
+  private runRefresh(): Promise<string> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.http
+        .post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>("/auth/refresh", {})
+        .then((response) => {
+          const next = unwrapEnvelope(response.data).access_token;
+          useSessionStore.getState().setSession(next);
+          notifyLoginAcrossTabs(next);
+          return next;
+        })
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+    return this.refreshPromise;
+  }
+
+  /**
+   * On page load there is no in-memory access token, but a valid httpOnly
+   * refresh cookie may still exist from a prior session. Try a single refresh.
+   * Returns true if a session was restored, false if the user must log in.
+   */
+  async bootstrapSession(): Promise<boolean> {
+    try {
+      await this.runRefresh();
+      return true;
+    } catch {
+      // No valid cookie or refresh failed — user is unauthenticated.
+      return false;
+    }
+  }
+
   async login(username: string, password: string) {
-    const response = await this.http.post<ApiEnvelope<AuthTokens> | AuthTokens>("/auth/login", { username, password });
-    const tokens = unwrapEnvelope(response.data);
-    const user = decodeJwtPayload(tokens.access_token);
-    useSessionStore.getState().setSession(tokens, user);
-    return tokens;
+    const response = await this.http.post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>(
+      "/auth/login",
+      { username, password }
+    );
+    const accessToken = unwrapEnvelope(response.data).access_token;
+    useSessionStore.getState().setSession(accessToken);
+    notifyLoginAcrossTabs(accessToken);
+    return { accessToken, user: decodeJwtUser(accessToken) };
+  }
+
+  /**
+   * Logout: tells the server to revoke the refresh session and clear the
+   * cookie, then drops the access token locally. Cross-tab logout fires via
+   * BroadcastChannel inside clearSession().
+   */
+  async logout() {
+    try {
+      await this.http.post("/auth/logout", {}).catch(() => undefined);
+    } finally {
+      useSessionStore.getState().clearSession("manual");
+    }
   }
 
   async getDashboardStats() {
@@ -180,6 +237,11 @@ export class SocialCrmApiClient {
 
   async getLeadQualification(leadId: string) {
     const response = await this.http.get<ApiEnvelope<LeadQualificationSnapshot> | LeadQualificationSnapshot>(`/leads/${leadId}/qualification`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getLeadAiSuggestions(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<AiSuggestion[]> | AiSuggestion[]>(`/leads/${leadId}/ai-suggestions`);
     return unwrapEnvelope(response.data);
   }
 
@@ -274,6 +336,19 @@ export class SocialCrmApiClient {
 
   async suggestOrders(candidateId: string) {
     const response = await this.http.get<ApiEnvelope<CandidateSuggestion[]> | CandidateSuggestion[]>(`/matching/suggest/${candidateId}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Lead-stage auto-suggest. Returns top-N orders ranked by triage score —
+   * works at lead screening stage, before a candidate record exists.
+   * Implements PDF automation #2.
+   */
+  async suggestOrdersForLead(leadId: string, params: { limit?: number } = {}) {
+    const response = await this.http.get<ApiEnvelope<LeadOrderSuggestion[]> | LeadOrderSuggestion[]>(
+      `/matching/suggest-for-lead/${leadId}`,
+      { params }
+    );
     return unwrapEnvelope(response.data);
   }
 

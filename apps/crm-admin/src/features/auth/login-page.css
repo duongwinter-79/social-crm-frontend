@@ -346,3 +346,15 @@
     font-size: 15px;
   }
 }
+
+.login-session-notice {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(254, 243, 199, 0.55);
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.4;
+}
+

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiClient } from "@social-crm/api";
+import { apiClient, useSessionStore } from "@social-crm/api";
 import { getRequestErrorMessage, useRequestNotifications } from "@/app/request-notifications";
 import { useI18n } from "@/i18n";
 import "./login-page.css";
@@ -9,10 +9,28 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { lang, setLang, copy } = useI18n();
   const { notifyError } = useRequestNotifications();
+  const consumeLogoutReason = useSessionStore((state) => state.consumeLogoutReason);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+
+  // If we landed here because the previous session ended, show a small banner
+  // explaining why. Consume the reason once so it doesn't repeat on re-login.
+  useEffect(() => {
+    const reason = consumeLogoutReason();
+    if (!reason || reason === "manual") return;
+    if (reason === "expired") {
+      setSessionNotice(copy({ en: "Your session expired. Please sign in again.", vi: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." }));
+    } else if (reason === "idle") {
+      setSessionNotice(copy({ en: "Signed out after inactivity.", vi: "Đã đăng xuất do không có hoạt động." }));
+    } else if (reason === "remote") {
+      setSessionNotice(copy({ en: "Signed out from another tab.", vi: "Đã đăng xuất từ một tab khác." }));
+    }
+    // We only want to read the reason once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -119,6 +137,10 @@ export function LoginPage() {
               })}
             </span>
           </div>
+
+          {sessionNotice ? (
+            <div className="login-session-notice">{sessionNotice}</div>
+          ) : null}
 
           <form className="login-form" onSubmit={handleSubmit}>
             <div className="login-form-group">
