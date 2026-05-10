@@ -20,6 +20,15 @@ Phân biệt rõ:
 - purpose: staff xác minh dữ liệu còn thiếu từ nguồn sparse như CNV
 - thay đổi ở panel này phải ảnh hưởng tới lead score và matching behavior
 
+## Lead AI snapshot va structured extraction
+
+- nut `Refresh structured extraction` goi `POST /api/ai-extraction/process-thread`
+- backend tra `202 Accepted`, sau do extraction tiep tuc chay nen
+- UI hien ro trang thai: starting, running, completed, timeout, failed
+- trong luc extraction dang starting/running, nut refresh bi disable de tranh submit trung
+- frontend poll lead/thread state va AI suggestions moi 3 giay toi da 60 giay
+- manual AI question chi dung de hoi nhanh; khong cap nhat saved extraction, lead score, profile hay matching inputs
+
 ## Applications
 
 - hỗ trợ list, detail, lifecycle updates

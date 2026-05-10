@@ -111,6 +111,36 @@ Do not confuse these backend surfaces:
 
 The CRM admin lead workbench includes a qualification overlay for staff-verified profile data.
 
+## Lead AI Snapshot And Structured Extraction
+
+The lead workbench AI snapshot shows saved extraction data from the backend, not a live-only client calculation.
+
+### Refresh Behavior
+
+The `Refresh structured extraction` action calls:
+
+- `POST /api/ai-extraction/process-thread`
+
+The backend returns `202 Accepted` and continues extraction in the background. The UI therefore shows an explicit background status:
+
+- starting
+- running
+- completed
+- timeout
+- failed
+
+While extraction is starting or running, the refresh button is disabled and the card explains that the operator can keep working. The frontend polls fresh lead/thread state and AI suggestions every 3 seconds for up to 60 seconds, then refreshes lead detail, qualification, profile, transitions, order suggestions, thread messages, and lead list data.
+
+### Data Boundary
+
+The snapshot displays persisted backend data:
+
+- `lead.aiExtractedData`
+- `GET /api/leads/:id/ai-suggestions`
+- lead thread `analyzeStatus` and `lastAiExtractedAt`
+
+It does not directly call Gemini or parse messages in the browser.
+
 ### Why It Exists
 
 CNV customer data is treated as sparse intake data. It is enough to create or update a lead, but it is not enough to drive full lead score and formal matching by itself.

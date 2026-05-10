@@ -23,7 +23,7 @@ That includes:
 - leads and lead transitions
 - lead profile update
 - orders
-- AI extraction query
+- AI extraction query and background structured extraction status
 - matching triage
 - CNV integration admin actions
 - applications

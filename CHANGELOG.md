@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-05-10
+
+### Lead workbench extraction feedback
+
+- Added explicit background status for `Refresh structured extraction`: starting, running, completed, timeout, and failed.
+- Kept the refresh button disabled while extraction is active so operators do not submit duplicate background runs.
+- Changed post-trigger polling to fetch both lead/thread state and AI suggestions, then refresh related lead workbench queries when extraction completes or times out.
+- Documented that manual AI questions are read-only and separate from saved structured extraction.
+
 ## 2026-05-07
 
 ### Zalo conversation inbox

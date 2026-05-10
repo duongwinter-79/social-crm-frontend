@@ -64,3 +64,11 @@ Admin frontend da duoc refactor thanh operator UI chay tren `social_crm_backend`
 - CRM admin shell da ho tro toggle EN/VN co luu trang thai bang local storage
 - login, dashboard, leads, lead workbench, pipeline, matching, orders, applications, documents, training-finance, integrations va admin da dung chung lop i18n
 - dot rollout nay dong thoi loai bo text separator loi va dua cac pattern field/stat lap lai vao shared UI primitives
+
+## Recent Lead AI Snapshot Update
+
+- lead workbench xem structured extraction la background operation sau khi backend tra `202 Accepted`
+- AI snapshot hien trang thai starting/running/completed/timeout/failed de operator biet job dang chay nen
+- nut refresh bi disable khi background extraction dang active
+- polling doc lai lead/thread state va AI suggestions, khong chi invalidate mot lan
+- manual AI question chi de hoi nhanh, khong cap nhat saved lead/profile/scoring data

@@ -81,6 +81,14 @@ None in the main CRM operator flow.
 - CI workflow template added at `.github/workflows/frontend-verify.yml`
 - detailed operator workspace notes now live in `docs/OPERATOR_WORKBENCHES.md`
 
+## Recent Lead AI Snapshot Update
+
+- the lead workbench now treats structured extraction as an asynchronous background operation after `POST /api/ai-extraction/process-thread` returns `202 Accepted`
+- the AI snapshot card shows explicit starting/running/completed/timeout/failed status so operators are not left waiting without feedback
+- the refresh action is disabled while background extraction is active
+- polling now checks fresh lead/thread state and AI suggestions instead of relying only on a one-time invalidation
+- the manual AI question panel remains read-only and does not update saved lead/profile/scoring data
+
 ## Recent Conversations Update
 
 - `/conversations` is now a live backend-backed Zalo OA conversation inbox
