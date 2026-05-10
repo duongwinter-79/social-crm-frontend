@@ -275,8 +275,9 @@ export function ConversationsPage() {
             en: "Latest active conversations from interaction storage.",
             vi: "Các hội thoại hoạt động gần nhất từ kho tương tác."
           })}
+          className="xl:sticky xl:top-6 xl:flex xl:max-h-[calc(100vh-3rem)] xl:flex-col"
         >
-          <div className="space-y-3">
+          <div className="min-h-0 space-y-3 xl:flex-1 xl:overflow-y-auto xl:pr-1">
             {threads.length ? (
               threads.map((thread) => (
                 <ThreadCard
@@ -297,7 +298,7 @@ export function ConversationsPage() {
               />
             )}
           </div>
-          <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 flex shrink-0 flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-500">
               {copy({ en: `Page ${page + 1}, ${total} total`, vi: `Trang ${page + 1}, tổng ${total}` })}
             </div>
