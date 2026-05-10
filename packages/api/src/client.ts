@@ -326,8 +326,8 @@ export class SocialCrmApiClient {
    */
   async processThreadExtraction(args: { leadId: string; threadId: string; maxBatches?: number }) {
     const response = await this.http.post<
-      | ApiEnvelope<{ threadId: string; leadId: string; triggered: boolean }>
-      | { threadId: string; leadId: string; triggered: boolean }
+      | ApiEnvelope<{ threadId: string; leadId: string; triggered: boolean; mode?: string }>
+      | { threadId: string; leadId: string; triggered: boolean; mode?: string }
     >("/ai-extraction/process-thread", args);
     return unwrapEnvelope(response.data);
   }
