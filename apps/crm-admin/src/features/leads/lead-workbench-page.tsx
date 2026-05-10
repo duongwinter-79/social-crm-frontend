@@ -265,6 +265,7 @@ export function LeadWorkbenchPage() {
         }}
         isVerifyAllPending={qualificationMutation.isPending}
         isRerunPending={runExtraction.isPending}
+        extractionStatus={runExtraction.backgroundStatus}
         className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
       />
 

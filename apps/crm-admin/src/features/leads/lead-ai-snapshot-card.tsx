@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Badge, Button, EmptyState, Panel } from "@social-crm/ui";
-import type { AiSuggestion, Lead, LeadQualificationSnapshot } from "@social-crm/api";
+import { Badge, Button, EmptyState, InfoStrip, Panel } from "@social-crm/ui";
+import type { AiSuggestion, BackgroundExtractionStatus, Lead, LeadQualificationSnapshot } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 import { findPhoneMergeCandidate } from "./field-with-provenance";
 
@@ -12,6 +12,7 @@ interface Props {
     onRerunExtraction: () => void;
     isVerifyAllPending: boolean;
     isRerunPending: boolean;
+    extractionStatus: BackgroundExtractionStatus;
     className?: string;
 }
 
@@ -96,6 +97,58 @@ const QUALIFICATION_DTO_FIELDS: ReadonlySet<string> = new Set([
     "understandsJobNature",
     "hasClearRegionPreference"
 ]);
+
+function extractionStatusCopy(status: BackgroundExtractionStatus, copy: ReturnType<typeof useI18n>["copy"]) {
+    switch (status) {
+        case "starting":
+            return {
+                tone: "neutral" as const,
+                label: copy({ en: "Starting extraction", vi: "Đang bắt đầu trích xuất" }),
+                description: copy({
+                    en: "The backend accepted the request and is preparing the background extraction job.",
+                    vi: "Backend đã nhận yêu cầu và đang chuẩn bị xử lý trích xuất nền."
+                })
+            };
+        case "running":
+            return {
+                tone: "warning" as const,
+                label: copy({ en: "Background extraction running", vi: "Đang trích xuất nền" }),
+                description: copy({
+                    en: "You can continue working. This card will refresh when suggestions, profile data, or scan status changes.",
+                    vi: "Bạn có thể tiếp tục thao tác. Thẻ này sẽ tự cập nhật khi gợi ý, hồ sơ hoặc trạng thái quét thay đổi."
+                })
+            };
+        case "completed":
+            return {
+                tone: "success" as const,
+                label: copy({ en: "Extraction refreshed", vi: "Đã cập nhật trích xuất" }),
+                description: copy({
+                    en: "The background extraction run has finished and the latest lead data has been refreshed.",
+                    vi: "Lượt trích xuất nền đã hoàn tất và dữ liệu lead mới nhất đã được cập nhật."
+                })
+            };
+        case "timeout":
+            return {
+                tone: "warning" as const,
+                label: copy({ en: "Still processing", vi: "Vẫn đang xử lý" }),
+                description: copy({
+                    en: "The request is still running or did not report completion within 60 seconds. Refresh the page or check again shortly.",
+                    vi: "Yêu cầu vẫn có thể đang chạy hoặc chưa báo hoàn tất trong 60 giây. Hãy tải lại trang hoặc kiểm tra lại sau."
+                })
+            };
+        case "failed":
+            return {
+                tone: "danger" as const,
+                label: copy({ en: "Extraction status unavailable", vi: "Không đọc được trạng thái trích xuất" }),
+                description: copy({
+                    en: "The extraction request or status polling failed. Existing data was not cleared.",
+                    vi: "Yêu cầu trích xuất hoặc việc kiểm tra trạng thái bị lỗi. Dữ liệu hiện có không bị xóa."
+                })
+            };
+        default:
+            return null;
+    }
+}
 
 const TRACKED_AI_FIELDS: readonly string[] = [
     "fullName",
@@ -591,6 +644,7 @@ export function LeadAiSnapshotCard(props: Props) {
 
     const verifyAllCount = Object.keys(verifyAllPatch).length;
     const phoneMergeConflictId = findPhoneMergeCandidate(props.suggestions);
+    const extractionStatus = extractionStatusCopy(props.extractionStatus, copy);
 
     return (
         <Panel
@@ -650,6 +704,22 @@ export function LeadAiSnapshotCard(props: Props) {
                         vi: "Thao tác này cập nhật dữ liệu trích xuất đã lưu, gợi ý AI, tín hiệu hồ sơ, điểm lead và dữ liệu ghép đơn."
                     })}
                 </div>
+                {extractionStatus ? (
+                    <InfoStrip
+                        className={
+                            props.extractionStatus === "failed"
+                                ? "mb-3 border-rose-300 bg-rose-50 text-rose-900"
+                                : props.extractionStatus === "completed"
+                                    ? "mb-3 border-emerald-300 bg-emerald-50 text-emerald-900"
+                                    : "mb-3 border-amber-300 bg-amber-50 text-amber-900"
+                        }
+                    >
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Badge tone={extractionStatus.tone}>{extractionStatus.label}</Badge>
+                            <span className="text-sm leading-6">{extractionStatus.description}</span>
+                        </div>
+                    </InfoStrip>
+                ) : null}
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -665,8 +735,12 @@ export function LeadAiSnapshotCard(props: Props) {
                                     vi: `Xác minh tất cả (${verifyAllCount})`
                                 })}
                     </Button>
-                    <Button variant="secondary" onClick={props.onRerunExtraction} disabled={props.isRerunPending}>
-                        {props.isRerunPending
+                    <Button
+                        variant="secondary"
+                        onClick={props.onRerunExtraction}
+                        disabled={props.isRerunPending || props.extractionStatus === "starting" || props.extractionStatus === "running"}
+                    >
+                        {props.isRerunPending || props.extractionStatus === "starting" || props.extractionStatus === "running"
                             ? copy({ en: "Extracting...", vi: "Đang trích xuất..." })
                             : copy({ en: "Refresh structured extraction", vi: "Cập nhật trích xuất có cấu trúc" })}
                     </Button>

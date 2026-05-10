@@ -1,6 +1,9 @@
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
 import type { AiSuggestion, OrderMutationPayload } from "./types";
+
+export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
 
 export function useDashboardStatsQuery() {
   return useQuery({
@@ -287,40 +290,91 @@ export function useAiQueryMutation() {
 
 export function useProcessThreadExtractionMutation() {
   const queryClient = useQueryClient();
+  const pollRef = useRef<number | null>(null);
+  const [backgroundStatus, setBackgroundStatus] = useState<BackgroundExtractionStatus>("idle");
 
-  return useMutation({
+  const clearPoll = () => {
+    if (pollRef.current !== null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const mutation = useMutation({
     mutationFn: (args: { leadId: string; threadId: string; maxBatches?: number }) =>
       apiClient.processThreadExtraction(args),
+    onMutate: () => {
+      clearPoll();
+      setBackgroundStatus("starting");
+    },
     onSuccess: (_data, vars) => {
       const suggestionsKey = ["lead", vars.leadId, "ai-suggestions"];
+      const leadKey = ["lead", vars.leadId];
       const startCount =
         queryClient.getQueryData<AiSuggestion[]>(suggestionsKey)?.length ?? 0;
+      const startLead = queryClient.getQueryData<any>(leadKey);
+      const startThread = startLead?.threads?.find?.((thread: any) => thread.id === vars.threadId);
+      const startLastAiExtractedAt = startThread?.lastAiExtractedAt ?? null;
 
       let elapsed = 0;
       const intervalMs = 3000;
       const timeoutMs = 60000;
+      setBackgroundStatus("running");
 
-      const poll = window.setInterval(async () => {
+      pollRef.current = window.setInterval(async () => {
         elapsed += intervalMs;
-        await queryClient.invalidateQueries({ queryKey: suggestionsKey });
 
-        const nextCount =
-          queryClient.getQueryData<AiSuggestion[]>(suggestionsKey)?.length ?? 0;
+        try {
+          const [suggestions, lead] = await Promise.all([
+            apiClient.getLeadAiSuggestions(vars.leadId),
+            apiClient.getLead(vars.leadId)
+          ]);
 
-        if (nextCount !== startCount || elapsed >= timeoutMs) {
-          window.clearInterval(poll);
-          queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId] });
-          queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "qualification"] });
-          queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "profile"] });
-          queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "transitions"] });
-          queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "order-suggestions"] });
-          queryClient.invalidateQueries({ queryKey: ["thread", vars.threadId, "messages"] });
-          queryClient.invalidateQueries({ queryKey: ["leads"] });
+          queryClient.setQueryData(suggestionsKey, suggestions);
+          queryClient.setQueryData(leadKey, lead);
+
+          const nextThread = lead.threads?.find((thread) => thread.id === vars.threadId);
+          const nextCount = suggestions.length;
+          const nextLastAiExtractedAt = nextThread?.lastAiExtractedAt ?? null;
+          const analyzeStatus = nextThread?.analyzeStatus ?? null;
+          const finished =
+            nextCount !== startCount ||
+            (nextLastAiExtractedAt && nextLastAiExtractedAt !== startLastAiExtractedAt) ||
+            (analyzeStatus && analyzeStatus !== "analyzing");
+
+          if (finished || elapsed >= timeoutMs) {
+            clearPoll();
+            setBackgroundStatus(finished ? "completed" : "timeout");
+            queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "qualification"] });
+            queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "profile"] });
+            queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "transitions"] });
+            queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "order-suggestions"] });
+            queryClient.invalidateQueries({ queryKey: ["thread", vars.threadId, "messages"] });
+            queryClient.invalidateQueries({ queryKey: ["leads"] });
+          }
+        } catch {
+          if (elapsed >= timeoutMs) {
+            clearPoll();
+            setBackgroundStatus("failed");
+          }
         }
       }, intervalMs);
     },
+    onError: () => {
+      clearPoll();
+      setBackgroundStatus("failed");
+    },
     meta: { successMessage: "AI extraction started" }
   });
+
+  return {
+    ...mutation,
+    backgroundStatus,
+    resetBackgroundStatus: () => {
+      clearPoll();
+      setBackgroundStatus("idle");
+    }
+  };
 }
 
 export function useMatchingEvaluationMutation() {
