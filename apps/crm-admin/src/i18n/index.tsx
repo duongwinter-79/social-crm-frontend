@@ -124,7 +124,7 @@ export function I18nProvider(props: PropsWithChildren) {
   const value = useMemo<I18nContextValue>(() => {
     const copy = (input: Copy) => input[lang];
     const fromMap = (key: string, fallback?: string) => {
-      const found = enumLabels[key];
+      const found = enumLabels[key] ?? enumLabels[key.toUpperCase()];
       return found ? found[lang] : fallback ?? formatEnumLabel(key);
     };
 

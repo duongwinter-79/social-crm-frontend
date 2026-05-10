@@ -5,11 +5,28 @@ import { useLeadsQuery } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 
 function toneForStatus(status: string) {
-  if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
-  if (["MATCHED", "INTERVIEW_PASSED", "CONTRACT_SIGNED", "DEPARTED"].includes(status)) return "success" as const;
-  if (["QUALIFIED", "MATCHING", "INTERVIEW_SCHEDULED", "INTERVIEWING", "VISA_PROCESSING"].includes(status)) return "warning" as const;
+  const normalized = status.toLowerCase();
+  if (["interview_failed", "disqualified"].includes(normalized)) return "danger" as const;
+  if (["matched", "interview_passed", "contract_signed", "departed"].includes(normalized)) return "success" as const;
+  if (["qualified", "matching", "interview_scheduled", "interviewing", "visa_processing"].includes(normalized)) return "warning" as const;
   return "accent" as const;
 }
+
+const LEAD_STATUS_OPTIONS = [
+  "new",
+  "contacted",
+  "qualified",
+  "matching",
+  "matched",
+  "interview_scheduled",
+  "interviewing",
+  "interview_passed",
+  "interview_failed",
+  "contract_signed",
+  "visa_processing",
+  "departed",
+  "disqualified"
+];
 
 export function LeadsPage() {
   const { copy, formatLeadStatus, formatEnum } = useI18n();
@@ -33,8 +50,8 @@ export function LeadsPage() {
     return {
       stale: leads.filter((lead) => !lead.updatedAt || lead.updatedAt === lead.createdAt).length,
       hot: leads.filter((lead) => (lead.leadScore ?? 0) >= 80).length,
-      blocked: leads.filter((lead) => ["INTERVIEW_FAILED", "DISQUALIFIED"].includes(lead.status)).length,
-      worked: leads.filter((lead) => ["QUALIFIED", "MATCHING", "MATCHED", "INTERVIEW_SCHEDULED", "INTERVIEWING"].includes(lead.status)).length
+      blocked: leads.filter((lead) => ["interview_failed", "disqualified"].includes(lead.status.toLowerCase())).length,
+      worked: leads.filter((lead) => ["qualified", "matching", "matched", "interview_scheduled", "interviewing"].includes(lead.status.toLowerCase())).length
     };
   }, [leads]);
 
@@ -69,7 +86,7 @@ export function LeadsPage() {
           />
           <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
-            {["NEW", "CONTACTED", "QUALIFIED", "MATCHING", "MATCHED", "INTERVIEW_SCHEDULED", "INTERVIEWING", "INTERVIEW_PASSED", "INTERVIEW_FAILED", "CONTRACT_SIGNED", "VISA_PROCESSING", "DEPARTED", "DISQUALIFIED"].map((value) => (
+            {LEAD_STATUS_OPTIONS.map((value) => (
               <option key={value} value={value}>
                 {formatLeadStatus(value)}
               </option>

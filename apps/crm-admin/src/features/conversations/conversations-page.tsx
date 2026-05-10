@@ -363,7 +363,7 @@ export function ConversationsPage() {
             })}
             action={messagesQuery.isFetching ? <Badge tone="warning">{copy({ en: "Loading", vi: "Đang tải" })}</Badge> : null}
           >
-            <div className="space-y-3 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+            <div className="max-h-[min(620px,calc(100vh-18rem))] space-y-3 overflow-y-auto rounded-[24px] border border-slate-200 bg-slate-50 p-4 pr-2">
               {messages.length ? (
                 messages.map((message) => (
                   <MessageBubble key={message.id} message={message} formatEnum={formatEnum} />
