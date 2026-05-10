@@ -10,8 +10,8 @@ export function LoginPage() {
   const { lang, setLang, copy } = useI18n();
   const { notifyError } = useRequestNotifications();
   const consumeLogoutReason = useSessionStore((state) => state.consumeLogoutReason);
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
