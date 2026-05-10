@@ -43,7 +43,7 @@ export function PipelinePage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Pipeline", vi: "Pipeline" })}
+        eyebrow={copy({ en: "Pipeline", vi: "Luồng hồ sơ" })}
         title={copy({ en: "Cross-stage case flow", vi: "Luồng hồ sơ liên giai đoạn" })}
         description={copy({ en: "One operational view across lead stage, candidate linkage, application status, document blockers, and training-finance readiness.", vi: "Một góc nhìn vận hành xuyên suốt giữa giai đoạn lead, liên kết ứng viên, trạng thái ứng tuyển, điểm nghẽn hồ sơ và mức sẵn sàng đào tạo - tài chính." })}
       />
@@ -122,7 +122,7 @@ export function PipelinePage() {
             ))}
           </div>
         ) : (
-          <EmptyState title={copy({ en: "No pipeline rows found", vi: "Không tìm thấy dòng pipeline" })} description={copy({ en: "Adjust the filters or wait until lead and downstream workflow data is available.", vi: "Hãy điều chỉnh bộ lọc hoặc chờ đến khi dữ liệu lead và luồng xử lý phía sau sẵn sàng." })} />
+          <EmptyState title={copy({ en: "No pipeline rows found", vi: "Không tìm thấy hồ sơ trong luồng" })} description={copy({ en: "Adjust the filters or wait until lead and downstream workflow data is available.", vi: "Hãy điều chỉnh bộ lọc hoặc chờ đến khi dữ liệu lead và luồng xử lý phía sau sẵn sàng." })} />
         )}
       </Panel>
     </div>

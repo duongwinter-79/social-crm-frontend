@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Input, Select } from "@social-crm/ui";
 import { useCandidatesQuery, type CandidateRef } from "@social-crm/api";
+import { useI18n } from "@/i18n";
 
 type CandidatePickerProps = {
   value: string;
@@ -15,6 +16,7 @@ type CandidatePickerProps = {
 };
 
 export function CandidatePicker(props: CandidatePickerProps) {
+  const { copy } = useI18n();
   const [search, setSearch] = useState("");
   const candidateQuery = useCandidatesQuery({ offset: 0, limit: 50, search: search || undefined });
   const candidates = candidateQuery.data?.data ?? [];
@@ -47,10 +49,10 @@ export function CandidatePicker(props: CandidatePickerProps) {
       </Select>
       <div className="text-xs leading-5 text-slate-500">
         {candidateQuery.isLoading
-          ? "Loading candidates..."
+          ? copy({ en: "Loading candidates...", vi: "Đang tải ứng viên..." })
           : selectedCandidate
-            ? `Selected ${selectedCandidate.code || selectedCandidate.id.slice(0, 8)}`
-            : `${candidateQuery.data?.total ?? candidates.length} candidates available`}
+            ? copy({ en: `Selected ${selectedCandidate.code || selectedCandidate.id.slice(0, 8)}`, vi: `Đã chọn ${selectedCandidate.code || selectedCandidate.id.slice(0, 8)}` })
+            : copy({ en: `${candidateQuery.data?.total ?? candidates.length} candidates available`, vi: `${candidateQuery.data?.total ?? candidates.length} ứng viên có thể chọn` })}
       </div>
     </div>
   );

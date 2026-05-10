@@ -513,7 +513,13 @@ export interface AiQueryResult {
   messageCount: number;
   enabled: boolean;
   prompt: string;
-  result: string;
+  /**
+   * AI provider response. The Gemini freeform path returns either a parsed
+   * JSON object (when the model emitted structured output) or a plain string.
+   * Callers must handle both shapes — passing the raw value to a JSX child
+   * will throw "Objects are not valid as a React child" when it's an object.
+   */
+  result: string | Record<string, unknown> | null;
 }
 
 export interface CapabilityState {

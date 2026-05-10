@@ -83,6 +83,11 @@ export function LeadConversationInline(props: { thread: ThreadLike | undefined }
     }
 
     const messages = messagesQuery.data?.data ?? [];
+    const chronologicalMessages = [...messages].sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return aTime - bTime;
+    });
     const total = messagesQuery.data?.total ?? messages.length;
 
     if (messages.length === 0) {
@@ -118,7 +123,7 @@ export function LeadConversationInline(props: { thread: ThreadLike | undefined }
             </div>
 
             <div className="max-h-[480px] space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                {messages.map((m) => (
+                {chronologicalMessages.map((m) => (
                     <MessageBubble key={m.id} message={m} formatEnum={formatEnum} />
                 ))}
             </div>
