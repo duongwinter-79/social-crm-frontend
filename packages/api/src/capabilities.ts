@@ -3,7 +3,7 @@ import type { CapabilityRegistry } from "./types";
 export const capabilityRegistry: CapabilityRegistry = {
   dashboard: { enabled: true },
   leads: { enabled: true },
-  leadProfiles: { enabled: true },
+  leadQualification: { enabled: true },
   aiExtraction: { enabled: true },
   matching: { enabled: true },
   orders: { enabled: true },

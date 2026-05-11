@@ -233,20 +233,6 @@ export interface LeadListResponse {
   total: number;
 }
 
-export interface LeadProfile {
-  id?: string;
-  lead_id: string;
-  birthYear?: number | null;
-  gender?: "male" | "female" | null;
-  heightCm?: number | null;
-  weightKg?: number | null;
-  healthStatus?: string | null;
-  experienceField?: string | null;
-  desiredIndustry?: string | null;
-  preferredRegion?: string | null;
-  desiredSalary?: string | null;
-}
-
 export interface LeadQualificationSnapshot {
   leadId: string;
   intakeData: Record<string, unknown>;
@@ -530,7 +516,7 @@ export interface CapabilityState {
 export interface CapabilityRegistry {
   dashboard: CapabilityState;
   leads: CapabilityState;
-  leadProfiles: CapabilityState;
+  leadQualification: CapabilityState;
   aiExtraction: CapabilityState;
   matching: CapabilityState;
   orders: CapabilityState;

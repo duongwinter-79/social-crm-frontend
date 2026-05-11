@@ -43,14 +43,6 @@ export function useLeadTransitionsQuery(id?: string) {
   });
 }
 
-export function useLeadProfileQuery(leadId?: string) {
-  return useQuery({
-    queryKey: ["lead", leadId, "profile"],
-    queryFn: () => apiClient.getLeadProfile(leadId as string),
-    enabled: Boolean(leadId)
-  });
-}
-
 export function useLeadQualificationQuery(leadId?: string) {
   return useQuery({
     queryKey: ["lead", leadId, "qualification"],
@@ -257,17 +249,6 @@ export function useUpdateLeadMutation() {
   });
 }
 
-export function useUpsertLeadProfileMutation(leadId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (patch: Record<string, unknown>) => apiClient.upsertLeadProfile(leadId, patch),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["lead", leadId, "profile"] });
-    },
-    meta: { successMessage: "Profile saved" }
-  });
-}
-
 export function useUpdateLeadQualificationMutation(leadId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -346,7 +327,6 @@ export function useProcessThreadExtractionMutation() {
             clearPoll();
             setBackgroundStatus(finished ? "completed" : "timeout");
             queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "qualification"] });
-            queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "profile"] });
             queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "transitions"] });
             queryClient.invalidateQueries({ queryKey: ["lead", vars.leadId, "order-suggestions"] });
             queryClient.invalidateQueries({ queryKey: ["thread", vars.threadId, "messages"] });

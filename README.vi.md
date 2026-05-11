@@ -19,7 +19,7 @@ Admin app hiện đã nối với các backend APIs đủ ổn định để dù
 - auth và refresh flow
 - dashboard stats
 - leads và lead transitions
-- lead profile update
+- lead qualification update
 - orders
 - AI extraction query
 - matching triage

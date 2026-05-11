@@ -21,7 +21,7 @@ That includes:
 - auth and refresh flow
 - dashboard stats
 - leads and lead transitions
-- lead profile update
+- lead qualification update
 - orders
 - AI extraction query and background structured extraction status
 - matching triage

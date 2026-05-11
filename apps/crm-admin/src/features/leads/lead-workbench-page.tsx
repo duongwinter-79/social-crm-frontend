@@ -22,14 +22,12 @@ import {
   useLeadAiSuggestionsQuery,
   useLeadDetailQuery,
   useLeadOrderSuggestionsQuery,
-  useLeadProfileQuery,
   useLeadQualificationQuery,
   useLeadTransitionsQuery,
   useProcessThreadExtractionMutation,
   useSuggestedOrdersQuery,
   useUpdateLeadMutation,
-  useUpdateLeadQualificationMutation,
-  useUpsertLeadProfileMutation
+  useUpdateLeadQualificationMutation
 } from "@social-crm/api";
 import type { CandidateSuggestion, LeadOrderSuggestion, Order } from "@social-crm/api";
 import { useI18n } from "../../i18n";
@@ -54,29 +52,17 @@ export function LeadWorkbenchPage() {
   const leadQuery = useLeadDetailQuery(leadId);
   const candidateQuery = useCandidateByLeadQuery(leadId);
   const transitionsQuery = useLeadTransitionsQuery(leadId);
-  const profileQuery = useLeadProfileQuery(leadId);
   const qualificationQuery = useLeadQualificationQuery(leadId);
   const suggestionsQuery = useLeadAiSuggestionsQuery(leadId);
   const suggestedOrdersQuery = useSuggestedOrdersQuery(candidateQuery.data?.id);
   const leadOrderSuggestionsQuery = useLeadOrderSuggestionsQuery(leadId, 5);
   const updateLead = useUpdateLeadMutation();
   const createApplication = useCreateApplicationMutation();
-  const profileMutation = useUpsertLeadProfileMutation(leadId);
   const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
 
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
-  const [profileForm, setProfileForm] = useState({
-    birthYear: "",
-    gender: "",
-    heightCm: "",
-    weightKg: "",
-    experienceField: "",
-    desiredIndustry: "",
-    preferredRegion: "",
-    desiredSalary: ""
-  });
   const [qualificationForm, setQualificationForm] = useState({
     age: "",
     gender: "",
@@ -86,9 +72,12 @@ export function LeadWorkbenchPage() {
     experienceLevel: "",
     experienceYears: "",
     hasStrongSkills: "",
+    experienceField: "",
+    desiredIndustry: "",
     readyToDepartInMonths: "",
     understandsJobNature: "",
     preferredRegion: "",
+    desiredSalary: "",
     lateCancellationCount: "",
     noShowCount: "",
     unreasonableCancellationCount: "",
@@ -102,20 +91,6 @@ export function LeadWorkbenchPage() {
   });
 
   useEffect(() => {
-    if (!profileQuery.data) return;
-    setProfileForm({
-      birthYear: profileQuery.data.birthYear?.toString() ?? "",
-      gender: profileQuery.data.gender ?? "",
-      heightCm: profileQuery.data.heightCm?.toString() ?? "",
-      weightKg: profileQuery.data.weightKg?.toString() ?? "",
-      experienceField: profileQuery.data.experienceField ?? "",
-      desiredIndustry: profileQuery.data.desiredIndustry ?? "",
-      preferredRegion: profileQuery.data.preferredRegion ?? "",
-      desiredSalary: profileQuery.data.desiredSalary ?? ""
-    });
-  }, [profileQuery.data]);
-
-  useEffect(() => {
     if (!qualificationQuery.data) return;
     const verified = qualificationQuery.data.verifiedData ?? {};
     setQualificationForm({
@@ -127,9 +102,12 @@ export function LeadWorkbenchPage() {
       experienceLevel: readString(verified.experienceLevel),
       experienceYears: readString(verified.experienceYears),
       hasStrongSkills: readBooleanString(verified.hasStrongSkills),
+      experienceField: readString(verified.experienceField),
+      desiredIndustry: readString(verified.desiredIndustry),
       readyToDepartInMonths: readString(verified.readyToDepartInMonths),
       understandsJobNature: readBooleanString(verified.understandsJobNature),
       preferredRegion: Array.isArray(verified.preferredRegion) ? verified.preferredRegion.join(", ") : readString(verified.preferredRegion),
+      desiredSalary: readString(verified.desiredSalary),
       lateCancellationCount: readString(verified.lateCancellationCount),
       noShowCount: readString(verified.noShowCount),
       unreasonableCancellationCount: readString(verified.unreasonableCancellationCount),
@@ -301,8 +279,8 @@ export function LeadWorkbenchPage() {
           <Panel
             title={copy({ en: "Manual AI question", vi: "Hỏi AI thủ công" })}
             subtitle={copy({
-              en: "Use this for one-off questions about the conversation. It does not update the lead profile, AI suggestions, score, or matching inputs.",
-              vi: "Dùng để hỏi nhanh về hội thoại. Kết quả này không cập nhật hồ sơ lead, gợi ý AI, điểm lead hoặc dữ liệu ghép đơn."
+              en: "Use this for one-off questions about the conversation. It does not update verified qualification, AI suggestions, score, or matching inputs.",
+              vi: "Dùng để hỏi nhanh về hội thoại. Kết quả này không cập nhật dữ liệu xác minh, gợi ý AI, điểm lead hoặc dữ liệu ghép đơn."
             })}
           >
             <div className="space-y-3">
@@ -322,24 +300,6 @@ export function LeadWorkbenchPage() {
                 <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng thread ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có thread" })}</span>
               </div>
               {aiMutation.data ? renderAiQueryResult(aiMutation.data.result, copy) : null}
-            </div>
-          </Panel>
-
-          <Panel title={copy({ en: "Profile workspace", vi: "Không gian hồ sơ" })} subtitle={copy({ en: "Operator-owned structured profile mapped to the backend profile endpoint.", vi: "Hồ sơ có cấu trúc do nhân viên cập nhật và đồng bộ với endpoint profile của backend." })}>
-            <FieldGroup columns={2}>
-              <Input label={copy({ en: "Birth year", vi: "Năm sinh" })} value={profileForm.birthYear} onChange={(e) => setProfileForm((s) => ({ ...s, birthYear: e.target.value }))} />
-              <Input label={copy({ en: "Gender", vi: "Giới tính" })} value={profileForm.gender} onChange={(e) => setProfileForm((s) => ({ ...s, gender: e.target.value }))} />
-              <Input label={copy({ en: "Height (cm)", vi: "Chiều cao (cm)" })} value={profileForm.heightCm} onChange={(e) => setProfileForm((s) => ({ ...s, heightCm: e.target.value }))} />
-              <Input label={copy({ en: "Weight (kg)", vi: "Cân nặng (kg)" })} value={profileForm.weightKg} onChange={(e) => setProfileForm((s) => ({ ...s, weightKg: e.target.value }))} />
-              <Input label={copy({ en: "Experience field", vi: "Lĩnh vực kinh nghiệm" })} value={profileForm.experienceField} onChange={(e) => setProfileForm((s) => ({ ...s, experienceField: e.target.value }))} />
-              <Input label={copy({ en: "Desired industry", vi: "Ngành mong muốn" })} value={profileForm.desiredIndustry} onChange={(e) => setProfileForm((s) => ({ ...s, desiredIndustry: e.target.value }))} />
-              <Input label={copy({ en: "Preferred region", vi: "Khu vực mong muốn" })} value={profileForm.preferredRegion} onChange={(e) => setProfileForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
-              <Input label={copy({ en: "Desired salary", vi: "Mức lương mong muốn" })} value={profileForm.desiredSalary} onChange={(e) => setProfileForm((s) => ({ ...s, desiredSalary: e.target.value }))} />
-            </FieldGroup>
-            <div className="mt-4">
-              <Button onClick={() => profileMutation.mutate({ birthYear: profileForm.birthYear ? Number(profileForm.birthYear) : null, gender: profileForm.gender || null, heightCm: profileForm.heightCm ? Number(profileForm.heightCm) : null, weightKg: profileForm.weightKg ? Number(profileForm.weightKg) : null, experienceField: profileForm.experienceField || null, desiredIndustry: profileForm.desiredIndustry || null, preferredRegion: profileForm.preferredRegion || null, desiredSalary: profileForm.desiredSalary || null })} disabled={profileMutation.isPending}>
-                {profileMutation.isPending ? copy({ en: "Saving profile...", vi: "Đang lưu hồ sơ..." }) : copy({ en: "Save profile", vi: "Lưu hồ sơ" })}
-              </Button>
             </div>
           </Panel>
 
@@ -420,13 +380,48 @@ export function LeadWorkbenchPage() {
                 <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
                 <option value="false">{copy({ en: "No", vi: "Không" })}</option>
               </Select>
+              <FieldWithProvenance
+                fieldKey="experienceField"
+                suggestion={suggestionsByField.experienceField}
+                isVerified={isFieldVerified("experienceField")}
+                currentValue={qualificationForm.experienceField}
+                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, experienceField: typeof v === "string" ? v : "" }))}
+              >
+                <Input label={copy({ en: "Experience field", vi: "Lĩnh vực kinh nghiệm" })} value={qualificationForm.experienceField} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceField: e.target.value }))} />
+              </FieldWithProvenance>
+              <FieldWithProvenance
+                fieldKey="desiredIndustry"
+                suggestion={suggestionsByField.desiredIndustry}
+                isVerified={isFieldVerified("desiredIndustry")}
+                currentValue={qualificationForm.desiredIndustry}
+                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, desiredIndustry: typeof v === "string" ? v : "" }))}
+              >
+                <Input label={copy({ en: "Desired industry", vi: "Ngành mong muốn" })} value={qualificationForm.desiredIndustry} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredIndustry: e.target.value }))} />
+              </FieldWithProvenance>
               <Input label={copy({ en: "Ready to depart (months)", vi: "Sẵn sàng xuất cảnh (tháng)" })} value={qualificationForm.readyToDepartInMonths} onChange={(e) => setQualificationForm((s) => ({ ...s, readyToDepartInMonths: e.target.value }))} />
               <Select label={copy({ en: "Understands job nature", vi: "Hiểu tính chất công việc" })} value={qualificationForm.understandsJobNature} onChange={(e) => setQualificationForm((s) => ({ ...s, understandsJobNature: e.target.value }))}>
                 <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
                 <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
                 <option value="false">{copy({ en: "No", vi: "Không" })}</option>
               </Select>
-              <Input label={copy({ en: "Preferred region(s)", vi: "Khu vực mong muốn" })} value={qualificationForm.preferredRegion} onChange={(e) => setQualificationForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
+              <FieldWithProvenance
+                fieldKey="preferredRegion"
+                suggestion={suggestionsByField.preferredRegion ?? suggestionsByField.preferredRegions}
+                isVerified={isFieldVerified("preferredRegion") || isFieldVerified("preferredRegions")}
+                currentValue={qualificationForm.preferredRegion}
+                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, preferredRegion: Array.isArray(v) ? v.join(", ") : v == null ? "" : String(v) }))}
+              >
+                <Input label={copy({ en: "Preferred region(s)", vi: "Khu vực mong muốn" })} value={qualificationForm.preferredRegion} onChange={(e) => setQualificationForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
+              </FieldWithProvenance>
+              <FieldWithProvenance
+                fieldKey="desiredSalary"
+                suggestion={suggestionsByField.desiredSalary}
+                isVerified={isFieldVerified("desiredSalary")}
+                currentValue={qualificationForm.desiredSalary}
+                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, desiredSalary: v == null ? "" : String(v) }))}
+              >
+                <Input label={copy({ en: "Desired salary", vi: "Mức lương mong muốn" })} value={qualificationForm.desiredSalary} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredSalary: e.target.value }))} />
+              </FieldWithProvenance>
               <Select label={copy({ en: "Worked abroad before", vi: "Từng đi nước ngoài" })} value={qualificationForm.hasWorkedAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasWorkedAbroad: e.target.value }))}>
                 <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
                 <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
@@ -763,9 +758,12 @@ function buildQualificationPatch(form: Record<string, string>) {
     experienceLevel: form.experienceLevel || undefined,
     experienceYears: parseNumber(form.experienceYears),
     hasStrongSkills: parseBoolean(form.hasStrongSkills),
+    experienceField: form.experienceField || undefined,
+    desiredIndustry: form.desiredIndustry || undefined,
     readyToDepartInMonths: parseNumber(form.readyToDepartInMonths),
     understandsJobNature: parseBoolean(form.understandsJobNature),
     preferredRegion: form.preferredRegion ? form.preferredRegion.split(",").map((item) => item.trim()).filter(Boolean) : undefined,
+    desiredSalary: form.desiredSalary || undefined,
     lateCancellationCount: parseNumber(form.lateCancellationCount),
     noShowCount: parseNumber(form.noShowCount),
     unreasonableCancellationCount: parseNumber(form.unreasonableCancellationCount),

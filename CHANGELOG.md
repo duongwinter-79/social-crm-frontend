@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-05-11
+
+### Unified lead qualification form
+
+- removed the separate Lead Workbench profile workspace panel and profile save mutation
+- moved experience field, desired industry, preferred region, and desired salary into the qualification overlay
+- removed frontend API client/hooks/types for the legacy `/leads/:id/profile` endpoint so operator edits now flow through `useUpdateLeadQualificationMutation`
+
 ## 2026-05-10
 
 ### Lead workbench extraction feedback

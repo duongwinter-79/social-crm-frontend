@@ -33,7 +33,6 @@ import type {
   LeadQualificationSnapshot,
   LeadTriageEvaluation,
   LeadListResponse,
-  LeadProfile,
   LeadTransitions,
   MessageListResponse,
   Order,
@@ -222,16 +221,6 @@ export class SocialCrmApiClient {
 
   async updateLead(id: string, patch: Partial<Lead>) {
     const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${id}`, patch);
-    return unwrapEnvelope(response.data);
-  }
-
-  async getLeadProfile(leadId: string) {
-    const response = await this.http.get<ApiEnvelope<LeadProfile> | LeadProfile>(`/leads/${leadId}/profile`);
-    return unwrapEnvelope(response.data);
-  }
-
-  async upsertLeadProfile(leadId: string, patch: Partial<LeadProfile>) {
-    const response = await this.http.patch<ApiEnvelope<LeadProfile> | LeadProfile>(`/leads/${leadId}/profile`, patch);
     return unwrapEnvelope(response.data);
   }
 
