@@ -29,7 +29,7 @@ const LEAD_STATUS_OPTIONS = [
 ];
 
 export function LeadsPage() {
-  const { copy, formatLeadStatus, formatEnum } = useI18n();
+  const { copy, formatLeadStatus, formatEnum, formatChannel } = useI18n();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
@@ -96,7 +96,7 @@ export function LeadsPage() {
             <option value="">{copy({ en: "All channels", vi: "Tất cả kênh" })}</option>
             {["zalo", "facebook", "miniapp"].map((value) => (
               <option key={value} value={value}>
-                {value}
+                {formatChannel(value)}
               </option>
             ))}
           </Select>
@@ -158,7 +158,7 @@ export function LeadsPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="py-5 pr-4 uppercase text-slate-600">{lead.source}</td>
+                  <td className="py-5 pr-4 text-slate-600">{formatChannel(lead.source)}</td>
                   <td className="py-5 pr-4">
                     <Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>
                   </td>
@@ -169,7 +169,7 @@ export function LeadsPage() {
                   <td className="py-5 pr-4">
                     <div className="flex max-w-[220px] flex-wrap gap-2">
                       {(lead.tags ?? []).slice(0, 4).map((tag) => (
-                        <Badge key={tag}>{tag}</Badge>
+                        <Badge key={tag}>{formatEnum(tag)}</Badge>
                       ))}
                     </div>
                   </td>

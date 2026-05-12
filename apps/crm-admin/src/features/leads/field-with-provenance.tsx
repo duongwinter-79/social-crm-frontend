@@ -34,13 +34,6 @@ export interface FieldWithProvenanceProps {
   hint?: ReactNode;
 }
 
-function formatSuggestionValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
-}
-
 function provenanceState(props: FieldWithProvenanceProps): "verified" | "needs_verification" | "extracted" | "none" {
   if (props.isVerified) return "verified";
   if (!props.suggestion || props.suggestion.value === null || props.suggestion.value === undefined) {
@@ -63,7 +56,7 @@ function confidenceBadgeTone(confidence: AiSuggestion["confidence"]) {
 }
 
 export function FieldWithProvenance(props: FieldWithProvenanceProps) {
-  const { copy } = useI18n();
+  const { copy, formatFieldValue, formatConfidence, formatExtractionSource } = useI18n();
   const state = provenanceState(props);
   const sug = props.suggestion;
 
@@ -85,22 +78,16 @@ export function FieldWithProvenance(props: FieldWithProvenanceProps) {
         {sug ? (
           <>
             <Badge tone={confidenceBadgeTone(sug.confidence)}>
-              {sug.confidence}
+              {formatConfidence(sug.confidence)}
             </Badge>
-            <Badge tone="neutral">
-              {sug.source === "deterministic"
-                ? copy({ en: "Regex", vi: "Regex" })
-                : sug.source === "ai_llm"
-                  ? "AI"
-                  : copy({ en: "Webhook", vi: "Webhook" })}
-            </Badge>
+            <Badge tone="neutral">{formatExtractionSource(sug.source)}</Badge>
           </>
         ) : null}
 
         {sug && sug.value !== null && sug.value !== undefined && state !== "verified" ? (
           <span className="text-slate-500">
             <span className="text-slate-400">{copy({ en: "AI suggested:", vi: "AI gợi ý:" })}</span>{" "}
-            <span className="font-medium text-slate-700">{formatSuggestionValue(sug.value)}</span>
+            <span className="font-medium text-slate-700">{formatFieldValue(props.fieldKey, sug.value)}</span>
             {props.onApplySuggestion ? (
               <button
                 type="button"

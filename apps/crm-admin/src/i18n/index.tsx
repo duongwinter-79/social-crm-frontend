@@ -25,6 +25,11 @@ type I18nContextValue = {
   formatDocumentType: (value: string) => string;
   formatDocumentStatus: (value: string) => string;
   formatTrainingMilestone: (value: string) => string;
+  formatChannel: (value: string) => string;
+  formatConfidence: (value: string) => string;
+  formatExtractionSource: (value: string) => string;
+  formatFieldLabel: (key: string) => string;
+  formatFieldValue: (key: string, value: unknown) => string;
   yesNoUnknown: (value: string) => string;
 };
 
@@ -92,7 +97,98 @@ const enumLabels: Record<string, Copy> = {
   interview_failed_stage: { en: "Interview failed", vi: "Phỏng vấn trượt" },
   visa_processing: { en: "Visa processing", vi: "Đang làm visa" },
   contract_signed: { en: "Contract signed", vi: "Đã ký hợp đồng" },
-  interviewing: { en: "Interviewing", vi: "Đang phỏng vấn" }
+  interviewing: { en: "Interviewing", vi: "Đang phỏng vấn" },
+  // Channels / lead sources
+  zalo: { en: "Zalo", vi: "Zalo" },
+  facebook: { en: "Facebook", vi: "Facebook" },
+  miniapp: { en: "Mini App", vi: "Mini App" },
+  tiktok: { en: "TikTok", vi: "TikTok" },
+  website: { en: "Website", vi: "Website" },
+  gioi_thieu: { en: "Referral", vi: "Giới thiệu" },
+  // AI confidence levels
+  high: { en: "High", vi: "Cao" },
+  medium: { en: "Medium", vi: "Trung bình" },
+  low: { en: "Low", vi: "Thấp" },
+  // AI extraction source kinds
+  deterministic: { en: "Regex", vi: "Mẫu cố định" },
+  ai_llm: { en: "AI", vi: "AI" },
+  webhook: { en: "Webhook", vi: "Webhook" },
+  // Job needs (Mini App / extraction values)
+  labor_export: { en: "Labour export", vi: "Xuất khẩu lao động" },
+  consultation: { en: "Consultation", vi: "Tư vấn" },
+  domestic_job: { en: "Domestic job", vi: "Việc trong nước" },
+  visa_only: { en: "Visa only", vi: "Chỉ xin visa" },
+  // Regions
+  north: { en: "North", vi: "Miền Bắc" },
+  central: { en: "Central", vi: "Miền Trung" },
+  south: { en: "South", vi: "Miền Nam" }
+};
+
+const fieldLabels: Record<string, Copy> = {
+  fullName: { en: "Full name", vi: "Họ tên" },
+  name: { en: "Name", vi: "Tên" },
+  phone: { en: "Phone", vi: "Số điện thoại" },
+  address: { en: "Address", vi: "Địa chỉ" },
+  region: { en: "Region", vi: "Khu vực" },
+  age: { en: "Age", vi: "Tuổi" },
+  birthYear: { en: "Birth year", vi: "Năm sinh" },
+  gender: { en: "Gender", vi: "Giới tính" },
+  height: { en: "Height", vi: "Chiều cao" },
+  heightCm: { en: "Height", vi: "Chiều cao" },
+  weight: { en: "Weight", vi: "Cân nặng" },
+  weightKg: { en: "Weight", vi: "Cân nặng" },
+  hasPassport: { en: "Passport", vi: "Hộ chiếu" },
+  experienceLevel: { en: "Experience level", vi: "Mức độ kinh nghiệm" },
+  experienceYears: { en: "Experience years", vi: "Số năm kinh nghiệm" },
+  experienceField: { en: "Experience field", vi: "Lĩnh vực kinh nghiệm" },
+  experienceDetails: { en: "Experience details", vi: "Chi tiết kinh nghiệm" },
+  desiredIndustry: { en: "Desired industry", vi: "Ngành mong muốn" },
+  preferredRegion: { en: "Preferred region", vi: "Khu vực mong muốn" },
+  preferredRegions: { en: "Preferred regions", vi: "Khu vực mong muốn" },
+  desiredSalary: { en: "Desired salary", vi: "Mức lương mong muốn" },
+  tattooStatus: { en: "Tattoo status", vi: "Tình trạng hình xăm" },
+  healthMeetsCriteria: { en: "Health fit", vi: "Sức khỏe đạt yêu cầu" },
+  hasWorkedAbroad: { en: "Worked abroad", vi: "Từng đi nước ngoài" },
+  hasCleanHistoryAbroad: { en: "Clean abroad history", vi: "Lịch sử nước ngoài sạch" },
+  hasStrongSkills: { en: "Strong skills", vi: "Có kỹ năng nổi bật" },
+  hasRiskHistory: { en: "Risk history", vi: "Lịch sử rủi ro" },
+  readyToDepartInMonths: { en: "Ready to depart in", vi: "Sẵn sàng xuất cảnh trong" },
+  understandsJobNature: { en: "Understands job nature", vi: "Hiểu tính chất công việc" },
+  hasClearRegionPreference: { en: "Clear region preference", vi: "Định hướng khu vực rõ" },
+  jobNeeds: { en: "Job needs", vi: "Nhu cầu việc làm" },
+  leadSource: { en: "Acquisition source", vi: "Nguồn thu hút" },
+  source: { en: "Channel", vi: "Kênh" }
+};
+
+const fieldsWithEnumValues: ReadonlySet<string> = new Set([
+  "gender",
+  "experienceLevel",
+  "tattooStatus",
+  "hasRiskHistory",
+  "leadSource",
+  "jobNeeds",
+  "preferredRegion",
+  "preferredRegions",
+  "source"
+]);
+
+const booleanFields: ReadonlySet<string> = new Set([
+  "hasPassport",
+  "hasWorkedAbroad",
+  "healthMeetsCriteria",
+  "hasCleanHistoryAbroad",
+  "hasStrongSkills",
+  "understandsJobNature",
+  "hasClearRegionPreference"
+]);
+
+const numericUnits: Record<string, Copy> = {
+  height: { en: "cm", vi: "cm" },
+  heightCm: { en: "cm", vi: "cm" },
+  weight: { en: "kg", vi: "kg" },
+  weightKg: { en: "kg", vi: "kg" },
+  readyToDepartInMonths: { en: "months", vi: "tháng" },
+  experienceYears: { en: "yrs", vi: "năm" }
 };
 
 function getStoredLang(): Lang {
@@ -127,6 +223,53 @@ export function I18nProvider(props: PropsWithChildren) {
       const found = enumLabels[key] ?? enumLabels[key.toUpperCase()];
       return found ? found[lang] : fallback ?? formatEnumLabel(key);
     };
+    const formatChannel = (value: string) => fromMap(String(value).toLowerCase());
+    const formatConfidence = (value: string) => fromMap(String(value).toLowerCase());
+    const formatExtractionSource = (value: string) => fromMap(String(value).toLowerCase());
+
+    const formatFieldLabel = (key: string): string => {
+      const entry = fieldLabels[key];
+      if (entry) return entry[lang];
+      // Last-resort fallback for unmapped keys. Translate snake/camel separators
+      // to whitespace so the visible string is at least readable. Add the key to
+      // `fieldLabels` above to give it a real Vietnamese label.
+      return key.replace(/([A-Z])/g, " $1").replace(/[_-]+/g, " ").replace(/^./, (c) => c.toUpperCase()).trim();
+    };
+
+    const formatScalarValue = (key: string, value: string | number): string => {
+      if (typeof value === "number") {
+        const unit = numericUnits[key];
+        return unit ? `${value} ${unit[lang]}` : String(value);
+      }
+      if (fieldsWithEnumValues.has(key)) {
+        return fromMap(String(value).toLowerCase());
+      }
+      return String(value);
+    };
+
+    const formatFieldValue = (key: string, value: unknown): string => {
+      if (value === null || value === undefined || value === "") return "—";
+      if (typeof value === "boolean") {
+        if (booleanFields.has(key)) {
+          return value ? copy({ en: "Yes", vi: "Có" }) : copy({ en: "No", vi: "Không" });
+        }
+        return value ? copy({ en: "Yes", vi: "Có" }) : copy({ en: "No", vi: "Không" });
+      }
+      if (Array.isArray(value)) {
+        if (value.length === 0) return "—";
+        return value
+          .map((item) =>
+            typeof item === "string" || typeof item === "number"
+              ? formatScalarValue(key, item)
+              : JSON.stringify(item)
+          )
+          .join(", ");
+      }
+      if (typeof value === "string" || typeof value === "number") {
+        return formatScalarValue(key, value);
+      }
+      return JSON.stringify(value);
+    };
 
     return {
       lang,
@@ -157,6 +300,11 @@ export function I18nProvider(props: PropsWithChildren) {
                       ? "Chưa bắt đầu"
                       : formatEnumLabel(value)
         }),
+      formatChannel,
+      formatConfidence,
+      formatExtractionSource,
+      formatFieldLabel,
+      formatFieldValue,
       yesNoUnknown: (value) =>
         value === "true"
           ? copy({ en: "Yes", vi: "Có" })

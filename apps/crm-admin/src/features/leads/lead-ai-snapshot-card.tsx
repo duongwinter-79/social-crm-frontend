@@ -16,7 +16,6 @@ interface Props {
     className?: string;
 }
 
-type Language = "en" | "vi";
 type SectionId = "quick_scan" | "work_experience" | "other";
 
 const SECTION_LABELS: Record<SectionId, { en: string; vi: string }> = {
@@ -49,31 +48,6 @@ const FIELD_SECTION: Record<string, SectionId> = {
     preferredRegions: "work_experience",
     desiredSalary: "work_experience",
     hasWorkedAbroad: "work_experience"
-};
-
-const FIELD_LABELS: Record<string, { en: string; vi: string }> = {
-    fullName: { en: "Full name", vi: "Họ tên" },
-    name: { en: "Name", vi: "Tên" },
-    phone: { en: "Phone", vi: "Số điện thoại" },
-    address: { en: "Address", vi: "Địa chỉ" },
-    age: { en: "Age", vi: "Tuổi" },
-    birthYear: { en: "Birth year", vi: "Năm sinh" },
-    gender: { en: "Gender", vi: "Giới tính" },
-    height: { en: "Height", vi: "Chiều cao" },
-    heightCm: { en: "Height", vi: "Chiều cao" },
-    weight: { en: "Weight", vi: "Cân nặng" },
-    weightKg: { en: "Weight", vi: "Cân nặng" },
-    hasPassport: { en: "Passport", vi: "Hộ chiếu" },
-    experienceLevel: { en: "Experience level", vi: "Mức độ kinh nghiệm" },
-    experienceYears: { en: "Experience years", vi: "Số năm kinh nghiệm" },
-    experienceField: { en: "Experience field", vi: "Lĩnh vực kinh nghiệm" },
-    desiredIndustry: { en: "Desired industry", vi: "Ngành mong muốn" },
-    preferredRegion: { en: "Preferred region", vi: "Khu vực mong muốn" },
-    preferredRegions: { en: "Preferred regions", vi: "Khu vực mong muốn" },
-    desiredSalary: { en: "Desired salary", vi: "Mức lương mong muốn" },
-    tattooStatus: { en: "Tattoo status", vi: "Tình trạng hình xăm" },
-    healthMeetsCriteria: { en: "Health fit", vi: "Sức khỏe đạt yêu cầu" },
-    hasWorkedAbroad: { en: "Worked abroad", vi: "Từng đi nước ngoài" }
 };
 
 const QUALIFICATION_DTO_FIELDS: ReadonlySet<string> = new Set([
@@ -170,37 +144,12 @@ const FIELD_DISPLAY_ALIASES: Record<string, string> = {
     preferredRegion: "preferredRegions"
 };
 
-function labelFor(key: string, lang: Language): string {
-    return FIELD_LABELS[key]?.[lang] ?? titleFromKey(key);
-}
-
 function canonicalDisplayField(key: string): string {
     return FIELD_DISPLAY_ALIASES[key] ?? key;
 }
 
 function sectionFor(key: string): SectionId {
     return FIELD_SECTION[key] ?? "other";
-}
-
-function titleFromKey(key: string) {
-    return key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/[_-]+/g, " ")
-        .replace(/^./, (c) => c.toUpperCase());
-}
-
-function formatValue(key: string, value: unknown): string {
-    if (value === null || value === undefined || value === "") return "—";
-    if (typeof value === "boolean") return value ? "Có" : "Không";
-    if (typeof value === "number") {
-        if (key === "height" || key === "heightCm") return `${value} cm`;
-        if (key === "weight" || key === "weightKg") return `${value} kg`;
-        if (key === "readyToDepartInMonths") return `${value} tháng`;
-        return String(value);
-    }
-    if (typeof value === "string") return value;
-    if (Array.isArray(value)) return value.length === 0 ? "—" : value.map((v) => String(v)).join(", ");
-    return JSON.stringify(value);
 }
 
 function pickValue(suggestions: Map<string, AiSuggestion>, lead: Lead, ...keys: string[]): unknown {
@@ -502,12 +451,18 @@ function FieldRow({
     row,
     verified,
     copy,
-    lang
+    formatFieldLabel,
+    formatFieldValue,
+    formatConfidence,
+    formatExtractionSource
 }: {
     row: RowState;
     verified: Record<string, unknown>;
     copy: (v: { en: string; vi: string }) => string;
-    lang: Language;
+    formatFieldLabel: (key: string) => string;
+    formatFieldValue: (key: string, value: unknown) => string;
+    formatConfidence: (value: string) => string;
+    formatExtractionSource: (value: string) => string;
 }) {
     const suggestion = row.suggestion;
     const verifiedValue = row.isVerified ? verified[row.fieldName] : undefined;
@@ -530,8 +485,9 @@ function FieldRow({
         <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <div className="break-words font-medium text-slate-900">{labelFor(row.fieldName, lang)}</div>
-                    <div className="mt-1 font-mono text-[11px] text-slate-400">{row.fieldName}</div>
+                    <div className="break-words font-medium text-slate-900" title={row.fieldName}>
+                        {formatFieldLabel(row.fieldName)}
+                    </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
                     <Badge tone={tone}>{stateLabel}</Badge>
@@ -545,24 +501,18 @@ function FieldRow({
                                         : "neutral"
                             }
                         >
-                            {suggestion.confidence}
+                            {formatConfidence(suggestion.confidence)}
                         </Badge>
                     ) : null}
                     {suggestion ? (
-                        <Badge tone="neutral">
-                            {suggestion.source === "deterministic"
-                                ? "Regex"
-                                : suggestion.source === "ai_llm"
-                                    ? "AI"
-                                    : "Webhook"}
-                        </Badge>
+                        <Badge tone="neutral">{formatExtractionSource(suggestion.source)}</Badge>
                     ) : null}
                 </div>
             </div>
             <div className="mt-3 space-y-2 text-xs leading-5">
                 <div className="min-w-0 text-slate-500">
                     <span className="text-slate-400">{copy({ en: "AI:", vi: "AI:" })}</span>{" "}
-                    <span className="break-words font-medium text-slate-800">{formatValue(row.fieldName, row.value)}</span>
+                    <span className="break-words font-medium text-slate-800">{formatFieldValue(row.fieldName, row.value)}</span>
                 </div>
                 {row.isVerified || row.verifiedValueDiffers ? (
                     <div className="min-w-0 text-slate-500">
@@ -570,7 +520,7 @@ function FieldRow({
                             {copy({ en: "Verified:", vi: "Đã xác minh:" })}
                         </span>{" "}
                         <span className="break-words font-medium text-slate-800">
-                            {formatValue(row.fieldName, verifiedValue ?? verified[row.fieldName])}
+                            {formatFieldValue(row.fieldName, verifiedValue ?? verified[row.fieldName])}
                         </span>
                     </div>
                 ) : null}
@@ -587,7 +537,13 @@ function FieldRow({
 }
 
 export function LeadAiSnapshotCard(props: Props) {
-    const { copy, lang } = useI18n();
+    const {
+        copy,
+        formatFieldLabel,
+        formatFieldValue,
+        formatConfidence,
+        formatExtractionSource
+    } = useI18n();
 
     const verifiedKeys: string[] = Array.isArray((props.lead as unknown as { verifiedKeys?: unknown }).verifiedKeys)
         ? ((props.lead as unknown as { verifiedKeys: string[] }).verifiedKeys)
@@ -748,7 +704,7 @@ export function LeadAiSnapshotCard(props: Props) {
                 {conflicts.length > 0 ? (
                     <div className="max-w-2xl break-words text-xs leading-5 text-amber-700">
                         {copy({ en: "Conflicts:", vi: "Mâu thuẫn:" })}{" "}
-                        {conflicts.map((conflict) => labelFor(conflict.fieldName, lang)).join(", ")}
+                        {conflicts.map((conflict) => formatFieldLabel(conflict.fieldName)).join(", ")}
                     </div>
                 ) : null}
                 </div>
@@ -788,7 +744,10 @@ export function LeadAiSnapshotCard(props: Props) {
                                         row={row}
                                         verified={verified}
                                         copy={copy}
-                                        lang={lang}
+                                        formatFieldLabel={formatFieldLabel}
+                                        formatFieldValue={formatFieldValue}
+                                        formatConfidence={formatConfidence}
+                                        formatExtractionSource={formatExtractionSource}
                                     />
                                 ))}
                             </div>
