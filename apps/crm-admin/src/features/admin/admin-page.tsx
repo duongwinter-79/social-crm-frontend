@@ -113,12 +113,6 @@ export function AdminPage() {
             })}
           </span>
           <Badge tone="warning">{copy({ en: "No raw policy editing", vi: "Không chỉnh sửa chính sách trực tiếp" })}</Badge>
-          <Badge tone="neutral">
-            {copy({
-              en: "Integrations live under the Integrations tab",
-              vi: "Quản lý tích hợp ở tab Integrations"
-            })}
-          </Badge>
         </div>
       </InfoStrip>
 

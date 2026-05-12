@@ -10,7 +10,6 @@ export const capabilityRegistry: CapabilityRegistry = {
   applications: { enabled: true },
   documents: { enabled: true },
   trainingFinance: { enabled: true },
-  integrations: { enabled: true },
   candidatePortal: {
     enabled: false,
     reason: "External candidate auth and resource APIs are not complete yet."

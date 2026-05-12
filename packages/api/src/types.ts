@@ -523,6 +523,5 @@ export interface CapabilityRegistry {
   applications: CapabilityState;
   documents: CapabilityState;
   trainingFinance: CapabilityState;
-  integrations: CapabilityState;
   candidatePortal: CapabilityState;
 }

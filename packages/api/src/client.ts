@@ -455,6 +455,9 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  // CNV integration is no longer surfaced in the UI. The methods below remain
+  // so the API client surface stays stable for any future re-enablement, but
+  // no admin screen consumes them today. Do not add new UI callers.
   async testCnvToken() {
     const response = await this.http.get<ApiEnvelope<{ success: boolean; tokenPrefix: string | null }> | { success: boolean; tokenPrefix: string | null }>("/cnv/webhook-admin/test-token");
     return unwrapEnvelope(response.data);

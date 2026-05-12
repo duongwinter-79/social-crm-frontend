@@ -200,8 +200,8 @@ export function ConversationsPage() {
         eyebrow={copy({ en: "Zalo OA operations", vi: "Vận hành Zalo OA" })}
         title={copy({ en: "Conversation inbox", vi: "Hộp thoại hội thoại" })}
         description={copy({
-          en: "Inspect Zalo threads, recent messages, lead linkage, and extraction status from the CRM database. CNV remains available under Integrations as a deprecated read source.",
-          vi: "Theo dõi hội thoại Zalo, tin nhắn gần đây, liên kết lead và trạng thái trích xuất từ database CRM. CNV vẫn nằm trong Tích hợp như nguồn đọc đã deprecated."
+          en: "Inspect Zalo threads, recent messages, lead linkage, and extraction status from the CRM database.",
+          vi: "Theo dõi hội thoại Zalo, tin nhắn gần đây, liên kết lead và trạng thái trích xuất từ database CRM."
         })}
       />
 

@@ -515,6 +515,9 @@ export function useRevokeAdminSessionMutation() {
   });
 }
 
+// CNV integration is no longer surfaced in the UI. The hooks below remain so
+// the API client surface stays stable for any future re-enablement, but no
+// admin screen consumes them today. Do not add new UI callers.
 export function useCnvInfoQuery(enabled = true) {
   return useQuery({
     queryKey: ["cnv", "info"],
