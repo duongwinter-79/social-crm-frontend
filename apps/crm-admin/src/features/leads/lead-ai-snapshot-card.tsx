@@ -1,15 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Badge, Button, EmptyState, InfoStrip, Panel } from "@social-crm/ui";
 import type { AiSuggestion, BackgroundExtractionStatus, Lead, LeadQualificationSnapshot } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 import { findPhoneMergeCandidate } from "./field-with-provenance";
+
+export type ScanMode = "new_only" | "include_scanned";
 
 interface Props {
     lead: Lead;
     suggestions: AiSuggestion[];
     qualification: LeadQualificationSnapshot | undefined;
     onVerifyAll: (patch: Record<string, unknown>) => void;
-    onRerunExtraction: () => void;
+    onRerunExtraction: (scanMode: ScanMode) => void;
     isVerifyAllPending: boolean;
     isRerunPending: boolean;
     extractionStatus: BackgroundExtractionStatus;
@@ -545,6 +547,18 @@ export function LeadAiSnapshotCard(props: Props) {
         formatExtractionSource
     } = useI18n();
 
+    // Refresh dialog state. The "Refresh structured extraction" button no
+    // longer triggers the rerun directly — it opens a dialog where the
+    // operator picks new_only (cheap, default) vs include_scanned (full
+    // rescan, useful after prompt/model changes).
+    const [refreshDialogOpen, setRefreshDialogOpen] = useState(false);
+    const [pendingScanMode, setPendingScanMode] = useState<ScanMode>("new_only");
+
+    const extractionInFlight =
+        props.isRerunPending ||
+        props.extractionStatus === "starting" ||
+        props.extractionStatus === "running";
+
     const verifiedKeys: string[] = Array.isArray((props.lead as unknown as { verifiedKeys?: unknown }).verifiedKeys)
         ? ((props.lead as unknown as { verifiedKeys: string[] }).verifiedKeys)
         : [];
@@ -693,14 +707,113 @@ export function LeadAiSnapshotCard(props: Props) {
                     </Button>
                     <Button
                         variant="secondary"
-                        onClick={props.onRerunExtraction}
-                        disabled={props.isRerunPending || props.extractionStatus === "starting" || props.extractionStatus === "running"}
+                        onClick={() => {
+                            setPendingScanMode("new_only");
+                            setRefreshDialogOpen(true);
+                        }}
+                        disabled={extractionInFlight}
                     >
-                        {props.isRerunPending || props.extractionStatus === "starting" || props.extractionStatus === "running"
+                        {extractionInFlight
                             ? copy({ en: "Extracting...", vi: "Đang trích xuất..." })
                             : copy({ en: "Refresh structured extraction", vi: "Cập nhật trích xuất có cấu trúc" })}
                     </Button>
                 </div>
+
+                {refreshDialogOpen ? (
+                    <div className="mt-4 rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">
+                        <div className="mb-3">
+                            <div className="text-sm font-semibold text-slate-900">
+                                {copy({ en: "Refresh structured extraction", vi: "Cập nhật trích xuất có cấu trúc" })}
+                            </div>
+                            <div className="mt-1 text-xs leading-5 text-slate-500">
+                                {copy({
+                                    en: "Choose which messages the AI should process. Verified lead fields are protected in either mode.",
+                                    vi: "Chọn phạm vi tin nhắn AI sẽ xử lý. Trường đã xác minh được bảo vệ trong cả hai chế độ."
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label
+                                className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition-colors ${
+                                    pendingScanMode === "new_only"
+                                        ? "border-indigo-500 bg-indigo-50/60"
+                                        : "border-slate-200 hover:bg-slate-50"
+                                }`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="scanMode"
+                                    value="new_only"
+                                    checked={pendingScanMode === "new_only"}
+                                    onChange={() => setPendingScanMode("new_only")}
+                                    className="mt-1"
+                                />
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-sm font-medium text-slate-900">
+                                            {copy({ en: "New messages only", vi: "Chỉ tin nhắn mới" })}
+                                        </span>
+                                        <Badge tone="accent">{copy({ en: "Recommended", vi: "Khuyến nghị" })}</Badge>
+                                    </div>
+                                    <div className="mt-1 text-xs leading-5 text-slate-500">
+                                        {copy({
+                                            en: "Faster and lower AI cost. Only scans messages that have not been processed before.",
+                                            vi: "Nhanh hơn và tốn ít AI hơn. Chỉ quét tin nhắn chưa được xử lý."
+                                        })}
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label
+                                className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition-colors ${
+                                    pendingScanMode === "include_scanned"
+                                        ? "border-indigo-500 bg-indigo-50/60"
+                                        : "border-slate-200 hover:bg-slate-50"
+                                }`}
+                            >
+                                <input
+                                    type="radio"
+                                    name="scanMode"
+                                    value="include_scanned"
+                                    checked={pendingScanMode === "include_scanned"}
+                                    onChange={() => setPendingScanMode("include_scanned")}
+                                    className="mt-1"
+                                />
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-medium text-slate-900">
+                                        {copy({ en: "Old + new messages", vi: "Tin nhắn cũ + mới" })}
+                                    </div>
+                                    <div className="mt-1 text-xs leading-5 text-slate-500">
+                                        {copy({
+                                            en: "Reprocesses previously scanned messages too. Useful after prompt/model changes or to fix missed extraction.",
+                                            vi: "Xử lý lại cả tin nhắn đã quét trước đó. Hữu ích sau khi thay đổi prompt/model hoặc khi trích xuất bị bỏ sót."
+                                        })}
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <Button
+                                onClick={() => {
+                                    props.onRerunExtraction(pendingScanMode);
+                                    setRefreshDialogOpen(false);
+                                }}
+                                disabled={extractionInFlight}
+                            >
+                                {copy({ en: "Start refresh", vi: "Bắt đầu cập nhật" })}
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setRefreshDialogOpen(false)}
+                                disabled={extractionInFlight}
+                            >
+                                {copy({ en: "Cancel", vi: "Hủy" })}
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
                 {conflicts.length > 0 ? (
                     <div className="max-w-2xl break-words text-xs leading-5 text-amber-700">
                         {copy({ en: "Conflicts:", vi: "Mâu thuẫn:" })}{" "}

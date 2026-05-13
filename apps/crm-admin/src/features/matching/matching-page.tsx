@@ -30,7 +30,7 @@ function toneForStatus(status: string) {
   const normalized = status.toUpperCase();
   if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(normalized)) return "danger" as const;
   if (["MATCHED", "INTERVIEW_PASSED", "CONTRACT_SIGNED", "DEPARTED"].includes(normalized)) return "success" as const;
-  if (["QUALIFIED", "MATCHING", "INTERVIEW_SCHEDULED", "INTERVIEWING", "VISA_PROCESSING"].includes(normalized)) return "warning" as const;
+  if (["QUALIFIED", "MATCHING", "INTERVIEW_SCHEDULED", "VISA_PROCESSING"].includes(normalized)) return "warning" as const;
   return "accent" as const;
 }
 

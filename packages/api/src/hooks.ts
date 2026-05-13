@@ -295,8 +295,12 @@ export function useProcessThreadExtractionMutation() {
   };
 
   const mutation = useMutation({
-    mutationFn: (args: { leadId: string; threadId: string; maxBatches?: number }) =>
-      apiClient.processThreadExtraction(args),
+    mutationFn: (args: {
+      leadId: string;
+      threadId: string;
+      maxBatches?: number;
+      scanMode?: "new_only" | "include_scanned";
+    }) => apiClient.processThreadExtraction(args),
     onMutate: () => {
       clearPoll();
       setBackgroundStatus("starting");

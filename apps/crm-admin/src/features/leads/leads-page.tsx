@@ -8,7 +8,7 @@ function toneForStatus(status: string) {
   const normalized = status.toLowerCase();
   if (["interview_failed", "disqualified"].includes(normalized)) return "danger" as const;
   if (["matched", "interview_passed", "contract_signed", "departed"].includes(normalized)) return "success" as const;
-  if (["qualified", "matching", "interview_scheduled", "interviewing", "visa_processing"].includes(normalized)) return "warning" as const;
+  if (["qualified", "matching", "interview_scheduled", "visa_processing"].includes(normalized)) return "warning" as const;
   return "accent" as const;
 }
 
@@ -19,7 +19,6 @@ const LEAD_STATUS_OPTIONS = [
   "matching",
   "matched",
   "interview_scheduled",
-  "interviewing",
   "interview_passed",
   "interview_failed",
   "contract_signed",
@@ -68,7 +67,7 @@ export function LeadsPage() {
       stale: leads.filter((lead) => !lead.updatedAt || lead.updatedAt === lead.createdAt).length,
       hot: leads.filter((lead) => (lead.leadScore ?? 0) >= 80).length,
       blocked: leads.filter((lead) => ["interview_failed", "disqualified"].includes(lead.status.toLowerCase())).length,
-      worked: leads.filter((lead) => ["qualified", "matching", "matched", "interview_scheduled", "interviewing"].includes(lead.status.toLowerCase())).length
+      worked: leads.filter((lead) => ["qualified", "matching", "matched", "interview_scheduled"].includes(lead.status.toLowerCase())).length
     };
   }, [leads]);
 

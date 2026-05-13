@@ -18,7 +18,7 @@ import type { PipelineRow } from "@social-crm/api";
 function toneForStage(stage: string) {
   if (["departed"].includes(stage)) return "success" as const;
   if (["disqualified", "interview_failed"].includes(stage)) return "danger" as const;
-  if (["visa_processing", "contract_signed", "interview_passed", "interviewing", "interview_scheduled"].includes(stage)) return "warning" as const;
+  if (["visa_processing", "contract_signed", "interview_passed", "interview_scheduled"].includes(stage)) return "warning" as const;
   return "accent" as const;
 }
 

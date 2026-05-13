@@ -40,11 +40,16 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 const enumLabels: Record<string, Copy> = {
   NEW: { en: "New", vi: "Mới" },
   CONTACTED: { en: "Contacted", vi: "Đã liên hệ" },
-  QUALIFIED: { en: "Qualified", vi: "Đủ điều kiện" },
+  // 2026-05-14: relabelled per operator feedback. The backend enum value
+  // stays `qualified` for stability; only the visible label changes to
+  // match how operators talk about this state ("the form is ready").
+  QUALIFIED: { en: "Form ready", vi: "Đã có form" },
   MATCHING: { en: "Matching", vi: "Đang ghép đơn" },
   MATCHED: { en: "Matched", vi: "Đã ghép đơn" },
-  INTERVIEW_SCHEDULED: { en: "Interview scheduled", vi: "Đã lên lịch phỏng vấn" },
-  INTERVIEWING: { en: "Interviewing", vi: "Đang phỏng vấn" },
+  // 2026-05-14: INTERVIEW_SCHEDULED now covers both "scheduled" and
+  // "completed but not yet evaluated" — INTERVIEWING was removed from the
+  // state machine. The display label reflects the combined semantics.
+  INTERVIEW_SCHEDULED: { en: "Interviewed", vi: "Đã phỏng vấn" },
   INTERVIEW_PASSED: { en: "Interview passed", vi: "Phỏng vấn đạt" },
   INTERVIEW_FAILED: { en: "Interview failed", vi: "Phỏng vấn trượt" },
   CONTRACT_SIGNED: { en: "Contract signed", vi: "Đã ký hợp đồng" },
@@ -56,7 +61,7 @@ const enumLabels: Record<string, Copy> = {
   COLD: { en: "Cold", vi: "Lạnh" },
   matching: { en: "Matching", vi: "Đang ghép đơn" },
   referred: { en: "Referred", vi: "Đã giới thiệu" },
-  interview_scheduled: { en: "Interview scheduled", vi: "Đã lên lịch phỏng vấn" },
+  interview_scheduled: { en: "Interviewed", vi: "Đã phỏng vấn" },
   interview_passed: { en: "Interview passed", vi: "Phỏng vấn đạt" },
   interview_failed: { en: "Interview failed", vi: "Phỏng vấn trượt" },
   signing: { en: "Signing", vi: "Đang ký" },
@@ -97,7 +102,6 @@ const enumLabels: Record<string, Copy> = {
   interview_failed_stage: { en: "Interview failed", vi: "Phỏng vấn trượt" },
   visa_processing: { en: "Visa processing", vi: "Đang làm visa" },
   contract_signed: { en: "Contract signed", vi: "Đã ký hợp đồng" },
-  interviewing: { en: "Interviewing", vi: "Đang phỏng vấn" },
   // Channels / lead sources
   zalo: { en: "Zalo", vi: "Zalo" },
   facebook: { en: "Facebook", vi: "Facebook" },

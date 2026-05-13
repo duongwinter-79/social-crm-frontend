@@ -255,7 +255,14 @@ export function ShellFrame(props: PropsWithChildren<{ sidebar: ReactNode; header
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] text-slate-900">
       <div className="grid min-h-screen lg:grid-cols-[272px_minmax(0,1fr)]">
-        <aside className="border-r border-slate-800 bg-slate-950 text-slate-200">{props.sidebar}</aside>
+        {/*
+          Sidebar stays pinned to the viewport (sticky top:0 + height:100vh on lg+),
+          and gets its own overflow-y so a long nav list can scroll independently
+          without dragging the rest of the page with it.
+        */}
+        <aside className="border-r border-slate-800 bg-slate-950 text-slate-200 lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto">
+          {props.sidebar}
+        </aside>
         <div className="min-w-0">
           <div className="border-b border-slate-200/80 bg-white/90 backdrop-blur">{props.header}</div>
           <main className="p-4 md:p-6 xl:p-8">{props.children}</main>

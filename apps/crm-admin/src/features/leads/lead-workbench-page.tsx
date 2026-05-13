@@ -43,7 +43,7 @@ import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
 function toneForStatus(status: string) {
   if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
   if (["MATCHED", "INTERVIEW_PASSED", "CONTRACT_SIGNED", "DEPARTED"].includes(status)) return "success" as const;
-  if (["QUALIFIED", "MATCHING", "INTERVIEW_SCHEDULED", "INTERVIEWING", "VISA_PROCESSING"].includes(status)) return "warning" as const;
+  if (["QUALIFIED", "MATCHING", "INTERVIEW_SCHEDULED", "VISA_PROCESSING"].includes(status)) return "warning" as const;
   return "accent" as const;
 }
 
@@ -362,9 +362,9 @@ export function LeadWorkbenchPage() {
         suggestions={suggestionsQuery.data ?? []}
         qualification={qualificationQuery.data}
         onVerifyAll={(patch) => qualificationMutation.mutate(patch)}
-        onRerunExtraction={() => {
+        onRerunExtraction={(scanMode) => {
           if (selectedThreadId) {
-            runExtraction.mutate({ leadId, threadId: selectedThreadId });
+            runExtraction.mutate({ leadId, threadId: selectedThreadId, scanMode });
           }
         }}
         isVerifyAllPending={qualificationMutation.isPending}

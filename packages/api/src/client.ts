@@ -363,10 +363,24 @@ export class SocialCrmApiClient {
    * Writes LeadAiSuggestion rows + applies the auto-apply allowlist + recomputes
    * lead score.
    */
-  async processThreadExtraction(args: { leadId: string; threadId: string; maxBatches?: number }) {
+  /**
+   * `scanMode`:
+   *   - `"new_only"` (default) — process only inbound text messages with
+   *     `aiScannedAt IS NULL`. Cheap; matches the worker / inbound listener.
+   *   - `"include_scanned"` — operator-triggered full rescan; reprocesses
+   *     previously scanned messages too. Use after AI prompt changes or to
+   *     fix missed extraction. Suggestions can supersede older ones, but
+   *     verified lead fields stay authoritative.
+   */
+  async processThreadExtraction(args: {
+    leadId: string;
+    threadId: string;
+    maxBatches?: number;
+    scanMode?: "new_only" | "include_scanned";
+  }) {
     const response = await this.http.post<
-      | ApiEnvelope<{ threadId: string; leadId: string; triggered: boolean; mode?: string }>
-      | { threadId: string; leadId: string; triggered: boolean; mode?: string }
+      | ApiEnvelope<{ threadId: string; leadId: string; triggered: boolean; mode?: string; scanMode?: string }>
+      | { threadId: string; leadId: string; triggered: boolean; mode?: string; scanMode?: string }
     >("/ai-extraction/process-thread", args);
     return unwrapEnvelope(response.data);
   }
