@@ -121,7 +121,16 @@ const enumLabels: Record<string, Copy> = {
   // Regions
   north: { en: "North", vi: "Miền Bắc" },
   central: { en: "Central", vi: "Miền Trung" },
-  south: { en: "South", vi: "Miền Nam" }
+  south: { en: "South", vi: "Miền Nam" },
+  // Lead-triage preliminary fit
+  promising: { en: "Promising fit", vi: "Phù hợp tiềm năng" },
+  needs_review: { en: "Needs review", vi: "Cần xem xét" },
+  insufficient_data: { en: "Insufficient verified data", vi: "Chưa đủ dữ liệu xác minh" },
+  not_fit: { en: "Not a fit", vi: "Không phù hợp" },
+  // Order-matching conclusions
+  high_priority: { en: "High priority", vi: "Ưu tiên cao" },
+  conditional: { en: "Conditional", vi: "Có điều kiện" },
+  limited: { en: "Limited", vi: "Hạn chế" }
 };
 
 const fieldLabels: Record<string, Copy> = {

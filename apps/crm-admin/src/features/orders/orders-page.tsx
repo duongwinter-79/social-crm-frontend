@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Badge, Button, EmptyState, FieldGroup, InfoCard, Input, MetricCard, Panel, SectionHeader, Select, Toolbar } from "@social-crm/ui";
 import {
+  apiClient,
+  triggerBlobDownload,
   useCreateOrderMutation,
   useLeadsQuery,
   useMatchingEvaluationMutation,
@@ -45,9 +47,21 @@ const emptyOrderForm: OrderFormState = {
 };
 
 export function OrdersPage() {
-  const { copy, formatLeadStatus } = useI18n();
+  const { copy, formatLeadStatus, lang } = useI18n();
   const user = useSessionStore((state) => state.user);
   const ordersQuery = useOrdersQuery();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportCsv = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const { blob, filename } = await apiClient.exportOrdersCsv({ lang });
+      triggerBlobDownload(blob, filename);
+    } finally {
+      setIsExporting(false);
+    }
+  };
   const leadsQuery = useLeadsQuery({ offset: 0, limit: 50 });
   const evaluation = useMatchingEvaluationMutation();
   const createOrder = useCreateOrderMutation();
@@ -119,13 +133,20 @@ export function OrdersPage() {
           vi: "Giai đoạn 2 biến đơn hàng thành bề mặt vận hành dày thông tin hơn: tóm tắt yêu cầu, kiểm tra độ phù hợp hồ sơ và thao tác triage chạy bằng backend."
         })}
         action={
-          isAdmin ? (
-            <Button onClick={resetEditor}>
-              {copy({ en: "New order", vi: "Tạo đơn" })}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
+              {isExporting
+                ? copy({ en: "Exporting…", vi: "Đang xuất…" })
+                : copy({ en: "Export CSV", vi: "Xuất CSV" })}
             </Button>
-          ) : (
-            <Badge tone="neutral">{copy({ en: "Order edits are admin-only", vi: "Chỉ admin được sửa đơn" })}</Badge>
-          )
+            {isAdmin ? (
+              <Button onClick={resetEditor}>
+                {copy({ en: "New order", vi: "Tạo đơn" })}
+              </Button>
+            ) : (
+              <Badge tone="neutral">{copy({ en: "Order edits are admin-only", vi: "Chỉ admin được sửa đơn" })}</Badge>
+            )}
+          </div>
         }
       />
 

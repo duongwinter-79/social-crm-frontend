@@ -206,6 +206,13 @@ export interface Lead {
   verifiedProfileData?: Record<string, unknown> | null;
   leadScore?: number | null;
   leadClassification?: string | null;
+  // Disqualification metadata — populated only while status === 'disqualified'.
+  disqualifiedAt?: string | null;
+  disqualifiedByUserId?: string | null;
+  disqualifiedByUsername?: string | null;
+  disqualifiedReason?: string | null;
+  previousStatus?: string | null;
+  verifiedKeys?: string[] | null;
   createdAt?: string;
   updatedAt?: string;
   threads?: Thread[];

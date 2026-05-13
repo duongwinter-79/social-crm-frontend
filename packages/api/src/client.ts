@@ -56,6 +56,24 @@ function unwrapEnvelope<T>(value: ApiEnvelope<T> | T): T {
 }
 
 /**
+ * Pull `filename="..."` out of a Content-Disposition header.  Falls back to
+ * the RFC 5987 `filename*=UTF-8''...` form when present.
+ */
+function parseFilenameFromContentDisposition(header: string | undefined | null): string | null {
+  if (!header) return null;
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      // fall through to plain match
+    }
+  }
+  const plainMatch = header.match(/filename="?([^";]+)"?/i);
+  return plainMatch ? plainMatch[1] : null;
+}
+
+/**
  * Server response shape after Step 7F: refresh token lives in an httpOnly
  * cookie, so the JSON body only carries the access token.
  */
@@ -209,6 +227,29 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  /**
+   * Download leads as CSV using the current filter set. Returns a Blob plus
+   * the server-suggested filename (from Content-Disposition) so the caller
+   * can trigger a browser download.
+   */
+  async exportLeadsCsv(params: { source?: string; status?: string; search?: string; lang?: "vi" | "en" } = {}) {
+    const response = await this.http.get<Blob>("/leads/export.csv", {
+      params: { lang: params.lang ?? "vi", ...params },
+      responseType: "blob"
+    });
+    const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    return { blob: response.data, filename };
+  }
+
+  async exportOrdersCsv(params: { lang?: "vi" | "en" } = {}) {
+    const response = await this.http.get<Blob>("/orders/export.csv", {
+      params: { lang: params.lang ?? "vi" },
+      responseType: "blob"
+    });
+    const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    return { blob: response.data, filename };
+  }
+
   async getLead(id: string) {
     const response = await this.http.get<ApiEnvelope<Lead> | Lead>(`/leads/${id}`);
     return unwrapEnvelope(response.data);
@@ -219,8 +260,17 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async updateLead(id: string, patch: Partial<Lead>) {
+  async updateLead(id: string, patch: Partial<Lead> & { disqualifiedReason?: string }) {
     const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Roll a disqualified lead back to its previous pipeline state. Backend
+   * clears all disqualification metadata and writes an admin audit row.
+   */
+  async restoreLead(id: string) {
+    const response = await this.http.post<ApiEnvelope<Lead> | Lead>(`/leads/${id}/restore`);
     return unwrapEnvelope(response.data);
   }
 

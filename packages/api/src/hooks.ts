@@ -249,6 +249,19 @@ export function useUpdateLeadMutation() {
   });
 }
 
+export function useRestoreLeadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.restoreLead(id),
+    onSuccess: (lead) => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.setQueryData(["lead", lead.id], lead);
+      queryClient.invalidateQueries({ queryKey: ["lead", lead.id, "transitions"] });
+    },
+    meta: { successMessage: "Lead restored" }
+  });
+}
+
 export function useUpdateLeadQualificationMutation(leadId: string) {
   const queryClient = useQueryClient();
   return useMutation({

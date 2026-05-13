@@ -1,7 +1,7 @@
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, DataTable, Input, SectionHeader, Select, Toolbar, ToolbarActions } from "@social-crm/ui";
-import { useLeadsQuery } from "@social-crm/api";
+import { apiClient, triggerBlobDownload, useLeadsQuery } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 
 function toneForStatus(status: string) {
@@ -29,11 +29,28 @@ const LEAD_STATUS_OPTIONS = [
 ];
 
 export function LeadsPage() {
-  const { copy, formatLeadStatus, formatEnum, formatChannel } = useI18n();
+  const { copy, formatLeadStatus, formatEnum, formatChannel, lang } = useI18n();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const deferredSearch = useDeferredValue(search);
+
+  const exportCsv = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const { blob, filename } = await apiClient.exportLeadsCsv({
+        search: deferredSearch || undefined,
+        status: status || undefined,
+        source: source || undefined,
+        lang
+      });
+      triggerBlobDownload(blob, filename);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const query = useLeadsQuery({
     offset: 0,
@@ -101,6 +118,11 @@ export function LeadsPage() {
             ))}
           </Select>
           <ToolbarActions className="justify-start xl:justify-end">
+            <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
+              {isExporting
+                ? copy({ en: "Exporting…", vi: "Đang xuất…" })
+                : copy({ en: "Export CSV", vi: "Xuất CSV" })}
+            </Button>
             <Button
               variant="secondary"
               onClick={() => {

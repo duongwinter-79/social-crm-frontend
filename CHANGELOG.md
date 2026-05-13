@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-05-13
+
+### CSV export from leads and orders pages
+
+- Added `apiClient.exportLeadsCsv` and `apiClient.exportOrdersCsv` that fetch the file as a Blob and parse `Content-Disposition` (including the RFC 5987 `filename*=UTF-8''` form) for the suggested filename.
+- Added a shared `triggerBlobDownload` helper in `packages/api/src/downloads.ts` so JWT-protected endpoints can drive a real browser download via a transient anchor element.
+- Added "Xuất CSV / Export CSV" buttons to the leads filter toolbar and the orders header. The leads button passes the current `search`, `status`, `source`, and `lang` so the downloaded file matches what the operator sees on screen.
+
+### Lead disqualification UI — banner, reason form, restore button
+
+- Replaced the immediate-patch behavior on the "Move to disqualified" toolbar button with an inline reason form. The operator types a reason and confirms; the backend rejects the patch when the reason is missing.
+- Added a red `InfoStrip` that renders on the lead workbench whenever `lead.status === "disqualified"`, showing the recorded reason, the user who triggered it, the timestamp, and the previous pipeline state.
+- Added a "Khôi phục về …" button inside the banner that calls the new `POST /leads/:id/restore` endpoint via `useRestoreLeadMutation`, reverting the lead to its `previousStatus` in one click. Disabled (with tooltip) when `previousStatus` is null — protects against legacy disqualifications recorded before metadata capture existed.
+- Extended the `Lead` frontend type with `disqualifiedAt`, `disqualifiedByUserId`, `disqualifiedByUsername`, `disqualifiedReason`, `previousStatus`, and `verifiedKeys`.
+
+### Triage chip vocabulary cleanup
+
+- Renamed the suggested-orders rejection chip from "Bị loại / Rejected" to "Không hợp đơn này" so it stops colliding with the lead-pipeline state "Đã bị loại / Disqualified".
+- Routed `preliminaryFit` and `conclusion` badges in suggested-orders through `formatEnum` so values like `insufficient_data` / `not_fit` / `high_priority` render as "Chưa đủ dữ liệu xác minh" / "Không phù hợp" / "Ưu tiên cao" in VN mode.
+- Added enum labels for `promising`, `needs_review`, `insufficient_data`, `not_fit`, `high_priority`, `conditional`, `limited` to `i18n/index.tsx`.
+
+### i18n field-label refactor (Vietnamese coverage)
+
+- Centralised field labels, enum-valued field detection, boolean field detection, and numeric unit suffixes in `i18n/index.tsx`. Added four new helpers on the `useI18n()` context: `formatFieldLabel`, `formatFieldValue`, `formatChannel`, `formatConfidence`, `formatExtractionSource`.
+- Removed the raw mono field-name line (`jobNeeds`, `heightCm`, etc.) from each row in the AI snapshot card; the human label is enough and the raw key is preserved as a `title` tooltip.
+- Updated `lead-ai-snapshot-card.tsx` and `field-with-provenance.tsx` to use the new helpers — confidence badges (`high`/`medium`/`low`), source badges (`deterministic`/`ai_llm`/`webhook`), array values like `["labor_export","consultation"]`, booleans, and numbers with units now all render in the active language.
+- Added enum labels for `labor_export`, `consultation`, `domestic_job`, `visa_only`, the four channel values (`zalo`, `facebook`, `miniapp`, `tiktok`, `website`, `gioi_thieu`), and the three region values (`north`, `central`, `south`).
+- Updated `leads-page.tsx` to translate the channel filter dropdown, the table source cell, and known enum tag badges via `formatChannel` / `formatEnum`.
+
+### CNV removed from the operator UI
+
+- Deleted the `/integrations` route, sidebar nav entry, icon variant, and admin-only filter branch in `apps/crm-admin/src/app/router.tsx`.
+- Deleted `apps/crm-admin/src/features/integrations/integrations-page.tsx` along with its directory.
+- Removed the "CNV remains available under Integrations" sentence from the conversations page subtitle and the "Integrations live under the Integrations tab" badge from the admin page.
+- Removed `integrations: CapabilityState` from `CapabilityRegistry` and `capabilityRegistry` since nothing consumes it any longer.
+- Kept the CNV API client methods (`testCnvToken`, `listCnvCustomers`, etc.) and React Query hooks intact behind a "do not add new UI callers" comment so the backend integration code can be re-enabled later without a rewrite. Backend `cnv-integration` module is untouched.
+
 ## 2026-05-11
 
 ### Unified lead qualification form

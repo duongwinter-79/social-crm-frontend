@@ -25,6 +25,7 @@ import {
   useLeadQualificationQuery,
   useLeadTransitionsQuery,
   useProcessThreadExtractionMutation,
+  useRestoreLeadMutation,
   useSuggestedOrdersQuery,
   useUpdateLeadMutation,
   useUpdateLeadQualificationMutation
@@ -57,10 +58,16 @@ export function LeadWorkbenchPage() {
   const suggestedOrdersQuery = useSuggestedOrdersQuery(candidateQuery.data?.id);
   const leadOrderSuggestionsQuery = useLeadOrderSuggestionsQuery(leadId, 5);
   const updateLead = useUpdateLeadMutation();
+  const restoreLead = useRestoreLeadMutation();
   const createApplication = useCreateApplicationMutation();
   const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
+
+  // Two-step disqualification: clicking "Move to disqualified" opens an inline
+  // reason form; the operator types a reason and confirms. Backend rejects the
+  // patch without a reason.
+  const [disqualifyDraft, setDisqualifyDraft] = useState<string | null>(null);
 
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
   const [qualificationForm, setQualificationForm] = useState({
@@ -177,13 +184,21 @@ export function LeadWorkbenchPage() {
             {(transitionsQuery.data?.allowed ?? []).map((next) => {
               const blocker = (transitionsQuery.data?.blocked ?? []).find((b) => b.status === next);
               const isBlocked = Boolean(blocker);
-              const isDanger = next.toLowerCase().includes("failed") || next === "disqualified";
+              const isDisqualify = next === "disqualified";
+              const isDanger = next.toLowerCase().includes("failed") || isDisqualify;
               return (
                 <span key={next} title={blocker?.reason ?? ""} className={isBlocked ? "cursor-not-allowed" : undefined}>
                   <Button
                     variant={isBlocked ? "ghost" : isDanger ? "danger" : "secondary"}
                     size="sm"
-                    onClick={() => updateLead.mutate({ id: leadId, patch: { status: next } })}
+                    onClick={() => {
+                      if (isDisqualify) {
+                        // Two-step: open the inline reason form instead of patching immediately.
+                        setDisqualifyDraft("");
+                        return;
+                      }
+                      updateLead.mutate({ id: leadId, patch: { status: next } });
+                    }}
                     disabled={updateLead.isPending || isBlocked}
                   >
                     {copy({ en: "Move to", vi: "Chuyển sang" })} {formatLeadStatus(next)}
@@ -195,6 +210,117 @@ export function LeadWorkbenchPage() {
           </ToolbarActions>
         </div>
       </Toolbar>
+
+      {disqualifyDraft !== null ? (
+        <InfoStrip className="border-rose-300 bg-rose-50 text-rose-900">
+          <div className="flex w-full flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Badge tone="danger">{copy({ en: "Confirm disqualification", vi: "Xác nhận loại lead" })}</Badge>
+              <span className="text-sm font-medium">
+                {copy({
+                  en: "Provide a reason so the team can review or roll this back later.",
+                  vi: "Hãy nêu lý do để cả nhóm có thể xem lại hoặc khôi phục sau này."
+                })}
+              </span>
+            </div>
+            <Input
+              label={copy({ en: "Reason", vi: "Lý do" })}
+              value={disqualifyDraft}
+              onChange={(event) => setDisqualifyDraft(event.target.value)}
+              placeholder={copy({
+                en: "e.g. wrong phone, abandoned conversation, ineligible age…",
+                vi: "VD: sai số điện thoại, không phản hồi, không đủ tuổi…"
+              })}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={updateLead.isPending || disqualifyDraft.trim().length === 0}
+                onClick={() => {
+                  updateLead.mutate(
+                    { id: leadId, patch: { status: "disqualified", disqualifiedReason: disqualifyDraft.trim() } },
+                    { onSuccess: () => setDisqualifyDraft(null) }
+                  );
+                }}
+              >
+                {updateLead.isPending
+                  ? copy({ en: "Disqualifying…", vi: "Đang loại…" })
+                  : copy({ en: "Confirm disqualify", vi: "Xác nhận loại" })}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setDisqualifyDraft(null)} disabled={updateLead.isPending}>
+                {copy({ en: "Cancel", vi: "Hủy" })}
+              </Button>
+            </div>
+          </div>
+        </InfoStrip>
+      ) : null}
+
+      {lead.status === "disqualified" ? (
+        <InfoStrip className="border-rose-300 bg-rose-50 text-rose-900">
+          <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="danger">{copy({ en: "Lead disqualified", vi: "Lead đã bị loại" })}</Badge>
+                {lead.previousStatus ? (
+                  <span className="text-xs">
+                    {copy({ en: "Previous status:", vi: "Trạng thái trước:" })}{" "}
+                    <span className="font-semibold">{formatLeadStatus(lead.previousStatus)}</span>
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-1 text-sm leading-6">
+                <span className="font-semibold">{copy({ en: "Reason:", vi: "Lý do:" })}</span>{" "}
+                {lead.disqualifiedReason || copy({ en: "(no reason recorded)", vi: "(không có lý do được ghi nhận)" })}
+              </div>
+              <div className="mt-0.5 text-xs text-rose-700/80">
+                {lead.disqualifiedByUsername ? (
+                  <>
+                    {copy({ en: "By", vi: "Bởi" })}{" "}
+                    <span className="font-semibold">{lead.disqualifiedByUsername}</span>
+                  </>
+                ) : null}
+                {lead.disqualifiedAt ? (
+                  <>
+                    {lead.disqualifiedByUsername ? " · " : ""}
+                    {copy({ en: "On", vi: "Vào" })}{" "}
+                    <span className="font-mono">{new Date(lead.disqualifiedAt).toLocaleString()}</span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <span
+              title={
+                lead.previousStatus
+                  ? copy({
+                      en: `Restore to ${lead.previousStatus}`,
+                      vi: `Khôi phục về ${formatLeadStatus(lead.previousStatus)}`
+                    })
+                  : copy({
+                      en: "No previous status recorded — cannot restore automatically",
+                      vi: "Không có trạng thái trước — không thể khôi phục tự động"
+                    })
+              }
+            >
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={restoreLead.isPending || !lead.previousStatus}
+                onClick={() => restoreLead.mutate(leadId)}
+              >
+                {restoreLead.isPending
+                  ? copy({ en: "Restoring…", vi: "Đang khôi phục…" })
+                  : lead.previousStatus
+                    ? copy({
+                        en: `Restore to ${formatLeadStatus(lead.previousStatus)}`,
+                        vi: `Khôi phục về ${formatLeadStatus(lead.previousStatus)}`
+                      })
+                    : copy({ en: "Restore unavailable", vi: "Không thể khôi phục" })}
+              </Button>
+            </span>
+          </div>
+        </InfoStrip>
+      ) : null}
 
       {(transitionsQuery.data?.blocked ?? []).length ? (
         <InfoStrip className="border-amber-300 bg-amber-50 text-amber-900">
@@ -503,7 +629,7 @@ export function LeadWorkbenchPage() {
               />
             ) : (
               <div className="space-y-3">
-                {(leadOrderSuggestionsQuery.data ?? []).map((sug) => renderLeadSuggestion(sug, copy))}
+                {(leadOrderSuggestionsQuery.data ?? []).map((sug) => renderLeadSuggestion(sug, copy, formatEnum))}
               </div>
             )}
           </Panel>
@@ -673,6 +799,7 @@ function toneForFit(fit: LeadOrderSuggestion["preliminaryFit"]) {
 function renderLeadSuggestion(
   sug: LeadOrderSuggestion,
   copy: (value: { en: string; vi: string }) => string,
+  formatEnum: (value: string) => string,
 ) {
   return (
     <div
@@ -684,8 +811,8 @@ function renderLeadSuggestion(
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <div className="font-semibold text-slate-900">{sug.name}</div>
-            <Badge tone={toneForConclusion(sug.conclusion)}>{sug.conclusion}</Badge>
-            <Badge tone={toneForFit(sug.preliminaryFit)}>{sug.preliminaryFit}</Badge>
+            <Badge tone={toneForConclusion(sug.conclusion)}>{formatEnum(sug.conclusion)}</Badge>
+            <Badge tone={toneForFit(sug.preliminaryFit)}>{formatEnum(sug.preliminaryFit)}</Badge>
             {sug.requiresManagerApproval ? (
               <Badge tone="warning">{copy({ en: "Manager approval", vi: "Cần duyệt quản lý" })}</Badge>
             ) : null}
@@ -701,7 +828,10 @@ function renderLeadSuggestion(
 
       {sug.rejectReason ? (
         <div className="mt-2 text-xs text-rose-700">
-          <span className="font-semibold">{copy({ en: "Rejected", vi: "Bị loại" })}:</span> {sug.rejectReason}
+          <span className="font-semibold">
+            {copy({ en: "Order fit issue", vi: "Không hợp đơn này" })}:
+          </span>{" "}
+          {sug.rejectReason}
         </div>
       ) : null}
 
