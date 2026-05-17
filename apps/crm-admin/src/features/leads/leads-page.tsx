@@ -4,7 +4,8 @@ import { Badge, Button, DataTable, Input, PaginationFooter, SectionHeader, Selec
 import { apiClient, triggerBlobDownload, useLeadsQuery, type Lead } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
 function toneForStatus(status: string) {
   const normalized = status.toLowerCase();
@@ -77,22 +78,27 @@ export function LeadsPage() {
   const [status, setStatus] = useState("");
   const [source, setSource] = useState("");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<PageSize>(20);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const deferredSearch = useDeferredValue(search);
 
   const query = useLeadsQuery({
-    offset: page * PAGE_SIZE,
-    limit: PAGE_SIZE,
+    offset: page * pageSize,
+    limit: pageSize,
     search: deferredSearch || undefined,
     status: status || undefined,
-    source: source || undefined
+    source: source || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined
   });
 
   const leads = query.data?.data ?? [];
   const total = query.data?.total ?? 0;
-  const currentStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
-  const currentEnd = Math.min((page + 1) * PAGE_SIZE, total);
+  const currentStart = total === 0 ? 0 : page * pageSize + 1;
+  const currentEnd = Math.min((page + 1) * pageSize, total);
 
   const exportCsv = async () => {
     if (isExporting) return;
@@ -102,6 +108,8 @@ export function LeadsPage() {
         search: deferredSearch || undefined,
         status: status || undefined,
         source: source || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
         lang
       });
       triggerBlobDownload(blob, filename);
@@ -163,67 +171,110 @@ export function LeadsPage() {
       </div>
 
       <Toolbar className="border-slate-200/90">
-        <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr_1fr_auto]">
-          <Input
-            label={copy({ en: "Lead search", vi: "Tìm lead" })}
-            value={search}
-            onChange={(event) => {
-              const value = event.target.value;
-              startTransition(() => {
-                setSearch(value);
-                resetPage();
-              });
-            }}
-            placeholder={copy({ en: "Name...", vi: "Tên lead..." })}
-          />
-          <Select
-            label={copy({ en: "Status", vi: "Trạng thái" })}
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value);
-              resetPage();
-            }}
-          >
-            <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
-            {LEAD_STATUS_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {formatLeadStatus(value)}
-              </option>
-            ))}
-          </Select>
-          <Select
-            label={copy({ en: "Channel", vi: "Kênh" })}
-            value={source}
-            onChange={(event) => {
-              setSource(event.target.value);
-              resetPage();
-            }}
-          >
-            <option value="">{copy({ en: "All channels", vi: "Tất cả kênh" })}</option>
-            {["zalo", "facebook", "miniapp"].map((value) => (
-              <option key={value} value={value}>
-                {formatChannel(value)}
-              </option>
-            ))}
-          </Select>
-          <ToolbarActions className="justify-start xl:justify-end">
-            <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
-              {isExporting
-                ? copy({ en: "Exporting...", vi: "Đang xuất..." })
-                : copy({ en: "Export CSV", vi: "Xuất CSV" })}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setSearch("");
-                setStatus("");
-                setSource("");
+        <div className="flex flex-col gap-4">
+          <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr_1fr_auto]">
+            <Input
+              label={copy({ en: "Lead search", vi: "Tìm lead" })}
+              value={search}
+              onChange={(event) => {
+                const value = event.target.value;
+                startTransition(() => {
+                  setSearch(value);
+                  resetPage();
+                });
+              }}
+              placeholder={copy({ en: "Name...", vi: "Tên lead..." })}
+            />
+            <Select
+              label={copy({ en: "Status", vi: "Trạng thái" })}
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value);
                 resetPage();
               }}
             >
-              {copy({ en: "Reset", vi: "Đặt lại" })}
-            </Button>
-          </ToolbarActions>
+              <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
+              {LEAD_STATUS_OPTIONS.map((value) => (
+                <option key={value} value={value}>
+                  {formatLeadStatus(value)}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label={copy({ en: "Channel", vi: "Kênh" })}
+              value={source}
+              onChange={(event) => {
+                setSource(event.target.value);
+                resetPage();
+              }}
+            >
+              <option value="">{copy({ en: "All channels", vi: "Tất cả kênh" })}</option>
+              {["zalo", "facebook", "miniapp"].map((value) => (
+                <option key={value} value={value}>
+                  {formatChannel(value)}
+                </option>
+              ))}
+            </Select>
+            <ToolbarActions className="justify-start xl:justify-end">
+              <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
+                {isExporting
+                  ? copy({ en: "Exporting...", vi: "Đang xuất..." })
+                  : copy({ en: "Export CSV", vi: "Xuất CSV" })}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setSearch("");
+                  setStatus("");
+                  setSource("");
+                  setDateFrom("");
+                  setDateTo("");
+                  resetPage();
+                }}
+              >
+                {copy({ en: "Reset", vi: "Đặt lại" })}
+              </Button>
+            </ToolbarActions>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-[1fr_1fr_auto]">
+            <Input
+              type="date"
+              label={copy({ en: "Created from", vi: "Tạo từ" })}
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(event) => {
+                setDateFrom(event.target.value);
+                resetPage();
+              }}
+            />
+            <Input
+              type="date"
+              label={copy({ en: "Created to", vi: "Tạo đến" })}
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(event) => {
+                setDateTo(event.target.value);
+                resetPage();
+              }}
+            />
+            <Select
+              label={copy({ en: "Rows per page", vi: "Số dòng / trang" })}
+              value={String(pageSize)}
+              onChange={(event) => {
+                const next = Number(event.target.value) as PageSize;
+                setPageSize(next);
+                resetPage();
+              }}
+              className="min-w-[8rem] xl:w-40"
+            >
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </Toolbar>
 
@@ -417,7 +468,7 @@ export function LeadsPage() {
 
           <PaginationFooter
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={total}
             isFetching={query.isFetching}
             itemLabel={copy({ en: "leads", vi: "lead" })}

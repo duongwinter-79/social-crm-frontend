@@ -9,6 +9,35 @@
     linear-gradient(180deg, #0f172a 0%, #020617 100%);
 }
 
+/*
+  Applied by ShellFrame to the <aside>. The aside is `sticky h-screen
+  overflow-y-auto` so the nav can scroll internally if its content exceeds
+  viewport height. We hide every flavour of visible scrollbar so the dark
+  sidebar stays visually clean — mouse-wheel / trackpad / keyboard / touch
+  scroll still works.
+
+  !important is intentional: defeats any other CSS, browser default, or
+  user-agent stylesheet that would otherwise show a scrollbar.
+*/
+.admin-shell-sidebar-scroll {
+  scrollbar-width: none !important;       /* Firefox */
+  -ms-overflow-style: none !important;    /* legacy Edge / IE */
+  scrollbar-gutter: auto;
+}
+
+.admin-shell-sidebar-scroll::-webkit-scrollbar,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-thumb,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-track,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-corner,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-button {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
 .admin-shell-brand {
   display: flex;
   align-items: center;

@@ -17,6 +17,7 @@ const ApplicationsPage = lazy(() => import("@/features/applications/applications
 const DocumentsPage = lazy(() => import("@/features/documents/documents-page").then((m) => ({ default: m.DocumentsPage })));
 const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
+const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
 
 type IconName =
   | "dashboard"
@@ -28,6 +29,7 @@ type IconName =
   | "applications"
   | "documents"
   | "training"
+  | "import"
   | "admin"
   | "settings"
   | "help";
@@ -49,6 +51,7 @@ const navItems: NavItem[] = [
   { to: "/applications", icon: "applications", label: { en: "Applications", vi: "Hồ sơ ứng tuyển" }, hint: { en: "Placement progress", vi: "Tiến độ sắp xếp" } },
   { to: "/documents", icon: "documents", label: { en: "Documents", vi: "Hồ sơ giấy tờ" }, hint: { en: "Candidate files", vi: "Giấy tờ ứng viên" } },
   { to: "/training-finance", icon: "training", label: { en: "Training & Finance", vi: "Đào tạo & tài chính" }, hint: { en: "Deposits and visa", vi: "Đặt cọc và visa" } },
+  { to: "/import", icon: "import", label: { en: "Import", vi: "Nhập dữ liệu" }, hint: { en: "Bulk import from XLSX", vi: "Nhập hàng loạt từ XLSX" } },
   { to: "/admin", icon: "admin", label: { en: "Admin", vi: "Quản trị" }, hint: { en: "System controls", vi: "Điều khiển hệ thống" } }
 ];
 
@@ -80,6 +83,8 @@ function NavIcon(props: { name: IconName }) {
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l4 4v12H4V4z" {...common} /><path d="M12 4v5h5" {...common} /><path d="M8 12h8M8 16h8" {...common} /></svg>;
     case "training":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16" {...common} /><path d="M7 18V8l5-3 5 3v10" {...common} /><path d="M12 11v7" {...common} /></svg>;
+    case "import":
+      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10" {...common} /><path d="m8 10 4 4 4-4" {...common} /><path d="M5 17h14" {...common} /></svg>;
     case "admin":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 9.5 4-1.2 7-5 7-9.5V6l-7-3Z" {...common} /><path d="M9.5 12.2 11.2 14l3.6-4" {...common} /></svg>;
     case "settings":
@@ -117,7 +122,7 @@ function ProtectedLayout() {
   const { lang, setLang, copy } = useI18n();
   const pageTitle = titleForPath(location.pathname, copy);
   const visibleNavItems = navItems.filter((item) => {
-    if (item.to === "/admin") {
+    if (item.to === "/admin" || item.to === "/import") {
       return user?.roles?.includes("admin");
     }
     return true;
@@ -343,6 +348,7 @@ export function AppRouter() {
         <Route path="/applications" element={<LazyRoute><ApplicationsPage /></LazyRoute>} />
         <Route path="/documents" element={<LazyRoute><DocumentsPage /></LazyRoute>} />
         <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
+        <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
       </Route>
     </Routes>

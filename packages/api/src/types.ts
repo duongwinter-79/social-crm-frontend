@@ -251,6 +251,86 @@ export interface LeadListResponse {
   total: number;
 }
 
+export type ImportBatchStatus =
+  | "pending_review"
+  | "applying"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export type ImportRowDedupStatus = "new" | "duplicate" | "error";
+
+export interface ImportBatch {
+  id: string;
+  filename: string;
+  uploadedByUserId?: string | null;
+  uploadedByUsername?: string | null;
+  status: ImportBatchStatus;
+  totalRows: number;
+  willCreateRows: number;
+  willSkipRows: number;
+  appliedRows: number;
+  errorRows: number;
+  appliedAt?: string | null;
+  completedAt?: string | null;
+  errorSummary?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+  // Async AI extraction progress on the imported free-text notes. Only the
+  // GET /:id endpoint populates these (cheap join). The list endpoint omits
+  // them to keep the leads-imports table response fast.
+  aiPending?: number;
+  aiProcessed?: number;
+  aiTotal?: number;
+}
+
+export interface ImportBatchRow {
+  id: string;
+  batch_id: string;
+  sourceRow: number;
+  mappedFields: {
+    fullName?: string;
+    phone?: string;
+    source?: string;
+    rawSourceLabel?: string;
+    gender?: "male" | "female";
+    birthYear?: number;
+    heightCm?: number;
+    experienceField?: string;
+    jobNeeds?: string;
+  };
+  freeText?: string | null;
+  dedupStatus: ImportRowDedupStatus;
+  dedupReason?: string | null;
+  duplicateOfLeadId?: string | null;
+  applied: boolean;
+  createdLeadId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ImportBatchListResponse {
+  data: ImportBatch[];
+  total: number;
+}
+
+export interface AiExtractionWorkerStatus {
+  enabled: boolean;
+  running: boolean;
+  tickMs: number;
+  intervalMs: number;
+  batchSize: number;
+  lastTickStartedAt: string | null;
+  lastTickEndedAt: string | null;
+  lastTickThreadsProcessed: number;
+  lastTickImportedLeadsProcessed: number;
+}
+
+export interface ImportBatchRowListResponse {
+  data: ImportBatchRow[];
+  total: number;
+}
+
 export interface LeadQualificationSnapshot {
   leadId: string;
   intakeData: Record<string, unknown>;

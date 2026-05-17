@@ -19,9 +19,11 @@ import {
   useAdminAuditLogsQuery,
   useAdminSessionsQuery,
   useAdminSystemStatusQuery,
+  useAiExtractionWorkerStatusQuery,
   useCreateUserMutation,
   useHealthQuery,
   useRevokeAdminSessionMutation,
+  useTriggerAiExtractionWorkerMutation,
   useUpdateUserMutation,
   useUserDetailQuery,
   useUsersQuery
@@ -71,6 +73,8 @@ export function AdminPage() {
   const health = useHealthQuery();
   const systemStatus = useAdminSystemStatusQuery();
   const auditLogs = useAdminAuditLogsQuery({ limit: 8 });
+  const aiWorkerStatus = useAiExtractionWorkerStatusQuery({ pollWhileRunning: true });
+  const triggerAiWorker = useTriggerAiExtractionWorkerMutation();
   const sessions = useAdminSessionsQuery({ limit: 8, includeRevoked: false });
   const revokeSession = useRevokeAdminSessionMutation();
   const createUser = useCreateUserMutation();
@@ -342,6 +346,86 @@ export function AdminPage() {
         </Panel>
       </div>
 
+      {/* AI extraction worker — manual "Run now" + status snapshot. */}
+      <Panel
+        title={copy({ en: "AI extraction worker", vi: "Worker AI trích xuất" })}
+        subtitle={copy({
+          en: "Background process that scans new Zalo messages and imported lead notes. Trigger manually right after a big import to drain the backlog without waiting for the next scheduled tick.",
+          vi: "Tiến trình nền quét tin nhắn Zalo mới và ghi chú lead đã nhập. Chạy thủ công ngay sau khi nhập dữ liệu lớn để xử lý hết tồn đọng mà không phải chờ tick kế tiếp."
+        })}
+        action={
+          <Button
+            onClick={() => triggerAiWorker.mutate()}
+            disabled={
+              triggerAiWorker.isPending ||
+              !aiWorkerStatus.data?.enabled ||
+              Boolean(aiWorkerStatus.data?.running)
+            }
+          >
+            {triggerAiWorker.isPending
+              ? copy({ en: "Triggering...", vi: "Đang kích hoạt..." })
+              : aiWorkerStatus.data?.running
+                ? copy({ en: "Already running", vi: "Đang chạy" })
+                : copy({ en: "Run now", vi: "Chạy ngay" })}
+          </Button>
+        }
+      >
+        {!aiWorkerStatus.data?.enabled ? (
+          <InfoStrip className="border-amber-300 bg-amber-50 text-amber-900">
+            <span>
+              {copy({
+                en: "Worker is disabled via AI_EXTRACTION_WORKER_ENABLED. Re-enable in backend.env and recreate the API container before triggering.",
+                vi: "Worker đang tắt qua AI_EXTRACTION_WORKER_ENABLED. Bật lại trong backend.env và recreate container API trước khi kích hoạt."
+              })}
+            </span>
+          </InfoStrip>
+        ) : null}
+        <DescriptionList
+          className="mt-1"
+          columns={3}
+          items={[
+            {
+              label: copy({ en: "State", vi: "Trạng thái" }),
+              value: aiWorkerStatus.data?.running ? (
+                <Badge tone="warning">{copy({ en: "Running", vi: "Đang chạy" })}</Badge>
+              ) : aiWorkerStatus.data?.enabled ? (
+                <Badge tone="success">{copy({ en: "Idle", vi: "Sẵn sàng" })}</Badge>
+              ) : (
+                <Badge tone="danger">{copy({ en: "Disabled", vi: "Đã tắt" })}</Badge>
+              )
+            },
+            {
+              label: copy({ en: "Tick interval", vi: "Chu kỳ tick" }),
+              value: aiWorkerStatus.data
+                ? formatDurationMs(aiWorkerStatus.data.tickMs)
+                : "—"
+            },
+            {
+              label: copy({ en: "Batch size", vi: "Kích thước batch" }),
+              value: String(aiWorkerStatus.data?.batchSize ?? "—")
+            },
+            {
+              label: copy({ en: "Last tick started", vi: "Tick cuối bắt đầu" }),
+              value: aiWorkerStatus.data?.lastTickStartedAt
+                ? new Date(aiWorkerStatus.data.lastTickStartedAt).toLocaleString()
+                : copy({ en: "Never since restart", vi: "Chưa chạy kể từ khi khởi động" })
+            },
+            {
+              label: copy({ en: "Last tick ended", vi: "Tick cuối kết thúc" }),
+              value: aiWorkerStatus.data?.lastTickEndedAt
+                ? new Date(aiWorkerStatus.data.lastTickEndedAt).toLocaleString()
+                : "—"
+            },
+            {
+              label: copy({ en: "Processed last tick", vi: "Đã xử lý lần trước" }),
+              value: aiWorkerStatus.data
+                ? `${aiWorkerStatus.data.lastTickThreadsProcessed} threads · ${aiWorkerStatus.data.lastTickImportedLeadsProcessed} ${copy({ en: "imported leads", vi: "lead nhập" })}`
+                : "—"
+            }
+          ]}
+        />
+      </Panel>
+
       {/* Audit log + sessions — full-width, balanced row at bottom. */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel
@@ -430,4 +514,16 @@ export function AdminPage() {
       </div>
     </div>
   );
+}
+
+function formatDurationMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return "—";
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${hours.toFixed(hours < 10 ? 1 : 0)}h`;
+  const days = hours / 24;
+  return `${days.toFixed(days < 10 ? 1 : 0)}d`;
 }

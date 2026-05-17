@@ -1,9 +1,110 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { AiSuggestion, OrderMutationPayload } from "./types";
+import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload } from "./types";
 
 export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
+
+// ── AI extraction worker (admin) ──────────────────────────────────────
+
+export function useAiExtractionWorkerStatusQuery(opts: { pollWhileRunning?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["ai-extraction", "worker", "status"],
+    queryFn: () => apiClient.getAiExtractionWorkerStatus(),
+    refetchInterval: (query) => {
+      if (!opts.pollWhileRunning) return false;
+      const data = query.state.data as { running?: boolean } | undefined;
+      return data?.running ? 2000 : false;
+    }
+  });
+}
+
+export function useTriggerAiExtractionWorkerMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.triggerAiExtractionWorker(),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["ai-extraction", "worker", "status"], status);
+    },
+    meta: { successMessage: "AI worker triggered" }
+  });
+}
+
+// ── Bulk import (xlsx) ────────────────────────────────────────────────
+
+export function useImportBatchesQuery(params: { limit?: number; offset?: number } = {}) {
+  return useQuery({
+    queryKey: ["imports", "batches", params],
+    queryFn: () => apiClient.listImportBatches(params)
+  });
+}
+
+export function useImportBatchQuery(id: string | undefined, opts: { pollWhileActive?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["imports", "batch", id],
+    queryFn: () => apiClient.getImportBatch(id as string),
+    enabled: Boolean(id),
+    refetchInterval: (query) => {
+      if (!opts.pollWhileActive) return false;
+      const data = query.state.data as
+        | { status?: string; aiPending?: number }
+        | undefined;
+      // Keep polling while:
+      //   1. The apply phase is running (`status === "applying"`), OR
+      //   2. The apply phase finished but the AI worker is still chewing
+      //      through imported free text (`aiPending > 0`).
+      if (data?.status === "applying") return 2000;
+      if ((data?.aiPending ?? 0) > 0) return 5000;
+      return false;
+    }
+  });
+}
+
+export function useImportBatchRowsQuery(
+  id: string | undefined,
+  params: { limit?: number; offset?: number; dedupStatus?: ImportRowDedupStatus } = {}
+) {
+  return useQuery({
+    queryKey: ["imports", "batch", id, "rows", params],
+    queryFn: () => apiClient.listImportBatchRows(id as string, params),
+    enabled: Boolean(id)
+  });
+}
+
+export function usePreviewLeadsImportMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => apiClient.previewLeadsImport(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["imports", "batches"] });
+    },
+    meta: { successMessage: "Preview ready" }
+  });
+}
+
+export function useApplyImportBatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.applyImportBatch(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["imports", "batches"] });
+      queryClient.invalidateQueries({ queryKey: ["imports", "batch", id] });
+    },
+    meta: { successMessage: "Import started" }
+  });
+}
+
+export function useCancelImportBatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.cancelImportBatch(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["imports", "batches"] });
+      queryClient.invalidateQueries({ queryKey: ["imports", "batch", id] });
+    },
+    meta: { successMessage: "Import cancelled" }
+  });
+}
 
 export function useDashboardStatsQuery() {
   return useQuery({
@@ -20,7 +121,15 @@ export function useHealthQuery() {
   });
 }
 
-export function useLeadsQuery(params: { offset: number; limit: number; source?: string; status?: string; search?: string }) {
+export function useLeadsQuery(params: {
+  offset: number;
+  limit: number;
+  source?: string;
+  status?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
   return useQuery({
     queryKey: ["leads", params],
     queryFn: () => apiClient.listLeads(params)

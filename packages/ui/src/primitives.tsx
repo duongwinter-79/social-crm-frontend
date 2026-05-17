@@ -293,11 +293,12 @@ export function ShellFrame(props: PropsWithChildren<{ sidebar: ReactNode; header
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)] text-slate-900">
       <div className="grid min-h-screen lg:grid-cols-[272px_minmax(0,1fr)]">
         {/*
-          Sidebar stays pinned to the viewport (sticky top:0 + height:100vh on lg+),
-          and gets its own overflow-y so a long nav list can scroll independently
-          without dragging the rest of the page with it.
+          Sidebar stays pinned to the viewport (sticky top:0 + height:100vh on lg+)
+          AND scrolls internally so a tall nav stays fully reachable on short
+          viewports. The visible scrollbar is suppressed via
+          `.admin-shell-sidebar-scroll` (see admin-shell.css).
         */}
-        <aside className="border-r border-slate-800 bg-slate-950 text-slate-200 lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto">
+        <aside className="admin-shell-sidebar-scroll border-r border-slate-800 bg-slate-950 text-slate-200 lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto">
           {props.sidebar}
         </aside>
         <div className="min-w-0">

@@ -6,6 +6,7 @@ import {
   useSessionStore
 } from "./session";
 import type {
+  AiExtractionWorkerStatus,
   AiQueryResult,
   AiSuggestion,
   LeadOrderSuggestion,
@@ -29,6 +30,10 @@ import type {
   DocumentListResponse,
   DocumentRecord,
   HealthStatus,
+  ImportBatch,
+  ImportBatchListResponse,
+  ImportBatchRowListResponse,
+  ImportRowDedupStatus,
   Lead,
   LeadQualificationSnapshot,
   LeadTriageEvaluation,
@@ -217,12 +222,89 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  // ── AI extraction worker (admin) ─────────────────────────────────────
+
+  async getAiExtractionWorkerStatus(): Promise<AiExtractionWorkerStatus> {
+    const response = await this.http.get<ApiEnvelope<AiExtractionWorkerStatus> | AiExtractionWorkerStatus>(
+      "/ai-extraction/worker/status"
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async triggerAiExtractionWorker(): Promise<AiExtractionWorkerStatus> {
+    const response = await this.http.post<ApiEnvelope<AiExtractionWorkerStatus> | AiExtractionWorkerStatus>(
+      "/ai-extraction/worker/trigger",
+      {}
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  // ── Imports (xlsx upload) ────────────────────────────────────────────
+
+  async previewLeadsImport(file: File): Promise<ImportBatch> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await this.http.post<ApiEnvelope<ImportBatch> | ImportBatch>(
+      "/imports/leads/preview",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async listImportBatches(params: { limit?: number; offset?: number } = {}) {
+    const response = await this.http.get<ApiEnvelope<ImportBatchListResponse> | ImportBatchListResponse>(
+      "/imports/leads",
+      { params }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async getImportBatch(id: string): Promise<ImportBatch> {
+    const response = await this.http.get<ApiEnvelope<ImportBatch> | ImportBatch>(`/imports/leads/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listImportBatchRows(
+    id: string,
+    params: { limit?: number; offset?: number; dedupStatus?: ImportRowDedupStatus } = {}
+  ) {
+    const response = await this.http.get<
+      ApiEnvelope<ImportBatchRowListResponse> | ImportBatchRowListResponse
+    >(`/imports/leads/${id}/rows`, { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async applyImportBatch(id: string): Promise<{ id: string; status: string; message?: string }> {
+    const response = await this.http.post<
+      | ApiEnvelope<{ id: string; status: string; message?: string }>
+      | { id: string; status: string; message?: string }
+    >(`/imports/leads/${id}/apply`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async cancelImportBatch(id: string): Promise<ImportBatch> {
+    const response = await this.http.post<ApiEnvelope<ImportBatch> | ImportBatch>(
+      `/imports/leads/${id}/cancel`,
+      {}
+    );
+    return unwrapEnvelope(response.data);
+  }
+
   async getHealth() {
     const response = await this.http.get<ApiEnvelope<HealthStatus> | HealthStatus>("/health");
     return unwrapEnvelope(response.data);
   }
 
-  async listLeads(params: { offset: number; limit: number; source?: string; status?: string; search?: string }) {
+  async listLeads(params: {
+    offset: number;
+    limit: number;
+    source?: string;
+    status?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
     const response = await this.http.get<ApiEnvelope<LeadListResponse> | LeadListResponse>("/leads", { params });
     return unwrapEnvelope(response.data);
   }
@@ -232,7 +314,7 @@ export class SocialCrmApiClient {
    * the server-suggested filename (from Content-Disposition) so the caller
    * can trigger a browser download.
    */
-  async exportLeadsCsv(params: { source?: string; status?: string; search?: string; lang?: "vi" | "en" } = {}) {
+  async exportLeadsCsv(params: { source?: string; status?: string; search?: string; dateFrom?: string; dateTo?: string; lang?: "vi" | "en" } = {}) {
     const response = await this.http.get<Blob>("/leads/export.csv", {
       params: { lang: params.lang ?? "vi", ...params },
       responseType: "blob"
