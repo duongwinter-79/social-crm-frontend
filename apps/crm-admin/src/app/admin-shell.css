@@ -1,182 +1,331 @@
-.admin-shell-topbar {
+.admin-shell-sidebar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 24px;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 18px 18px;
+  background:
+    radial-gradient(circle at top, rgba(99, 102, 241, 0.18), transparent 28%),
+    linear-gradient(180deg, #0f172a 0%, #020617 100%);
 }
 
-.admin-shell-topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  min-width: 0;
-  flex: 1;
+/*
+  Applied by ShellFrame to the <aside>. The aside is `sticky h-screen
+  overflow-y-auto` so the nav can scroll internally if its content exceeds
+  viewport height. We hide every flavour of visible scrollbar so the dark
+  sidebar stays visually clean — mouse-wheel / trackpad / keyboard / touch
+  scroll still works.
+
+  !important is intentional: defeats any other CSS, browser default, or
+  user-agent stylesheet that would otherwise show a scrollbar.
+*/
+.admin-shell-sidebar-scroll {
+  scrollbar-width: none !important;       /* Firefox */
+  -ms-overflow-style: none !important;    /* legacy Edge / IE */
+  scrollbar-gutter: auto;
+}
+
+.admin-shell-sidebar-scroll::-webkit-scrollbar,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-thumb,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-track,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-corner,
+.admin-shell-sidebar-scroll::-webkit-scrollbar-button {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
 }
 
 .admin-shell-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 228px;
+  gap: 14px;
+  padding: 4px 6px 2px;
 }
 
 .admin-shell-brand-mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
   display: inline-flex;
+  height: 44px;
+  width: 44px;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0284c7, #0f766e);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
   color: #fff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   letter-spacing: 0.08em;
-  box-shadow: 0 14px 30px rgba(2, 132, 199, 0.22);
-}
-
-.admin-shell-brand-copy {
-  margin-top: 0;
+  box-shadow: 0 18px 34px rgba(79, 70, 229, 0.34);
 }
 
 .admin-shell-brand-kicker {
   font-size: 10px;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #0284c7;
+  color: #818cf8;
 }
 
 .admin-shell-brand-title {
-  margin-top: 4px;
-  font-size: 16px;
+  margin-top: 2px;
+  font-size: 17px;
   font-weight: 700;
-  color: #0f172a;
+  color: #f8fafc;
 }
 
 .admin-shell-brand-text {
-  margin-top: 2px;
+  margin: 2px 0 0;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+
+.admin-shell-system {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(51, 65, 85, 0.95);
+  background: rgba(15, 23, 42, 0.76);
+  padding: 12px 14px;
+}
+
+.admin-shell-system-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
   color: #64748b;
 }
 
-.admin-shell-navgroup {
-  margin-top: 0;
-  min-width: 0;
-  flex: 1;
-  overflow: visible;
+.admin-shell-system-value {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.admin-shell-system-dot {
+  height: 8px;
+  width: 8px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
+.admin-shell-navsection {
+  display: grid;
+  gap: 10px;
 }
 
 .admin-shell-navlabel {
-  display: none;
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #475569;
 }
 
 .admin-shell-navrow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-  overflow: visible;
-  padding: 4px 0;
+  display: grid;
+  gap: 6px;
 }
 
 .admin-shell-navitem {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-width: 108px;
-  border-radius: 14px;
-  min-height: 44px;
-  padding: 10px 14px;
-  flex: 0 1 auto;
-  color: #475569;
-  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  gap: 12px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  padding: 12px 14px;
+  color: #94a3b8;
+  /* Explicit transparent base so <button> elements (Settings, Help, Sign out)
+     don't show the browser-default white background. */
+  background: transparent;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
 }
 
 .admin-shell-navitem:hover {
-  background: #f8fafc;
-  color: #0f172a;
+  border-color: rgba(51, 65, 85, 0.9);
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
 }
 
 .admin-shell-navitem.is-active {
-  background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
-  color: #0369a1;
-  box-shadow: inset 0 0 0 1px #bae6fd;
+  border-color: rgba(79, 70, 229, 0.4);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(30, 41, 59, 0.92));
+  color: #fff;
+}
+
+.admin-shell-navitem.is-active::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: #6366f1;
+}
+
+.admin-shell-navicon {
+  display: inline-flex;
+  height: 26px;
+  width: 26px;
+  flex: 0 0 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+}
+
+.admin-shell-navicon svg {
+  height: 14px;
+  width: 14px;
+}
+
+.admin-shell-navcopy {
+  min-width: 0;
+  flex: 1;
 }
 
 .admin-shell-navtitle {
+  display: block;
   font-size: 14px;
   font-weight: 600;
-  line-height: 1.2;
 }
 
 .admin-shell-navhint {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 8px);
-  transform: translateX(-50%);
-  display: none;
-  white-space: nowrap;
-  margin-top: 0;
-  border-radius: 10px;
-  border: 1px solid #dbeafe;
-  background: rgba(255, 255, 255, 0.98);
-  padding: 6px 10px;
+  display: block;
+  margin-top: 3px;
   font-size: 12px;
-  color: #94a3b8;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-  z-index: 20;
-}
-
-.admin-shell-navitem:hover .admin-shell-navhint {
-  display: inline-flex;
-}
-
-.admin-shell-status {
-  min-width: 168px;
-  max-width: 184px;
-  border-radius: 16px;
-  border: 1px solid #dbeafe;
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
-  padding: 10px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-}
-
-.admin-shell-status-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.admin-shell-status-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.admin-shell-status-role {
-  margin-top: 2px;
-  font-size: 10px;
-  color: #64748b;
-}
-
-.admin-shell-status-note {
-  margin-top: 6px;
-  font-size: 10px;
   line-height: 1.45;
-  color: #64748b;
+  color: inherit;
+  opacity: 0.72;
+}
+
+.admin-shell-footer {
+  margin-top: auto;
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(51, 65, 85, 0.95);
+  padding: 14px 2px 0;
+}
+
+.admin-shell-footer-label {
+  padding: 0 10px;
+}
+
+.admin-shell-footer-link {
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-shell-footer-profile-wrap {
+  border-top: 1px solid rgba(51, 65, 85, 0.95);
+  padding-top: 6px;
+}
+
+.admin-shell-profile {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.admin-shell-profile-avatar {
+  height: 42px;
+  width: 42px;
+  flex: 0 0 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(79, 70, 229, 0.08));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-shell-profile-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-shell-footer .w-full {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-shell-footer .w-full.inline-flex {
+  justify-content: center;
+  border-radius: 16px;
+}
+
+/* Sign-out: navitem layout, danger-tinted, fits the dark sidebar. */
+.admin-shell-signout {
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(244, 63, 94, 0.32);
+  background: rgba(244, 63, 94, 0.08);
+  color: #fda4af;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 11px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.admin-shell-signout:hover {
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(244, 63, 94, 0.5);
+  color: #fecaca;
+}
+
+.admin-shell-signout:focus-visible {
+  outline: 2px solid rgba(244, 63, 94, 0.6);
+  outline-offset: 2px;
+}
+
+.admin-shell-profile-name {
+  color: inherit;
+}
+
+.admin-shell-profile-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .admin-shell-header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px 10px 14px;
+  gap: 14px;
 }
 
 .admin-shell-header-top {
@@ -187,9 +336,10 @@
 }
 
 .admin-shell-header-title {
-  margin-top: 0;
-  font-size: 24px;
+  margin: 0;
+  font-size: clamp(24px, 3vw, 30px);
   font-weight: 700;
+  letter-spacing: -0.03em;
   color: #0f172a;
 }
 
@@ -202,40 +352,58 @@
   color: #64748b;
 }
 
+.admin-shell-lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  border: 1px solid #dbe4f0;
+  background: #f8fafc;
+  padding: 4px;
+}
+
+.admin-shell-lang-button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-shell-lang-button.is-active {
+  background: #0f172a;
+  color: #fff;
+}
+
 .admin-shell-header-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   border-top: 1px solid #e2e8f0;
-  padding-top: 12px;
-  font-size: 12px;
+  padding-top: 14px;
+  font-size: 13px;
   color: #64748b;
 }
 
-@media (max-width: 768px) {
-  .admin-shell-topbar,
-  .admin-shell-header-top {
+.admin-shell-header-strip strong {
+  color: #334155;
+}
+
+@media (max-width: 1024px) {
+  .admin-shell-sidebar {
+    min-height: auto;
+    gap: 18px;
+  }
+
+  .admin-shell-header-top,
+  .admin-shell-header-strip {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .admin-shell-topbar-left {
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .admin-shell-brand,
-  .admin-shell-status,
-  .admin-shell-navgroup {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .admin-shell-navrow {
-    justify-content: flex-start;
-  }
-
-  .admin-shell-navitem {
-    min-width: 96px;
-    min-height: 40px;
-    padding: 8px 12px;
   }
 }

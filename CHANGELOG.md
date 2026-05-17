@@ -1,0 +1,85 @@
+# Changelog
+
+## 2026-05-13
+
+### CSV export from leads and orders pages
+
+- Added `apiClient.exportLeadsCsv` and `apiClient.exportOrdersCsv` that fetch the file as a Blob and parse `Content-Disposition` (including the RFC 5987 `filename*=UTF-8''` form) for the suggested filename.
+- Added a shared `triggerBlobDownload` helper in `packages/api/src/downloads.ts` so JWT-protected endpoints can drive a real browser download via a transient anchor element.
+- Added "Xuất CSV / Export CSV" buttons to the leads filter toolbar and the orders header. The leads button passes the current `search`, `status`, `source`, and `lang` so the downloaded file matches what the operator sees on screen.
+
+### Lead disqualification UI — banner, reason form, restore button
+
+- Replaced the immediate-patch behavior on the "Move to disqualified" toolbar button with an inline reason form. The operator types a reason and confirms; the backend rejects the patch when the reason is missing.
+- Added a red `InfoStrip` that renders on the lead workbench whenever `lead.status === "disqualified"`, showing the recorded reason, the user who triggered it, the timestamp, and the previous pipeline state.
+- Added a "Khôi phục về …" button inside the banner that calls the new `POST /leads/:id/restore` endpoint via `useRestoreLeadMutation`, reverting the lead to its `previousStatus` in one click. Disabled (with tooltip) when `previousStatus` is null — protects against legacy disqualifications recorded before metadata capture existed.
+- Extended the `Lead` frontend type with `disqualifiedAt`, `disqualifiedByUserId`, `disqualifiedByUsername`, `disqualifiedReason`, `previousStatus`, and `verifiedKeys`.
+
+### Triage chip vocabulary cleanup
+
+- Renamed the suggested-orders rejection chip from "Bị loại / Rejected" to "Không hợp đơn này" so it stops colliding with the lead-pipeline state "Đã bị loại / Disqualified".
+- Routed `preliminaryFit` and `conclusion` badges in suggested-orders through `formatEnum` so values like `insufficient_data` / `not_fit` / `high_priority` render as "Chưa đủ dữ liệu xác minh" / "Không phù hợp" / "Ưu tiên cao" in VN mode.
+- Added enum labels for `promising`, `needs_review`, `insufficient_data`, `not_fit`, `high_priority`, `conditional`, `limited` to `i18n/index.tsx`.
+
+### i18n field-label refactor (Vietnamese coverage)
+
+- Centralised field labels, enum-valued field detection, boolean field detection, and numeric unit suffixes in `i18n/index.tsx`. Added four new helpers on the `useI18n()` context: `formatFieldLabel`, `formatFieldValue`, `formatChannel`, `formatConfidence`, `formatExtractionSource`.
+- Removed the raw mono field-name line (`jobNeeds`, `heightCm`, etc.) from each row in the AI snapshot card; the human label is enough and the raw key is preserved as a `title` tooltip.
+- Updated `lead-ai-snapshot-card.tsx` and `field-with-provenance.tsx` to use the new helpers — confidence badges (`high`/`medium`/`low`), source badges (`deterministic`/`ai_llm`/`webhook`), array values like `["labor_export","consultation"]`, booleans, and numbers with units now all render in the active language.
+- Added enum labels for `labor_export`, `consultation`, `domestic_job`, `visa_only`, the four channel values (`zalo`, `facebook`, `miniapp`, `tiktok`, `website`, `gioi_thieu`), and the three region values (`north`, `central`, `south`).
+- Updated `leads-page.tsx` to translate the channel filter dropdown, the table source cell, and known enum tag badges via `formatChannel` / `formatEnum`.
+
+### CNV removed from the operator UI
+
+- Deleted the `/integrations` route, sidebar nav entry, icon variant, and admin-only filter branch in `apps/crm-admin/src/app/router.tsx`.
+- Deleted `apps/crm-admin/src/features/integrations/integrations-page.tsx` along with its directory.
+- Removed the "CNV remains available under Integrations" sentence from the conversations page subtitle and the "Integrations live under the Integrations tab" badge from the admin page.
+- Removed `integrations: CapabilityState` from `CapabilityRegistry` and `capabilityRegistry` since nothing consumes it any longer.
+- Kept the CNV API client methods (`testCnvToken`, `listCnvCustomers`, etc.) and React Query hooks intact behind a "do not add new UI callers" comment so the backend integration code can be re-enabled later without a rewrite. Backend `cnv-integration` module is untouched.
+
+## 2026-05-11
+
+### Unified lead qualification form
+
+- removed the separate Lead Workbench profile workspace panel and profile save mutation
+- moved experience field, desired industry, preferred region, and desired salary into the qualification overlay
+- removed frontend API client/hooks/types for the legacy `/leads/:id/profile` endpoint so operator edits now flow through `useUpdateLeadQualificationMutation`
+
+## 2026-05-10
+
+### Lead workbench extraction feedback
+
+- Added explicit background status for `Refresh structured extraction`: starting, running, completed, timeout, and failed.
+- Kept the refresh button disabled while extraction is active so operators do not submit duplicate background runs.
+- Changed post-trigger polling to fetch both lead/thread state and AI suggestions, then refresh related lead workbench queries when extraction completes or times out.
+- Documented that manual AI questions are read-only and separate from saved structured extraction.
+
+## 2026-05-07
+
+### Zalo conversation inbox
+
+- Added frontend API types, client methods, and React Query hooks for CRM interaction threads and messages.
+- Added `/conversations` to the admin shell as a backend-backed Zalo OA conversation inbox.
+- The page supports thread search/filtering, pagination, lead linkage, extraction status, recent message review, raw webhook payload inspection, and extracted/verified lead data review.
+- Kept CNV resource inspection under Integrations as a deprecated read source rather than mixing it into the Zalo OA conversation workflow.
+
+## 2026-04-27
+
+### Order matching criteria visibility
+
+- Added frontend API typing for persisted order `heightMin` and `acceptsReturnees` criteria.
+- Updated the order catalog and lead workbench suggested-order cards to display minimum height and returnee acceptance policy.
+- Added frontend API client methods and query/mutation hooks for order detail, create, and update endpoints.
+- Added an admin-only order create/edit panel to the orders workspace for maintaining matching criteria.
+- Added a formal candidate matching mode beside preliminary lead triage in the matching workspace.
+- Added application creation from the applications workspace with candidate search, order selection, and status-required field validation.
+- Tightened lead workbench order suggestions so no-candidate leads show qualification guidance instead of disabled formal order actions.
+- Extracted a shared candidate picker for the applications and matching workspaces.
+
+## 2026-04-21
+
+### CNV resource verification UI
+
+- Added frontend API support for `GET /api/cnv/webhook-admin/customers`.
+- Added a CNV customer-read panel to the integrations admin page with refresh state, customer count, top customer rows, and raw payload output.
+- Documented the customer-read panel as read-only CNV SSO/API verification, not automatic CRM lead import or matching.

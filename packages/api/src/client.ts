@@ -1,19 +1,52 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
-import { readStoredTokens, storeTokens, useSessionStore } from "./session";
+import {
+  decodeJwtUser,
+  isAccessTokenStale,
+  notifyLoginAcrossTabs,
+  useSessionStore
+} from "./session";
 import type {
+  AiExtractionWorkerStatus,
   AiQueryResult,
+  AiSuggestion,
+  LeadOrderSuggestion,
+  AdminUser,
+  AdminAuditLogListResponse,
+  CnvConnectionStatus,
+  CnvCustomersResponse,
+  CnvResourceListResponse,
+  AdminSessionListResponse,
+  AdminSystemStatus,
+  AdminUserListResponse,
+  ApplicationListResponse,
+  ApplicationRecord,
   ApiEnvelope,
-  AuthTokens,
-  AuthUser,
+  CandidateFormalEvaluation,
+  CandidateListResponse,
+  CandidateRef,
   CandidateSuggestion,
   DashboardStats,
+  DocumentChecklistSummary,
+  DocumentListResponse,
+  DocumentRecord,
   HealthStatus,
+  ImportBatch,
+  ImportBatchListResponse,
+  ImportBatchRowListResponse,
+  ImportRowDedupStatus,
   Lead,
+  LeadQualificationSnapshot,
+  LeadTriageEvaluation,
   LeadListResponse,
-  LeadProfile,
   LeadTransitions,
-  MatchingResult,
-  Order
+  MessageListResponse,
+  Order,
+  OrderMutationPayload,
+  PipelineResponse,
+  ThreadListResponse,
+  ThreadSummary,
+  TrainingFinanceListResponse,
+  TrainingFinanceRecord
 } from "./types";
 
 const API_BASE_URL =
@@ -27,28 +60,42 @@ function unwrapEnvelope<T>(value: ApiEnvelope<T> | T): T {
   return value as T;
 }
 
-function decodeJwtPayload(token: string): AuthUser | null {
-  try {
-    const base64 = token.split(".")[1];
-    const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
-    const payload = JSON.parse(window.atob(normalized));
-    return {
-      userId: payload.sub,
-      username: payload.username,
-      roles: payload.roles ?? []
-    };
-  } catch {
-    return null;
+/**
+ * Pull `filename="..."` out of a Content-Disposition header.  Falls back to
+ * the RFC 5987 `filename*=UTF-8''...` form when present.
+ */
+function parseFilenameFromContentDisposition(header: string | undefined | null): string | null {
+  if (!header) return null;
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      // fall through to plain match
+    }
   }
+  const plainMatch = header.match(/filename="?([^";]+)"?/i);
+  return plainMatch ? plainMatch[1] : null;
+}
+
+/**
+ * Server response shape after Step 7F: refresh token lives in an httpOnly
+ * cookie, so the JSON body only carries the access token.
+ */
+interface AccessTokenResponse {
+  access_token: string;
 }
 
 export class SocialCrmApiClient {
   private readonly http: AxiosInstance;
-  private refreshPromise: Promise<AuthTokens> | null = null;
+  /** In-flight refresh request shared across concurrent callers (single-flight). */
+  private refreshPromise: Promise<string> | null = null;
 
   constructor() {
     this.http = axios.create({
-      baseURL: `${API_BASE_URL}/api`
+      baseURL: `${API_BASE_URL}/api`,
+      // Required so the httpOnly refresh cookie travels with /auth/refresh and /auth/logout.
+      withCredentials: true
     });
 
     this.http.interceptors.request.use((config) => this.attachToken(config));
@@ -58,11 +105,31 @@ export class SocialCrmApiClient {
     );
   }
 
-  private attachToken(config: InternalAxiosRequestConfig) {
-    const tokens = useSessionStore.getState().tokens ?? readStoredTokens();
-    if (tokens?.access_token) {
-      config.headers.Authorization = `Bearer ${tokens.access_token}`;
+  /**
+   * Attach the bearer token. If the access token is within 30 seconds of
+   * expiry, refresh proactively to avoid a 401-then-retry round trip.
+   *
+   * Skips refresh on the auth endpoints (no token to attach for login;
+   * /auth/refresh manages its own flow via the cookie).
+   */
+  private async attachToken(config: InternalAxiosRequestConfig) {
+    const url = config.url ?? "";
+    const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/refresh");
+
+    const accessToken = useSessionStore.getState().accessToken;
+    if (!accessToken) return config;
+
+    if (!isAuthEndpoint && isAccessTokenStale(30, accessToken)) {
+      try {
+        const fresh = await this.runRefresh();
+        config.headers.Authorization = `Bearer ${fresh}`;
+        return config;
+      } catch {
+        // Fall through and let the request 401 — handleAuthError will clean up.
+      }
     }
+
+    config.headers.Authorization = `Bearer ${accessToken}`;
     return config;
   }
 
@@ -72,50 +139,155 @@ export class SocialCrmApiClient {
       return Promise.reject(error);
     }
 
-    const tokens = useSessionStore.getState().tokens ?? readStoredTokens();
-    if (!tokens?.refresh_token) {
-      useSessionStore.getState().clearSession();
+    const accessToken = useSessionStore.getState().accessToken;
+    if (!accessToken) {
+      // Already cleared — propagate the error so the caller sees the 401.
       return Promise.reject(error);
     }
 
     original._retry = true;
 
-    if (!this.refreshPromise) {
-      this.refreshPromise = this.http
-        .post<ApiEnvelope<AuthTokens> | AuthTokens>(
-          "/auth/refresh",
-          {},
-          { headers: { Authorization: `Bearer ${tokens.refresh_token}` } }
-        )
-        .then((response) => unwrapEnvelope(response.data))
-        .finally(() => {
-          this.refreshPromise = null;
-        });
-    }
-
     try {
-      const nextTokens = await this.refreshPromise;
-      storeTokens(nextTokens);
-      const user = decodeJwtPayload(nextTokens.access_token);
-      useSessionStore.getState().setSession(nextTokens, user);
-      original.headers.Authorization = `Bearer ${nextTokens.access_token}`;
+      const nextAccess = await this.runRefresh();
+      original.headers.Authorization = `Bearer ${nextAccess}`;
       return this.http.request(original);
     } catch (refreshError) {
-      useSessionStore.getState().clearSession();
+      useSessionStore.getState().clearSession("expired");
       return Promise.reject(refreshError);
     }
   }
 
+  /**
+   * Single-flight refresh. The httpOnly cookie carries the refresh token
+   * automatically — we POST an empty body. Returns the fresh access token.
+   */
+  private runRefresh(): Promise<string> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.http
+        .post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>("/auth/refresh", {})
+        .then((response) => {
+          const next = unwrapEnvelope(response.data).access_token;
+          useSessionStore.getState().setSession(next);
+          notifyLoginAcrossTabs(next);
+          return next;
+        })
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+    return this.refreshPromise;
+  }
+
+  /**
+   * On page load there is no in-memory access token, but a valid httpOnly
+   * refresh cookie may still exist from a prior session. Try a single refresh.
+   * Returns true if a session was restored, false if the user must log in.
+   */
+  async bootstrapSession(): Promise<boolean> {
+    try {
+      await this.runRefresh();
+      return true;
+    } catch {
+      // No valid cookie or refresh failed — user is unauthenticated.
+      return false;
+    }
+  }
+
   async login(username: string, password: string) {
-    const response = await this.http.post<ApiEnvelope<AuthTokens> | AuthTokens>("/auth/login", { username, password });
-    const tokens = unwrapEnvelope(response.data);
-    const user = decodeJwtPayload(tokens.access_token);
-    useSessionStore.getState().setSession(tokens, user);
-    return tokens;
+    const response = await this.http.post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>(
+      "/auth/login",
+      { username, password }
+    );
+    const accessToken = unwrapEnvelope(response.data).access_token;
+    useSessionStore.getState().setSession(accessToken);
+    notifyLoginAcrossTabs(accessToken);
+    return { accessToken, user: decodeJwtUser(accessToken) };
+  }
+
+  /**
+   * Logout: tells the server to revoke the refresh session and clear the
+   * cookie, then drops the access token locally. Cross-tab logout fires via
+   * BroadcastChannel inside clearSession().
+   */
+  async logout() {
+    try {
+      await this.http.post("/auth/logout", {}).catch(() => undefined);
+    } finally {
+      useSessionStore.getState().clearSession("manual");
+    }
   }
 
   async getDashboardStats() {
     const response = await this.http.get<ApiEnvelope<DashboardStats> | DashboardStats>("/dashboard/stats");
+    return unwrapEnvelope(response.data);
+  }
+
+  // ── AI extraction worker (admin) ─────────────────────────────────────
+
+  async getAiExtractionWorkerStatus(): Promise<AiExtractionWorkerStatus> {
+    const response = await this.http.get<ApiEnvelope<AiExtractionWorkerStatus> | AiExtractionWorkerStatus>(
+      "/ai-extraction/worker/status"
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async triggerAiExtractionWorker(): Promise<AiExtractionWorkerStatus> {
+    const response = await this.http.post<ApiEnvelope<AiExtractionWorkerStatus> | AiExtractionWorkerStatus>(
+      "/ai-extraction/worker/trigger",
+      {}
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  // ── Imports (xlsx upload) ────────────────────────────────────────────
+
+  async previewLeadsImport(file: File): Promise<ImportBatch> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await this.http.post<ApiEnvelope<ImportBatch> | ImportBatch>(
+      "/imports/leads/preview",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async listImportBatches(params: { limit?: number; offset?: number } = {}) {
+    const response = await this.http.get<ApiEnvelope<ImportBatchListResponse> | ImportBatchListResponse>(
+      "/imports/leads",
+      { params }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async getImportBatch(id: string): Promise<ImportBatch> {
+    const response = await this.http.get<ApiEnvelope<ImportBatch> | ImportBatch>(`/imports/leads/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listImportBatchRows(
+    id: string,
+    params: { limit?: number; offset?: number; dedupStatus?: ImportRowDedupStatus } = {}
+  ) {
+    const response = await this.http.get<
+      ApiEnvelope<ImportBatchRowListResponse> | ImportBatchRowListResponse
+    >(`/imports/leads/${id}/rows`, { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async applyImportBatch(id: string): Promise<{ id: string; status: string; message?: string }> {
+    const response = await this.http.post<
+      | ApiEnvelope<{ id: string; status: string; message?: string }>
+      | { id: string; status: string; message?: string }
+    >(`/imports/leads/${id}/apply`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async cancelImportBatch(id: string): Promise<ImportBatch> {
+    const response = await this.http.post<ApiEnvelope<ImportBatch> | ImportBatch>(
+      `/imports/leads/${id}/cancel`,
+      {}
+    );
     return unwrapEnvelope(response.data);
   }
 
@@ -124,9 +296,40 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async listLeads(params: { offset: number; limit: number; source?: string; status?: string; search?: string }) {
+  async listLeads(params: {
+    offset: number;
+    limit: number;
+    source?: string;
+    status?: string;
+    search?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
     const response = await this.http.get<ApiEnvelope<LeadListResponse> | LeadListResponse>("/leads", { params });
     return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Download leads as CSV using the current filter set. Returns a Blob plus
+   * the server-suggested filename (from Content-Disposition) so the caller
+   * can trigger a browser download.
+   */
+  async exportLeadsCsv(params: { source?: string; status?: string; search?: string; dateFrom?: string; dateTo?: string; lang?: "vi" | "en" } = {}) {
+    const response = await this.http.get<Blob>("/leads/export.csv", {
+      params: { lang: params.lang ?? "vi", ...params },
+      responseType: "blob"
+    });
+    const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    return { blob: response.data, filename };
+  }
+
+  async exportOrdersCsv(params: { lang?: "vi" | "en" } = {}) {
+    const response = await this.http.get<Blob>("/orders/export.csv", {
+      params: { lang: params.lang ?? "vi" },
+      responseType: "blob"
+    });
+    const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    return { blob: response.data, filename };
   }
 
   async getLead(id: string) {
@@ -139,23 +342,92 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async updateLead(id: string, patch: Partial<Lead>) {
+  async updateLead(id: string, patch: Partial<Lead> & { disqualifiedReason?: string }) {
     const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${id}`, patch);
     return unwrapEnvelope(response.data);
   }
 
-  async getLeadProfile(leadId: string) {
-    const response = await this.http.get<ApiEnvelope<LeadProfile> | LeadProfile>(`/leads/${leadId}/profile`);
+  /**
+   * Roll a disqualified lead back to its previous pipeline state. Backend
+   * clears all disqualification metadata and writes an admin audit row.
+   */
+  async restoreLead(id: string) {
+    const response = await this.http.post<ApiEnvelope<Lead> | Lead>(`/leads/${id}/restore`);
     return unwrapEnvelope(response.data);
   }
 
-  async upsertLeadProfile(leadId: string, patch: Partial<LeadProfile>) {
-    const response = await this.http.patch<ApiEnvelope<LeadProfile> | LeadProfile>(`/leads/${leadId}/profile`, patch);
+  async getLeadQualification(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<LeadQualificationSnapshot> | LeadQualificationSnapshot>(`/leads/${leadId}/qualification`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getLeadAiSuggestions(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<AiSuggestion[]> | AiSuggestion[]>(`/leads/${leadId}/ai-suggestions`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateLeadQualification(leadId: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${leadId}/qualification`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listThreads(params: { offset: number; limit: number; channel?: string; leadId?: string; analyzeStatus?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<ThreadListResponse> | ThreadListResponse>("/interactions/threads", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listLeadThreads(leadId: string, params: { offset: number; limit: number; channel?: string; analyzeStatus?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<ThreadListResponse> | ThreadListResponse>(`/interactions/leads/${leadId}/threads`, { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getThread(id: string) {
+    const response = await this.http.get<ApiEnvelope<ThreadSummary> | ThreadSummary>(`/interactions/threads/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listThreadMessages(threadId: string, params: { offset: number; limit: number; direction?: string; type?: string }) {
+    const response = await this.http.get<ApiEnvelope<MessageListResponse> | MessageListResponse>(`/interactions/threads/${threadId}/messages`, { params });
     return unwrapEnvelope(response.data);
   }
 
   async listOrders() {
     const response = await this.http.get<ApiEnvelope<Order[]> | Order[]>("/orders");
+    return unwrapEnvelope(response.data);
+  }
+
+  async getOrder(id: string) {
+    const response = await this.http.get<ApiEnvelope<Order> | Order>(`/orders/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createOrder(payload: OrderMutationPayload & { name: string }) {
+    const response = await this.http.post<ApiEnvelope<Order> | Order>("/orders", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateOrder(id: string, patch: OrderMutationPayload) {
+    const response = await this.http.patch<ApiEnvelope<Order> | Order>(`/orders/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listApplications(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; status?: string }) {
+    const response = await this.http.get<ApiEnvelope<ApplicationListResponse> | ApplicationListResponse>("/applications", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getApplication(id: string) {
+    const response = await this.http.get<ApiEnvelope<ApplicationRecord> | ApplicationRecord>(`/applications/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateApplication(id: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<ApplicationRecord> | ApplicationRecord>(`/applications/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createApplication(payload: { candidateId: string; orderId: string; status?: string; interviewDate?: string; interviewResult?: string; rejectReason?: string }) {
+    const response = await this.http.post<ApiEnvelope<ApplicationRecord> | ApplicationRecord>("/applications", payload);
     return unwrapEnvelope(response.data);
   }
 
@@ -167,9 +439,45 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async evaluateMatching(leadId: string, orderId: string) {
-    const response = await this.http.post<ApiEnvelope<MatchingResult> | MatchingResult>("/matching/evaluate", {
+  /**
+   * Operator-triggered structured AI extraction. Runs the same processThread
+   * path the event listener and worker use, with per-thread debounce ignored.
+   * Writes LeadAiSuggestion rows + applies the auto-apply allowlist + recomputes
+   * lead score.
+   */
+  /**
+   * `scanMode`:
+   *   - `"new_only"` (default) — process only inbound text messages with
+   *     `aiScannedAt IS NULL`. Cheap; matches the worker / inbound listener.
+   *   - `"include_scanned"` — operator-triggered full rescan; reprocesses
+   *     previously scanned messages too. Use after AI prompt changes or to
+   *     fix missed extraction. Suggestions can supersede older ones, but
+   *     verified lead fields stay authoritative.
+   */
+  async processThreadExtraction(args: {
+    leadId: string;
+    threadId: string;
+    maxBatches?: number;
+    scanMode?: "new_only" | "include_scanned";
+  }) {
+    const response = await this.http.post<
+      | ApiEnvelope<{ threadId: string; leadId: string; triggered: boolean; mode?: string; scanMode?: string }>
+      | { threadId: string; leadId: string; triggered: boolean; mode?: string; scanMode?: string }
+    >("/ai-extraction/process-thread", args);
+    return unwrapEnvelope(response.data);
+  }
+
+  async evaluateLeadTriage(leadId: string, orderId: string) {
+    const response = await this.http.post<ApiEnvelope<LeadTriageEvaluation> | LeadTriageEvaluation>("/matching/triage", {
       leadId,
+      orderId
+    });
+    return unwrapEnvelope(response.data);
+  }
+
+  async evaluateCandidateMatch(candidateId: string, orderId: string) {
+    const response = await this.http.post<ApiEnvelope<CandidateFormalEvaluation> | CandidateFormalEvaluation>("/matching/evaluate-candidate", {
+      candidateId,
       orderId
     });
     return unwrapEnvelope(response.data);
@@ -180,13 +488,164 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  /**
+   * Lead-stage auto-suggest. Returns top-N orders ranked by triage score —
+   * works at lead screening stage, before a candidate record exists.
+   * Implements PDF automation #2.
+   */
+  async suggestOrdersForLead(leadId: string, params: { limit?: number } = {}) {
+    const response = await this.http.get<ApiEnvelope<LeadOrderSuggestion[]> | LeadOrderSuggestion[]>(
+      `/matching/suggest-for-lead/${leadId}`,
+      { params }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCandidates(params: { offset: number; limit: number; leadId?: string; lifecycleStatus?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<CandidateListResponse> | CandidateListResponse>("/recruitment/candidates", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getCandidateByLead(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<CandidateRef | null> | CandidateRef | null>(`/recruitment/candidates/by-lead/${leadId}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listDocuments(params: { offset: number; limit: number; leadId?: string; candidateId?: string; docType?: string; status?: string }) {
+    const response = await this.http.get<ApiEnvelope<DocumentListResponse> | DocumentListResponse>("/documents", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getLeadDocumentChecklist(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<DocumentChecklistSummary> | DocumentChecklistSummary>(`/documents/lead/${leadId}/checklist`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getCandidateDocumentChecklist(candidateId: string) {
+    const response = await this.http.get<ApiEnvelope<DocumentChecklistSummary> | DocumentChecklistSummary>(`/documents/candidate/${candidateId}/checklist`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createDocument(payload: { leadId: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) {
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateDocument(id: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<DocumentRecord> | DocumentRecord>(`/documents/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async listTrainingFinance(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {
+    const response = await this.http.get<ApiEnvelope<TrainingFinanceListResponse> | TrainingFinanceListResponse>("/training-finance", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getTrainingFinanceByLead(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<TrainingFinanceRecord[]> | TrainingFinanceRecord[]>(`/training-finance/lead/${leadId}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createTrainingFinance(payload: { leadId: string; orderId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) {
+    const response = await this.http.post<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>("/training-finance", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateTrainingFinance(id: string, patch: Record<string, unknown>) {
+    const response = await this.http.patch<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>(`/training-finance/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getPipeline(params: { offset: number; limit: number; stage?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<PipelineResponse> | PipelineResponse>("/pipeline", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listUsers(params: { offset: number; limit: number; search?: string; role?: string; isActive?: boolean }) {
+    const response = await this.http.get<ApiEnvelope<AdminUserListResponse> | AdminUserListResponse>("/users", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async getUser(id: string) {
+    const response = await this.http.get<ApiEnvelope<AdminUser> | AdminUser>(`/users/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async createUser(payload: { username: string; password: string; role?: string; isActive?: boolean }) {
+    const response = await this.http.post<ApiEnvelope<AdminUser> | AdminUser>("/users", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateUser(id: string, payload: { username?: string; password?: string; role?: string; isActive?: boolean }) {
+    const response = await this.http.patch<ApiEnvelope<AdminUser> | AdminUser>(`/users/${id}`, payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getAdminSystemStatus() {
+    const response = await this.http.get<ApiEnvelope<AdminSystemStatus> | AdminSystemStatus>("/admin/system-status");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listAdminAuditLogs(params: { limit: number; action?: string; targetType?: string }) {
+    const response = await this.http.get<ApiEnvelope<AdminAuditLogListResponse> | AdminAuditLogListResponse>("/admin/audit-logs", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listAdminSessions(params: { limit: number; includeRevoked?: boolean }) {
+    const response = await this.http.get<ApiEnvelope<AdminSessionListResponse> | AdminSessionListResponse>("/admin/sessions", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async revokeAdminSession(id: string) {
+    const response = await this.http.delete<ApiEnvelope<{ success: boolean; sessionId: string; revokedAt: string }> | { success: boolean; sessionId: string; revokedAt: string }>(`/admin/sessions/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
+  // CNV integration is no longer surfaced in the UI. The methods below remain
+  // so the API client surface stays stable for any future re-enablement, but
+  // no admin screen consumes them today. Do not add new UI callers.
   async testCnvToken() {
     const response = await this.http.get<ApiEnvelope<{ success: boolean; tokenPrefix: string | null }> | { success: boolean; tokenPrefix: string | null }>("/cnv/webhook-admin/test-token");
     return unwrapEnvelope(response.data);
   }
 
+  async getCnvConnectionStatus() {
+    const response = await this.http.get<ApiEnvelope<CnvConnectionStatus> | CnvConnectionStatus>("/cnv/webhook-admin/status");
+    return unwrapEnvelope(response.data);
+  }
+
+  async getCnvConnectLink() {
+    const response = await this.http.post<ApiEnvelope<{ success: boolean; url: string }> | { success: boolean; url: string }>("/cnv/webhook-admin/connect-link");
+    return unwrapEnvelope(response.data);
+  }
+
   async getCnvInfo() {
     const response = await this.http.get<ApiEnvelope<{ success: boolean; result: unknown }> | { success: boolean; result: unknown }>("/cnv/webhook-admin/info");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvCustomers(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvCustomersResponse> | CnvCustomersResponse>("/cnv/webhook-admin/customers", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvProducts(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/products", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvOrders(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/orders", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvCustomCollections(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/custom-collections", { params });
+    return unwrapEnvelope(response.data);
+  }
+
+  async listCnvSmartCollections(params: Record<string, string | number | boolean | undefined> = {}) {
+    const response = await this.http.get<ApiEnvelope<CnvResourceListResponse> | CnvResourceListResponse>("/cnv/webhook-admin/smart-collections", { params });
     return unwrapEnvelope(response.data);
   }
 
@@ -197,6 +656,11 @@ export class SocialCrmApiClient {
 
   async removeCnvWebhook() {
     const response = await this.http.delete<ApiEnvelope<{ success: boolean; result: unknown }> | { success: boolean; result: unknown }>("/cnv/webhook-admin/remove");
+    return unwrapEnvelope(response.data);
+  }
+
+  async disconnectCnv() {
+    const response = await this.http.delete<ApiEnvelope<{ success: boolean; disconnected: boolean }> | { success: boolean; disconnected: boolean }>("/cnv/webhook-admin/disconnect");
     return unwrapEnvelope(response.data);
   }
 }
