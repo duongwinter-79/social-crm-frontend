@@ -278,7 +278,7 @@ export function LeadsPage() {
         </div>
       </Toolbar>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div>
         <DataTable>
           <div className="border-b border-slate-200 px-6 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -299,7 +299,7 @@ export function LeadsPage() {
           </div>
 
           <div className="max-h-[calc(100vh-28rem)] min-h-[360px] overflow-auto">
-            <table className="min-w-full text-sm">
+            <table className="w-full min-w-[1120px] text-sm">
               <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_0_rgba(226,232,240,1)]">
                 <tr>
                   <th className="w-10 px-6 py-4">
@@ -480,14 +480,6 @@ export function LeadsPage() {
           />
         </DataTable>
 
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_18px_34px_rgba(15,23,42,0.05)]">
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">{copy({ en: "Workboard notes", vi: "Ghi chú vận hành" })}</div>
-          <div className="mt-4 space-y-3">
-            <SideNote label={copy({ en: "High attention", vi: "Ưu tiên cao" })} value={stats.hot} description={copy({ en: "Score-driven follow-up priority on this page.", vi: "Ưu tiên theo dõi theo điểm trên trang này." })} />
-            <SideNote label={copy({ en: "Blocked leads", vi: "Lead bị chặn" })} value={stats.blocked} description={copy({ en: "Review for recovery or exit.", vi: "Rà soát để cứu lại hoặc kết thúc." })} />
-            <SideNote label={copy({ en: "Untouched", vi: "Chưa xử lý" })} value={stats.stale} description={copy({ en: "Candidates with no visible progression yet on this page.", vi: "Ứng viên chưa có tiến triển rõ ràng trên trang này." })} />
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -510,14 +502,3 @@ function Strip(props: { label: string; value: string | number; hint: string; ton
   );
 }
 
-function SideNote(props: { label: string; value: string | number; description: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-slate-800">{props.label}</div>
-        <div className="text-lg font-bold text-slate-900">{props.value}</div>
-      </div>
-      <div className="mt-2 text-xs leading-5 text-slate-500">{props.description}</div>
-    </div>
-  );
-}

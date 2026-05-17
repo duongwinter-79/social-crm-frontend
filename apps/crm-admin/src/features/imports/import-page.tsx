@@ -7,6 +7,7 @@ import {
   useImportBatchRowsQuery,
   useImportBatchesQuery,
   usePreviewLeadsImportMutation,
+  repairUtf8DecodedAsLatin1,
   type ImportBatch,
   type ImportBatchRow,
   type ImportRowDedupStatus
@@ -48,6 +49,7 @@ export function ImportPage() {
 
   const activeBatch = batchQuery.data ?? null;
   const rows = rowsQuery.data?.data ?? [];
+  const displayFilename = (filename: string) => repairUtf8DecodedAsLatin1(filename);
 
   const onPickFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -124,7 +126,7 @@ export function ImportPage() {
           {pickedFile ? (
             <div className="text-sm text-slate-600">
               {copy({ en: "Selected:", vi: "Đã chọn:" })}{" "}
-              <span className="font-medium text-slate-800">{pickedFile.name}</span>{" "}
+              <span className="font-medium text-slate-800">{displayFilename(pickedFile.name)}</span>{" "}
               <span className="text-slate-400">({Math.round(pickedFile.size / 1024)} KB)</span>
             </div>
           ) : null}
@@ -148,7 +150,7 @@ export function ImportPage() {
           title={
             <span>
               {copy({ en: "Preview", vi: "Xem trước" })}{" "}
-              <span className="text-slate-400">— {activeBatch.filename}</span>
+              <span className="text-slate-400">— {displayFilename(activeBatch.filename)}</span>
             </span>
           }
           subtitle={copy({
@@ -430,7 +432,7 @@ export function ImportPage() {
                   }`}
                   onClick={() => setActiveBatchId(batch.id)}
                 >
-                  <td className="px-4 py-3 font-medium text-slate-800">{batch.filename}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">{displayFilename(batch.filename)}</td>
                   <td className="py-3 pr-3">
                     <Badge tone={statusTone(batch.status)}>{formatStatus(batch.status, copy)}</Badge>
                   </td>
