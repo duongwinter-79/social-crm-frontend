@@ -8,6 +8,7 @@ import {
   InfoStrip,
   Input,
   MetricCard,
+  PaginationFooter,
   Panel,
   SectionHeader,
   Select,
@@ -28,6 +29,7 @@ import {
 import { useI18n } from "../../i18n";
 
 const ROLE_OPTIONS = ["", "admin", "staff"] as const;
+const PAGE_SIZE = 25;
 
 function toneForRole(role: string) {
   return role === "admin" ? ("accent" as const) : ("neutral" as const);
@@ -44,6 +46,7 @@ export function AdminPage() {
     role: "",
     status: ""
   });
+  const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string>("");
   const [createForm, setCreateForm] = useState({
     username: "",
@@ -59,8 +62,8 @@ export function AdminPage() {
   });
 
   const usersQuery = useUsersQuery({
-    offset: 0,
-    limit: 50,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
     search: filters.search || undefined,
     role: filters.role || undefined,
     isActive: filters.status === "" ? undefined : filters.status === "active"
@@ -76,6 +79,10 @@ export function AdminPage() {
   const selectedIdResolved = selectedId || rows[0]?.id || "";
   const detailQuery = useUserDetailQuery(selectedIdResolved);
   const selected = detailQuery.data;
+
+  useEffect(() => {
+    setPage(0);
+  }, [filters.search, filters.role, filters.status]);
 
   useEffect(() => {
     if (!selected) return;
@@ -194,6 +201,19 @@ export function AdminPage() {
               })}
             />
           )}
+          <PaginationFooter
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={usersQuery.data?.total ?? 0}
+            isFetching={usersQuery.isFetching}
+            itemLabel={copy({ en: "users", vi: "người dùng" })}
+            pageLabel={copy({ en: "Page", vi: "Trang" })}
+            previousLabel={copy({ en: "Previous", vi: "Trước" })}
+            nextLabel={copy({ en: "Next", vi: "Sau" })}
+            onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+            onNext={() => setPage((current) => current + 1)}
+            className="mt-4 border-slate-100 px-0 pb-0 pt-4"
+          />
         </Panel>
 
         <Panel

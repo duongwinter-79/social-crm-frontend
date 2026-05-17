@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -8,6 +8,7 @@ import {
   InfoCard,
   InfoStrip,
   Input,
+  PaginationFooter,
   Panel,
   SectionHeader,
   Toolbar,
@@ -20,6 +21,8 @@ import {
 } from "@social-crm/api";
 import type { TrainingFinanceRecord } from "@social-crm/api";
 import { useI18n } from "../../i18n";
+
+const PAGE_SIZE = 25;
 
 function toneForMilestone(record: TrainingFinanceRecord) {
   if (record.departureDate) return "success" as const;
@@ -44,6 +47,7 @@ export function TrainingFinancePage() {
     orderId: "",
     search: ""
   });
+  const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState("");
   const [createForm, setCreateForm] = useState({
     leadId: "",
@@ -68,8 +72,8 @@ export function TrainingFinancePage() {
   });
 
   const recordsQuery = useTrainingFinanceQuery({
-    offset: 0,
-    limit: 100,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
     leadId: filters.leadId || undefined,
     orderId: filters.orderId || undefined
   });
@@ -89,6 +93,10 @@ export function TrainingFinancePage() {
 
   const selected =
     filteredRecords.find((record: TrainingFinanceRecord) => record.id === selectedId) ?? filteredRecords[0] ?? null;
+
+  useEffect(() => {
+    setPage(0);
+  }, [filters.leadId, filters.orderId, filters.search]);
 
   return (
     <div className="space-y-6">
@@ -136,7 +144,7 @@ export function TrainingFinancePage() {
             })}
           >
             {filteredRecords.length ? (
-              <div className="space-y-3">
+              <div className="max-h-[calc(100vh-30rem)] min-h-[320px] space-y-3 overflow-auto pr-1">
                 {filteredRecords.map((record: TrainingFinanceRecord) => {
                   const active = record.id === selected?.id;
                   return (
@@ -186,6 +194,19 @@ export function TrainingFinancePage() {
                 })}
               />
             )}
+            <PaginationFooter
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={recordsQuery.data?.total ?? 0}
+              isFetching={recordsQuery.isFetching}
+              itemLabel={copy({ en: "records", vi: "bản ghi" })}
+              pageLabel={copy({ en: "Page", vi: "Trang" })}
+              previousLabel={copy({ en: "Previous", vi: "Trước" })}
+              nextLabel={copy({ en: "Next", vi: "Sau" })}
+              onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+              className="mt-4 border-slate-100 px-0 pb-0 pt-4"
+            />
           </Panel>
         </div>
 

@@ -7,6 +7,7 @@ import {
   FieldGroup,
   InfoCard,
   Input,
+  PaginationFooter,
   Panel,
   SectionHeader,
   Select,
@@ -191,9 +192,6 @@ export function ConversationsPage() {
     };
   }, [threads]);
 
-  const hasPrevious = page > 0;
-  const hasNext = threads.length >= PAGE_SIZE;
-
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -298,19 +296,19 @@ export function ConversationsPage() {
               />
             )}
           </div>
-          <div className="mt-4 flex shrink-0 flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-slate-500">
-              {copy({ en: `Page ${page + 1}, ${total} total`, vi: `Trang ${page + 1}, tổng ${total}` })}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={!hasPrevious || threadsQuery.isFetching}>
-                {copy({ en: "Previous", vi: "Trước" })}
-              </Button>
-              <Button variant="secondary" onClick={() => setPage((current) => current + 1)} disabled={!hasNext || threadsQuery.isFetching}>
-                {copy({ en: "Next", vi: "Sau" })}
-              </Button>
-            </div>
-          </div>
+          <PaginationFooter
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            isFetching={threadsQuery.isFetching}
+            itemLabel={copy({ en: "threads", vi: "luồng" })}
+            pageLabel={copy({ en: "Page", vi: "Trang" })}
+            previousLabel={copy({ en: "Previous", vi: "Trước" })}
+            nextLabel={copy({ en: "Next", vi: "Sau" })}
+            onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+            onNext={() => setPage((current) => current + 1)}
+            className="mt-4 shrink-0 border-slate-100 px-0 pb-0 pt-4"
+          />
         </Panel>
 
         <div className="space-y-5">

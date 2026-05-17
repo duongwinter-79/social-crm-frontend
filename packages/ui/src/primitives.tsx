@@ -230,6 +230,43 @@ export function DataTable(props: PropsWithChildren<{ className?: string }>) {
   );
 }
 
+export function PaginationFooter(props: {
+  page: number;
+  pageSize: number;
+  total: number;
+  isFetching?: boolean;
+  itemLabel?: string;
+  pageLabel?: string;
+  previousLabel?: string;
+  nextLabel?: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  className?: string;
+}) {
+  const start = props.total === 0 ? 0 : props.page * props.pageSize + 1;
+  const end = Math.min((props.page + 1) * props.pageSize, props.total);
+  const hasPrevious = props.page > 0;
+  const hasNext = (props.page + 1) * props.pageSize < props.total;
+  const itemLabel = props.itemLabel ?? "items";
+  const pageLabel = props.pageLabel ?? "Page";
+
+  return (
+    <div className={cx("flex flex-col gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between", props.className)}>
+      <div className="text-sm text-slate-500">
+        {pageLabel} {props.page + 1} · {start}-{end} / {props.total} {itemLabel}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" onClick={props.onPrevious} disabled={!hasPrevious || props.isFetching}>
+          {props.previousLabel ?? "Previous"}
+        </Button>
+        <Button variant="secondary" size="sm" onClick={props.onNext} disabled={!hasNext || props.isFetching}>
+          {props.nextLabel ?? "Next"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function DescriptionList(props: { items: Array<{ label: string; value: ReactNode }>; columns?: 2 | 3 | 4; className?: string }) {
   const columns = props.columns ?? 2;
   const gridClass =

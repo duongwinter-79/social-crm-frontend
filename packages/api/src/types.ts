@@ -206,6 +206,17 @@ export interface Lead {
   verifiedProfileData?: Record<string, unknown> | null;
   leadScore?: number | null;
   leadClassification?: string | null;
+  // Typed manifest columns surfaced for the leads-list redesign. Backend
+  // already stores these; some are also resolvable from verifiedProfileData
+  // / aiExtractedData when the typed column is null.
+  birthYear?: number | null;
+  gender?: "male" | "female" | null;
+  experienceLevel?: "excellent" | "good" | "basic" | "none" | "undisclosed" | null;
+  experienceYears?: number | null;
+  hasWorkedAbroad?: boolean | null;
+  hasPassport?: boolean | null;
+  assigneeUserId?: string | null;
+  assignee?: { id: string; username: string; role?: string } | null;
   // Disqualification metadata — populated only while status === 'disqualified'.
   disqualifiedAt?: string | null;
   disqualifiedByUserId?: string | null;

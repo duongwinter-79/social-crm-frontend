@@ -8,6 +8,7 @@ import {
   InfoCard,
   InfoStrip,
   Input,
+  PaginationFooter,
   Panel,
   SectionHeader,
   Select,
@@ -35,6 +36,8 @@ const STATUS_OPTIONS = [
   "rejected",
   "withdrawn"
 ] as const;
+
+const PAGE_SIZE = 25;
 
 type ApplicationFormState = {
   candidateId: string;
@@ -70,6 +73,7 @@ export function ApplicationsPage() {
     status: "",
     search: ""
   });
+  const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string>("");
   const [createForm, setCreateForm] = useState<ApplicationFormState>(emptyCreateForm);
   const [detailForm, setDetailForm] = useState({
@@ -82,8 +86,8 @@ export function ApplicationsPage() {
   const [detailError, setDetailError] = useState("");
 
   const applicationQuery = useApplicationsQuery({
-    offset: 0,
-    limit: 50,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
     leadId: filters.leadId || undefined,
     candidateId: filters.candidateId || undefined,
     orderId: filters.orderId || undefined,
@@ -106,6 +110,10 @@ export function ApplicationsPage() {
   const selectedIdResolved = selectedId || filteredRecords[0]?.id || "";
   const detailQuery = useApplicationDetailQuery(selectedIdResolved);
   const selected = detailQuery.data;
+
+  useEffect(() => {
+    setPage(0);
+  }, [filters.leadId, filters.candidateId, filters.orderId, filters.status, filters.search]);
 
   useEffect(() => {
     if (!selected) return;
@@ -217,7 +225,7 @@ export function ApplicationsPage() {
           subtitle={copy({ en: "Each record is a real candidate-to-order application from the backend workflow.", vi: "Mỗi dòng là một hồ sơ ứng viên theo đơn hàng trong luồng backend." })}
         >
           {filteredRecords.length ? (
-            <div className="space-y-3">
+            <div className="max-h-[calc(100vh-30rem)] min-h-[320px] space-y-3 overflow-auto pr-1">
               {filteredRecords.map((record) => {
                 const active = record.id === selectedIdResolved;
                 return (
@@ -248,6 +256,19 @@ export function ApplicationsPage() {
           ) : (
             <EmptyState title={copy({ en: "No applications found", vi: "Không tìm thấy hồ sơ ứng tuyển" })} description={copy({ en: "Adjust filters or create an application from the candidate/order panel.", vi: "Điều chỉnh bộ lọc hoặc tạo hồ sơ từ khung ứng viên/đơn hàng." })} />
           )}
+          <PaginationFooter
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={applicationQuery.data?.total ?? 0}
+            isFetching={applicationQuery.isFetching}
+            itemLabel={copy({ en: "applications", vi: "hồ sơ" })}
+            pageLabel={copy({ en: "Page", vi: "Trang" })}
+            previousLabel={copy({ en: "Previous", vi: "Trước" })}
+            nextLabel={copy({ en: "Next", vi: "Sau" })}
+            onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+            onNext={() => setPage((current) => current + 1)}
+            className="mt-4 border-slate-100 px-0 pb-0 pt-4"
+          />
         </Panel>
 
         <div className="space-y-6">

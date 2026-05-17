@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Badge,
   EmptyState,
   InfoStrip,
   Input,
+  PaginationFooter,
   Panel,
   SectionHeader,
   Select,
@@ -14,6 +15,8 @@ import {
 import { usePipelineQuery } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import type { PipelineRow } from "@social-crm/api";
+
+const PAGE_SIZE = 25;
 
 function toneForStage(stage: string) {
   if (["departed"].includes(stage)) return "success" as const;
@@ -28,10 +31,11 @@ export function PipelinePage() {
     stage: "",
     search: ""
   });
+  const [page, setPage] = useState(0);
 
   const pipelineQuery = usePipelineQuery({
-    offset: 0,
-    limit: 100,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
     stage: filters.stage || undefined,
     search: filters.search || undefined
   });
@@ -39,6 +43,10 @@ export function PipelinePage() {
   const rows = pipelineQuery.data?.data ?? [];
   const groups = pipelineQuery.data?.groups ?? {};
   const orderedGroups = useMemo(() => Object.entries(groups).sort((a, b) => b[1] - a[1]), [groups]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [filters.stage, filters.search]);
 
   return (
     <div className="space-y-6">
@@ -124,6 +132,19 @@ export function PipelinePage() {
         ) : (
           <EmptyState title={copy({ en: "No pipeline rows found", vi: "Không tìm thấy hồ sơ trong luồng" })} description={copy({ en: "Adjust the filters or wait until lead and downstream workflow data is available.", vi: "Hãy điều chỉnh bộ lọc hoặc chờ đến khi dữ liệu lead và luồng xử lý phía sau sẵn sàng." })} />
         )}
+        <PaginationFooter
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={pipelineQuery.data?.total ?? 0}
+          isFetching={pipelineQuery.isFetching}
+          itemLabel={copy({ en: "cases", vi: "hồ sơ" })}
+          pageLabel={copy({ en: "Page", vi: "Trang" })}
+          previousLabel={copy({ en: "Previous", vi: "Trước" })}
+          nextLabel={copy({ en: "Next", vi: "Sau" })}
+          onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+          onNext={() => setPage((current) => current + 1)}
+          className="mt-4 border-slate-100 px-0 pb-0 pt-4"
+        />
       </Panel>
     </div>
   );

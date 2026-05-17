@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -9,6 +9,7 @@ import {
   InfoStrip,
   Input,
   MetricCard,
+  PaginationFooter,
   Panel,
   SectionHeader,
   Select,
@@ -28,6 +29,7 @@ import type { DocumentChecklistSummary, DocumentRecord } from "@social-crm/api";
 
 const DOC_TYPES = ["", "passport", "criminal_record", "health_check", "diploma", "work_permit", "other"] as const;
 const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
+const PAGE_SIZE = 25;
 
 function toneForDocStatus(status: string) {
   if (status === "verified") return "success" as const;
@@ -45,6 +47,7 @@ export function DocumentsPage() {
     status: "",
     search: ""
   });
+  const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState("");
   const [createForm, setCreateForm] = useState({
     docType: "passport",
@@ -65,8 +68,8 @@ export function DocumentsPage() {
   const candidateByLeadQuery = useCandidateByLeadQuery(filters.leadId || undefined);
   const resolvedCandidateId = filters.candidateId || candidateByLeadQuery.data?.id || undefined;
   const documentsQuery = useDocumentsQuery({
-    offset: 0,
-    limit: 100,
+    offset: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
     leadId: filters.leadId || undefined,
     candidateId: resolvedCandidateId,
     docType: filters.docType || undefined,
@@ -90,6 +93,10 @@ export function DocumentsPage() {
 
   const selected = filteredRecords.find((record: DocumentRecord) => record.id === selectedId) ?? filteredRecords[0] ?? null;
   const checklist = candidateChecklistQuery.data ?? leadChecklistQuery.data;
+
+  useEffect(() => {
+    setPage(0);
+  }, [filters.leadId, filters.candidateId, filters.docType, filters.status, filters.search]);
 
   return (
     <div className="space-y-6">
@@ -170,7 +177,7 @@ export function DocumentsPage() {
             subtitle={copy({ en: "Metadata-driven records for passport, health, criminal record, diploma, and other required files.", vi: "Các bản ghi dựa trên metadata cho hộ chiếu, khám sức khỏe, lý lịch tư pháp, bằng cấp và các giấy tờ bắt buộc khác." })}
           >
             {filteredRecords.length ? (
-              <div className="space-y-3">
+              <div className="max-h-[calc(100vh-30rem)] min-h-[320px] space-y-3 overflow-auto pr-1">
                 {filteredRecords.map((record: DocumentRecord) => {
                   const active = record.id === selected?.id;
                   return (
@@ -208,6 +215,19 @@ export function DocumentsPage() {
             ) : (
               <EmptyState title={copy({ en: "No documents found", vi: "Không tìm thấy giấy tờ" })} description={copy({ en: "Create the first document record for this lead or candidate scope.", vi: "Tạo bản ghi giấy tờ đầu tiên cho phạm vi lead hoặc ứng viên này." })} />
             )}
+            <PaginationFooter
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={documentsQuery.data?.total ?? 0}
+              isFetching={documentsQuery.isFetching}
+              itemLabel={copy({ en: "documents", vi: "giấy tờ" })}
+              pageLabel={copy({ en: "Page", vi: "Trang" })}
+              previousLabel={copy({ en: "Previous", vi: "Trước" })}
+              nextLabel={copy({ en: "Next", vi: "Sau" })}
+              onPrevious={() => setPage((current) => Math.max(0, current - 1))}
+              onNext={() => setPage((current) => current + 1)}
+              className="mt-4 border-slate-100 px-0 pb-0 pt-4"
+            />
           </Panel>
         </div>
 
