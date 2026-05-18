@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge, Button, DataTable, InfoStrip, Panel, SectionHeader } from "@social-crm/ui";
 import {
   useApplyImportBatchMutation,
@@ -15,6 +15,7 @@ import {
 import { useI18n } from "@/i18n";
 
 type DedupFilter = ImportRowDedupStatus | "";
+const IMPORT_PREVIEW_PAGE_SIZE = 100;
 
 function statusTone(status: string) {
   if (status === "completed") return "success" as const;
@@ -45,6 +46,8 @@ export function ImportPage() {
   const [pickedFile, setPickedFile] = useState<File | null>(null);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [dedupFilter, setDedupFilter] = useState<DedupFilter>("");
+  const [rowPage, setRowPage] = useState(0);
+  const [rowTotalSnapshot, setRowTotalSnapshot] = useState(0);
 
   const previewMutation = usePreviewLeadsImportMutation();
   const applyMutation = useApplyImportBatchMutation();
@@ -52,13 +55,31 @@ export function ImportPage() {
   const batchesQuery = useImportBatchesQuery({ limit: 25 });
   const batchQuery = useImportBatchQuery(activeBatchId ?? undefined, { pollWhileActive: true });
   const rowsQuery = useImportBatchRowsQuery(activeBatchId ?? undefined, {
-    limit: 100,
+    limit: IMPORT_PREVIEW_PAGE_SIZE,
+    offset: rowPage * IMPORT_PREVIEW_PAGE_SIZE,
     dedupStatus: dedupFilter || undefined
   });
 
   const activeBatch = batchQuery.data ?? null;
   const rows = rowsQuery.data?.data ?? [];
+  const rowTotal = rowsQuery.data?.total ?? rowTotalSnapshot;
+  const rowPageCount = Math.max(1, Math.ceil(rowTotal / IMPORT_PREVIEW_PAGE_SIZE));
+  const rowStart = rowTotal === 0 ? 0 : rowPage * IMPORT_PREVIEW_PAGE_SIZE + 1;
+  const rowEnd = Math.min(rowTotal, rowPage * IMPORT_PREVIEW_PAGE_SIZE + rows.length);
   const displayFilename = (filename: string) => repairUtf8DecodedAsLatin1(filename);
+
+  useEffect(() => {
+    setRowPage(0);
+    setRowTotalSnapshot(0);
+  }, [activeBatchId, dedupFilter]);
+
+  useEffect(() => {
+    if (typeof rowsQuery.data?.total !== "number") return;
+    setRowTotalSnapshot(rowsQuery.data.total);
+    if (rowPage > rowPageCount - 1) {
+      setRowPage(rowPageCount - 1);
+    }
+  }, [rowPage, rowPageCount, rowsQuery.data?.total]);
 
   const onPickFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -422,6 +443,36 @@ export function ImportPage() {
                 </table>
               </div>
             </DataTable>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+              <span>
+                {copy({
+                  en: `Showing ${rowStart}-${rowEnd} of ${rowTotal} staged rows`,
+                  vi: `Hiển thị ${rowStart}-${rowEnd} / ${rowTotal} dòng đã chuẩn bị`
+                })}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setRowPage((page) => Math.max(0, page - 1))}
+                  disabled={rowPage === 0 || rowsQuery.isFetching}
+                >
+                  {copy({ en: "Previous", vi: "Trước" })}
+                </Button>
+                <span className="min-w-[96px] text-center text-xs font-medium text-slate-500">
+                  {copy({
+                    en: `Page ${rowPage + 1} / ${rowPageCount}`,
+                    vi: `Trang ${rowPage + 1} / ${rowPageCount}`
+                  })}
+                </span>
+                <Button
+                  variant="secondary"
+                  onClick={() => setRowPage((page) => Math.min(rowPageCount - 1, page + 1))}
+                  disabled={rowPage >= rowPageCount - 1 || rowsQuery.isFetching}
+                >
+                  {copy({ en: "Next", vi: "Sau" })}
+                </Button>
+              </div>
+            </div>
           </div>
         </Panel>
       ) : null}
