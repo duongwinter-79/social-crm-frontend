@@ -30,6 +30,15 @@ function dedupTone(d: ImportRowDedupStatus) {
   return "danger" as const;
 }
 
+function importRowStatusLabel(row: ImportBatchRow, copy: (value: { en: string; vi: string }) => string) {
+  if (row.dedupStatus === "new" && row.mappedFields._importAction === "enrich_existing_lead") {
+    return copy({ en: "Update existing", vi: "Cập nhật ứng viên" });
+  }
+  if (row.dedupStatus === "new") return copy({ en: "New", vi: "Tạo mới" });
+  if (row.dedupStatus === "duplicate") return copy({ en: "Duplicate", vi: "Trùng" });
+  return copy({ en: "Error", vi: "Lỗi" });
+}
+
 export function ImportPage() {
   const { copy, formatChannel, formatEnum } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +82,7 @@ export function ImportPage() {
       !window.confirm(
         copy({
           en: "Apply this import? New leads will be created in the database.",
-          vi: "Áp dụng đợt nhập này? Lead mới sẽ được tạo trong cơ sở dữ liệu."
+          vi: "Áp dụng đợt nhập này? Ứng viên mới sẽ được tạo trong cơ sở dữ liệu."
         })
       )
     ) {
@@ -101,7 +110,7 @@ export function ImportPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Bulk import", vi: "Nhập hàng loạt" })}
-        title={copy({ en: "Import leads from XLSX", vi: "Nhập lead từ XLSX" })}
+        title={copy({ en: "Import leads from XLSX", vi: "Nhập ứng viên từ XLSX" })}
         description={copy({
           en: "Upload the first sheet of the customer's progress-tracking workbook. The system stages every row, checks for phone duplicates, and only writes to the database after you confirm.",
           vi: "Tải lên sheet đầu tiên của bảng theo dõi tiến độ khách hàng. Hệ thống chuẩn bị từng dòng, kiểm tra trùng số điện thoại và chỉ ghi vào cơ sở dữ liệu sau khi bạn xác nhận."
@@ -155,7 +164,7 @@ export function ImportPage() {
           }
           subtitle={copy({
             en: "Review what will be created. Nothing is written to the leads table until you click Apply.",
-            vi: "Xem lại trước khi tạo. Chưa có gì được ghi vào bảng lead cho đến khi bạn nhấn Áp dụng."
+            vi: "Xem lại trước khi tạo. Chưa có gì được ghi vào bảng ứng viên cho đến khi bạn nhấn Áp dụng."
           })}
           action={
             <div className="flex flex-wrap gap-2">
@@ -197,7 +206,7 @@ export function ImportPage() {
           <div className="grid gap-3 md:grid-cols-4">
             <Strip label={copy({ en: "Total rows", vi: "Tổng dòng" })} value={activeBatch.totalRows} />
             <Strip
-              label={copy({ en: "Will create", vi: "Sẽ tạo" })}
+              label={copy({ en: "Will apply", vi: "Sẽ áp dụng" })}
               value={activeBatch.willCreateRows}
               tone="accent"
             />
@@ -243,7 +252,7 @@ export function ImportPage() {
                       <span className="text-sm">
                         {copy({
                           en: `Creating leads: ${activeBatch.appliedRows} of ${activeBatch.willCreateRows}…`,
-                          vi: `Đang tạo lead: ${activeBatch.appliedRows} / ${activeBatch.willCreateRows}…`
+                          vi: `Đang tạo ứng viên: ${activeBatch.appliedRows} / ${activeBatch.willCreateRows}…`
                         })}
                       </span>
                     ) : null}
@@ -273,11 +282,11 @@ export function ImportPage() {
                           {aiActive
                             ? copy({
                                 en: `Leads created (${activeBatch.appliedRows}). AI is still extracting structured fields from the imported notes.`,
-                                vi: `Đã tạo ${activeBatch.appliedRows} lead. AI đang trích xuất các trường có cấu trúc từ ghi chú đã nhập.`
+                                vi: `Đã tạo hoặc cập nhật ${activeBatch.appliedRows} ứng viên tiềm năng. AI đang trích xuất các trường có cấu trúc từ ghi chú đã nhập.`
                               })
                             : copy({
                                 en: `All ${aiProcessed} notes processed by AI. Per-field suggestions are visible on each lead's workbench.`,
-                                vi: `AI đã xử lý xong ${aiProcessed} ghi chú. Gợi ý theo trường hiển thị trên từng lead.`
+                                vi: `AI đã xử lý xong ${aiProcessed} ghi chú. Gợi ý theo trường hiển thị trên từng ứng viên tiềm năng.`
                               })}
                         </div>
                         <div className="font-mono text-xs">
@@ -299,7 +308,7 @@ export function ImportPage() {
                         <div className="text-xs leading-5 text-amber-800/80">
                           {copy({
                             en: "This page refreshes every few seconds while AI is processing. You can leave it open or come back later — the worker runs server-side.",
-                            vi: "Trang này tự cập nhật vài giây một lần khi AI đang chạy. Bạn có thể để mở hoặc quay lại sau — worker chạy ở server."
+                              vi: "Trang này tự cập nhật vài giây một lần khi AI đang chạy. Bạn có thể để mở hoặc quay lại sau, tiến trình xử lý chạy trên máy chủ."
                           })}
                         </div>
                       ) : null}
@@ -360,9 +369,23 @@ export function ImportPage() {
                           <td className="px-4 py-3 text-slate-500">{row.sourceRow}</td>
                           <td className="py-3 pr-3">
                             <div className="flex flex-col gap-1">
-                              <Badge tone={dedupTone(row.dedupStatus)}>{row.dedupStatus}</Badge>
+                              <Badge tone={dedupTone(row.dedupStatus)}>{importRowStatusLabel(row, copy)}</Badge>
                               {row.dedupReason ? (
                                 <span className="text-[11px] leading-4 text-slate-500">{row.dedupReason}</span>
+                              ) : null}
+                              {row.validationWarnings?.length ? (
+                                <div className="flex flex-col gap-1">
+                                  {row.validationWarnings.map((w, i) => (
+                                    <span key={i} title={w}>
+                                      <Badge tone="warning">
+                                        {copy({ en: "Note too long", vi: "Ghi chú quá dài" })}
+                                      </Badge>
+                                      <span className="mt-0.5 block text-[11px] leading-4 text-amber-700">
+                                        {w}
+                                      </span>
+                                    </span>
+                                  ))}
+                                </div>
                               ) : null}
                             </div>
                           </td>

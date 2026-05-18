@@ -186,7 +186,7 @@ export function ApplicationsPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Applications", vi: "Hồ sơ ứng tuyển" })}
-        title={copy({ en: "Placement progress workspace", vi: "Theo dõi tiến trình ứng tuyển" })}
+        title={copy({ en: "Placement progress workspace", vi: "Theo dõi tiến trình đi đơn" })}
         description={copy({
           en: "Create and track candidate-to-order applications with interview state, rejection context, and downstream placement readiness.",
           vi: "Tạo và theo dõi hồ sơ ứng viên theo đơn hàng, bao gồm trạng thái phỏng vấn, lý do từ chối và mức sẵn sàng cho các bước sau."
@@ -195,15 +195,15 @@ export function ApplicationsPage() {
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>{copy({ en: "The backend applications module is live for list, detail, create, and lifecycle updates.", vi: "Module hồ sơ ứng tuyển đã hỗ trợ danh sách, chi tiết, tạo mới và cập nhật vòng đời." })}</span>
+        <span>{copy({ en: "The backend applications module is live for list, detail, create, and lifecycle updates.", vi: "Mô-đun hồ sơ ứng tuyển đã hỗ trợ danh sách, chi tiết, tạo mới và cập nhật tiến trình." })}</span>
           <Badge tone="success">{copy({ en: "Creation uses candidate and order selectors", vi: "Tạo hồ sơ bằng bộ chọn ứng viên và đơn hàng" })}</Badge>
         </div>
       </InfoStrip>
 
       <Toolbar compact className="border-slate-200/90">
         <FieldGroup columns={4} className="xl:grid-cols-5">
-          <Input label={copy({ en: "Lead ID", vi: "Lead ID" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
-          <Input label={copy({ en: "Candidate ID", vi: "ID ứng viên" })} value={filters.candidateId} onChange={(e) => setFilters((s) => ({ ...s, candidateId: e.target.value }))} />
+          <Input label={copy({ en: "Lead ID", vi: "Mã ứng viên" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
+          <Input label={copy({ en: "Candidate ID", vi: "Mã hồ sơ" })} value={filters.candidateId} onChange={(e) => setFilters((s) => ({ ...s, candidateId: e.target.value }))} />
           <Input label={copy({ en: "Order ID", vi: "ID đơn hàng" })} value={filters.orderId} onChange={(e) => setFilters((s) => ({ ...s, orderId: e.target.value }))} />
           <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))}>
             <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
@@ -215,14 +215,14 @@ export function ApplicationsPage() {
         </FieldGroup>
         <ToolbarActions>
           <Badge tone="neutral">{copy({ en: `${filteredRecords.length} visible applications`, vi: `${filteredRecords.length} hồ sơ đang hiển thị` })}</Badge>
-          <Badge tone="neutral">{copy({ en: `${applicationQuery.data?.total ?? 0} total from backend`, vi: `${applicationQuery.data?.total ?? 0} tổng số từ backend` })}</Badge>
+        <Badge tone="neutral">{copy({ en: `${applicationQuery.data?.total ?? 0} total from backend`, vi: `${applicationQuery.data?.total ?? 0} hồ sơ trong hệ thống` })}</Badge>
         </ToolbarActions>
       </Toolbar>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_390px]">
         <Panel
           title={copy({ en: "Application queue", vi: "Danh sách hồ sơ ứng tuyển" })}
-          subtitle={copy({ en: "Each record is a real candidate-to-order application from the backend workflow.", vi: "Mỗi dòng là một hồ sơ ứng viên theo đơn hàng trong luồng backend." })}
+        subtitle={copy({ en: "Each record is a real candidate-to-order application from the backend workflow.", vi: "Mỗi dòng là một hồ sơ ứng viên theo đơn hàng trong luồng xử lý của hệ thống." })}
         >
           {filteredRecords.length ? (
             <div className="max-h-[calc(100vh-30rem)] min-h-[320px] space-y-3 overflow-auto pr-1">
@@ -239,13 +239,13 @@ export function ApplicationsPage() {
                       <div>
                         <div className="font-semibold text-slate-900">{record.order?.name ?? copy({ en: "Unknown order", vi: "Chưa rõ đơn hàng" })}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">
-                          {record.lead?.fullName ?? copy({ en: "Unknown lead", vi: "Chưa rõ lead" })} - {record.candidate?.code ?? record.candidate_id ?? copy({ en: "No candidate code", vi: "Chưa có mã ứng viên" })}
+                  {record.lead?.fullName ?? copy({ en: "Unknown lead", vi: "Chưa rõ ứng viên tiềm năng" })} - {record.candidate?.code ?? record.candidate_id ?? copy({ en: "No candidate code", vi: "Chưa có mã ứng viên" })}
                         </div>
                       </div>
                       <Badge tone={toneForApplicationStatus(record.status)}>{formatApplicationStatus(record.status)}</Badge>
                     </div>
                     <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <InfoCard label={copy({ en: "Lead", vi: "Lead" })} value={record.lead?.phone ?? record.lead_id} />
+                      <InfoCard label={copy({ en: "Lead", vi: "Ứng viên" })} value={record.lead?.phone ?? record.lead_id} />
                       <InfoCard label={copy({ en: "Interview", vi: "Phỏng vấn" })} value={record.interviewDate ? record.interviewDate.slice(0, 10) : copy({ en: "Not set", vi: "Chưa đặt" })} />
                       <InfoCard label={copy({ en: "Updated", vi: "Cập nhật" })} value={record.updatedAt ? record.updatedAt.slice(0, 10) : copy({ en: "Unknown", vi: "Chưa rõ" })} />
                     </div>
@@ -280,9 +280,9 @@ export function ApplicationsPage() {
               <CandidatePicker
                 label={copy({ en: "Candidate", vi: "Ứng viên" })}
                 searchLabel={copy({ en: "Candidate search", vi: "Tìm ứng viên" })}
-                placeholder={copy({ en: "Code, lead name, or phone", vi: "Mã, tên lead hoặc số điện thoại" })}
+                placeholder={copy({ en: "Code, lead name, or phone", vi: "Mã, tên ứng viên hoặc số điện thoại" })}
                 emptyLabel={copy({ en: "Select candidate", vi: "Chọn ứng viên" })}
-                noLeadDetailLabel={copy({ en: "No lead detail", vi: "Chưa có thông tin lead" })}
+                noLeadDetailLabel={copy({ en: "No lead detail", vi: "Chưa có thông tin ứng viên" })}
                 value={createForm.candidateId}
                 onChange={(candidateId) => setCreateForm((s) => ({ ...s, candidateId }))}
               />
@@ -322,14 +322,14 @@ export function ApplicationsPage() {
 
           <Panel
             title={copy({ en: "Application detail", vi: "Chi tiết hồ sơ ứng tuyển" })}
-            subtitle={copy({ en: "Update live backend status, interview metadata, and rejection context.", vi: "Cập nhật trạng thái backend, thông tin phỏng vấn và lý do từ chối." })}
+        subtitle={copy({ en: "Update live backend status, interview metadata, and rejection context.", vi: "Cập nhật trạng thái xử lý, thông tin phỏng vấn và lý do từ chối." })}
           >
             {selected ? (
               <div className="space-y-4">
                 <DescriptionList
                   items={[
                     { label: copy({ en: "Application ID", vi: "ID hồ sơ ứng tuyển" }), value: selected.id },
-                    { label: copy({ en: "Lead", vi: "Lead" }), value: selected.lead?.fullName ?? selected.lead_id },
+                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead?.fullName ?? selected.lead_id },
                     { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: selected.candidate?.code ?? selected.candidate_id ?? copy({ en: "Unknown", vi: "Chưa rõ" }) },
                     { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name ?? selected.order_id },
                     { label: copy({ en: "Created", vi: "Ngày tạo" }), value: selected.createdAt ?? copy({ en: "Unknown", vi: "Chưa rõ" }) }
@@ -358,7 +358,7 @@ export function ApplicationsPage() {
                 </Button>
               </div>
             ) : (
-              <EmptyState title={copy({ en: "No application selected", vi: "Chưa chọn hồ sơ ứng tuyển" })} description={copy({ en: "Select a queue record to inspect and update live backend application state.", vi: "Chọn một dòng trong danh sách để xem và cập nhật trạng thái backend." })} />
+        <EmptyState title={copy({ en: "No application selected", vi: "Chưa chọn hồ sơ ứng tuyển" })} description={copy({ en: "Select a queue record to inspect and update live backend application state.", vi: "Chọn một dòng trong danh sách để xem và cập nhật trạng thái xử lý." })} />
             )}
           </Panel>
         </div>

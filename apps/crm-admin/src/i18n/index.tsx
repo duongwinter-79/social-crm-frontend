@@ -28,6 +28,8 @@ type I18nContextValue = {
   formatChannel: (value: string) => string;
   formatConfidence: (value: string) => string;
   formatExtractionSource: (value: string) => string;
+  formatExtractionSourceSummary: (value: string) => string;
+  formatApplySkipReason: (value: string) => string;
   formatFieldLabel: (key: string) => string;
   formatFieldValue: (key: string, value: unknown) => string;
   yesNoUnknown: (value: string) => string;
@@ -38,7 +40,7 @@ const STORAGE_KEY = "crm-admin-lang";
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 const enumLabels: Record<string, Copy> = {
-  NEW: { en: "New", vi: "Mới" },
+  NEW: { en: "New", vi: "Mới tiếp nhận" },
   CONTACTED: { en: "Contacted", vi: "Đã liên hệ" },
   // 2026-05-14: relabelled per operator feedback. The backend enum value
   // stays `qualified` for stability; only the visible label changes to
@@ -50,21 +52,25 @@ const enumLabels: Record<string, Copy> = {
   // "completed but not yet evaluated" — INTERVIEWING was removed from the
   // state machine. The display label reflects the combined semantics.
   INTERVIEW_SCHEDULED: { en: "Interviewed", vi: "Đã phỏng vấn" },
-  INTERVIEW_PASSED: { en: "Interview passed", vi: "Phỏng vấn đạt" },
-  INTERVIEW_FAILED: { en: "Interview failed", vi: "Phỏng vấn trượt" },
-  CONTRACT_SIGNED: { en: "Contract signed", vi: "Đã ký hợp đồng" },
-  VISA_PROCESSING: { en: "Visa processing", vi: "Đang làm visa" },
+  // 2026-05-18: pipeline labels aligned to standard XKLĐ vocabulary
+  // (per "Bản dịch CRM tiếng Việt chuẩn" §3 — operators talk about
+  // "đậu đơn / rớt đơn / ký giấy tờ / đóng visa", not the literal
+  // translations the auto-translator produced.)
+  INTERVIEW_PASSED: { en: "Interview passed", vi: "Đậu đơn" },
+  INTERVIEW_FAILED: { en: "Interview failed", vi: "Rớt đơn" },
+  CONTRACT_SIGNED: { en: "Contract signed", vi: "Đã ký giấy tờ" },
+  VISA_PROCESSING: { en: "Visa processing", vi: "Đóng visa" },
   DEPARTED: { en: "Departed", vi: "Đã xuất cảnh" },
-  DISQUALIFIED: { en: "Disqualified", vi: "Loại" },
+  DISQUALIFIED: { en: "Disqualified", vi: "Loại hồ sơ" },
   HOT: { en: "Hot", vi: "Nóng" },
   WARM: { en: "Warm", vi: "Ấm" },
-  COLD: { en: "Cold", vi: "Lạnh" },
+  COLD: { en: "Cold", vi: "Cần nuôi dưỡng" },
   matching: { en: "Matching", vi: "Đang ghép đơn" },
-  referred: { en: "Referred", vi: "Đã giới thiệu" },
+  referred: { en: "Referred", vi: "Đã tiến cử" },
   interview_scheduled: { en: "Interviewed", vi: "Đã phỏng vấn" },
-  interview_passed: { en: "Interview passed", vi: "Phỏng vấn đạt" },
-  interview_failed: { en: "Interview failed", vi: "Phỏng vấn trượt" },
-  signing: { en: "Signing", vi: "Đang ký" },
+  interview_passed: { en: "Interview passed", vi: "Đậu đơn" },
+  interview_failed: { en: "Interview failed", vi: "Rớt đơn" },
+  signing: { en: "Signing", vi: "Ký giấy tờ" },
   rejected: { en: "Rejected", vi: "Từ chối" },
   withdrawn: { en: "Withdrawn", vi: "Rút hồ sơ" },
   pending: { en: "Pending", vi: "Chờ xử lý" },
@@ -98,10 +104,10 @@ const enumLabels: Record<string, Copy> = {
   admin: { en: "Admin", vi: "Quản trị" },
   staff: { en: "Staff", vi: "Nhân viên" },
   departed: { en: "Departed", vi: "Đã xuất cảnh" },
-  disqualified: { en: "Disqualified", vi: "Loại" },
-  interview_failed_stage: { en: "Interview failed", vi: "Phỏng vấn trượt" },
-  visa_processing: { en: "Visa processing", vi: "Đang làm visa" },
-  contract_signed: { en: "Contract signed", vi: "Đã ký hợp đồng" },
+  disqualified: { en: "Disqualified", vi: "Loại hồ sơ" },
+  interview_failed_stage: { en: "Interview failed", vi: "Rớt đơn" },
+  visa_processing: { en: "Visa processing", vi: "Đóng visa" },
+  contract_signed: { en: "Contract signed", vi: "Đã ký giấy tờ" },
   // Channels / lead sources
   zalo: { en: "Zalo", vi: "Zalo" },
   facebook: { en: "Facebook", vi: "Facebook" },
@@ -114,7 +120,15 @@ const enumLabels: Record<string, Copy> = {
   medium: { en: "Medium", vi: "Trung bình" },
   low: { en: "Low", vi: "Thấp" },
   // AI extraction source kinds
-  deterministic: { en: "Regex", vi: "Mẫu cố định" },
+  deterministic: { en: "Template", vi: "Trích xuất quy tắc" },
+  // Apply-skip reason codes surfaced by /extract page after apply-suggestions
+  low_confidence: { en: "Low confidence", vi: "Độ tin cậy thấp" },
+  name_already_set: { en: "Name already set", vi: "Đã có tên" },
+  phone_already_set: { en: "Phone already set", vi: "Đã có số điện thoại" },
+  typed_col_already_set: { en: "Field already set", vi: "Trường đã có giá trị" },
+  operator_verified: { en: "Operator verified", vi: "Đã được nhân sự xác minh" },
+  auto_apply_disabled: { en: "Auto-apply disabled", vi: "Không cho phép tự động áp dụng" },
+  no_active_suggestion: { en: "No suggestion", vi: "Không có gợi ý" },
   ai_llm: { en: "AI", vi: "AI" },
   webhook: { en: "Webhook", vi: "Webhook" },
   // Job needs (Mini App / extraction values)
@@ -127,7 +141,7 @@ const enumLabels: Record<string, Copy> = {
   central: { en: "Central", vi: "Miền Trung" },
   south: { en: "South", vi: "Miền Nam" },
   // Lead-triage preliminary fit
-  promising: { en: "Promising fit", vi: "Phù hợp tiềm năng" },
+  promising: { en: "Promising fit", vi: "Tiềm năng" },
   needs_review: { en: "Needs review", vi: "Cần xem xét" },
   insufficient_data: { en: "Insufficient verified data", vi: "Chưa đủ dữ liệu xác minh" },
   not_fit: { en: "Not a fit", vi: "Không phù hợp" },
@@ -162,14 +176,14 @@ const fieldLabels: Record<string, Copy> = {
   tattooStatus: { en: "Tattoo status", vi: "Tình trạng hình xăm" },
   healthMeetsCriteria: { en: "Health fit", vi: "Sức khỏe đạt yêu cầu" },
   hasWorkedAbroad: { en: "Worked abroad", vi: "Từng đi nước ngoài" },
-  hasCleanHistoryAbroad: { en: "Clean abroad history", vi: "Lịch sử nước ngoài sạch" },
+  hasCleanHistoryAbroad: { en: "Clean abroad history", vi: "Lịch sử đi nước ngoài tốt" },
   hasStrongSkills: { en: "Strong skills", vi: "Có kỹ năng nổi bật" },
   hasRiskHistory: { en: "Risk history", vi: "Lịch sử rủi ro" },
   readyToDepartInMonths: { en: "Ready to depart in", vi: "Sẵn sàng xuất cảnh trong" },
   understandsJobNature: { en: "Understands job nature", vi: "Hiểu tính chất công việc" },
   hasClearRegionPreference: { en: "Clear region preference", vi: "Định hướng khu vực rõ" },
   jobNeeds: { en: "Job needs", vi: "Nhu cầu việc làm" },
-  leadSource: { en: "Acquisition source", vi: "Nguồn thu hút" },
+  leadSource: { en: "Acquisition source", vi: "Nguồn tiếp nhận" },
   source: { en: "Channel", vi: "Kênh" }
 };
 
@@ -239,6 +253,30 @@ export function I18nProvider(props: PropsWithChildren) {
     const formatChannel = (value: string) => fromMap(String(value).toLowerCase());
     const formatConfidence = (value: string) => fromMap(String(value).toLowerCase());
     const formatExtractionSource = (value: string) => fromMap(String(value).toLowerCase());
+
+    // Composite source strings like "import+zalo_text_deterministic+gemini"
+    // collapse to operator-friendly summaries. Tokens recognised:
+    //   AI providers: gemini, groq, openrouter, ai_llm, ai
+    //   deterministic / template: deterministic, zalo_text_deterministic, regex
+    //   webhook
+    const formatExtractionSourceSummary = (raw: string): string => {
+      const tokens = String(raw ?? "")
+        .toLowerCase()
+        .split(/[+,\s]+/)
+        .filter(Boolean);
+      const hasAi = tokens.some((t) =>
+        /(^|_)(ai|gemini|groq|openrouter|ai_llm|llm)(_|$)/.test(t)
+      );
+      const hasDet = tokens.some((t) => /deterministic|regex|template/.test(t));
+      const hasWebhook = tokens.some((t) => /webhook/.test(t));
+      if (hasAi && hasDet) return copy({ en: "AI + Template", vi: "AI + trích xuất quy tắc" });
+      if (hasAi) return copy({ en: "AI", vi: "AI" });
+      if (hasDet) return copy({ en: "Template", vi: "Trích xuất quy tắc" });
+      if (hasWebhook) return copy({ en: "Webhook", vi: "webhook" });
+      return raw || "—";
+    };
+
+    const formatApplySkipReason = (value: string) => fromMap(String(value).toLowerCase());
 
     const formatFieldLabel = (key: string): string => {
       const entry = fieldLabels[key];
@@ -316,6 +354,8 @@ export function I18nProvider(props: PropsWithChildren) {
       formatChannel,
       formatConfidence,
       formatExtractionSource,
+      formatExtractionSourceSummary,
+      formatApplySkipReason,
       formatFieldLabel,
       formatFieldValue,
       yesNoUnknown: (value) =>

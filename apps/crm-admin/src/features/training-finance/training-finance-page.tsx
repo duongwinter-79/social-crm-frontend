@@ -105,7 +105,7 @@ export function TrainingFinancePage() {
         title={copy({ en: "Commitment, training, visa, and departure tracking", vi: "Theo dõi đặt cọc, đào tạo, visa và xuất cảnh" })}
         description={copy({
           en: "Track downstream milestones after matching and application progression with real backend records.",
-          vi: "Theo dõi các mốc vận hành sau khi ghép đơn và xử lý hồ sơ bằng dữ liệu thực từ backend."
+          vi: "Theo dõi các mốc vận hành sau khi ghép đơn và xử lý hồ sơ bằng dữ liệu thực từ API."
         })}
       />
 
@@ -125,7 +125,7 @@ export function TrainingFinancePage() {
 
       <Toolbar compact className="border-slate-200/90">
         <FieldGroup columns={3}>
-          <Input label={copy({ en: "Lead ID", vi: "Lead ID" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
+          <Input label={copy({ en: "Lead ID", vi: "Mã ứng viên" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
           <Input label={copy({ en: "Order ID", vi: "Order ID" })} value={filters.orderId} onChange={(e) => setFilters((s) => ({ ...s, orderId: e.target.value }))} />
           <Input label={copy({ en: "Search", vi: "Tìm kiếm" })} value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
         </FieldGroup>
@@ -140,7 +140,7 @@ export function TrainingFinancePage() {
             title={copy({ en: "Milestone ledger", vi: "Sổ theo dõi mốc tiến độ" })}
             subtitle={copy({
               en: "Each record ties deposit, training, visa, and departure progress back to a lead and optional order.",
-              vi: "Mỗi bản ghi liên kết đặt cọc, đào tạo, visa và xuất cảnh với lead và đơn hàng nếu có."
+              vi: "Mỗi bản ghi liên kết đặt cọc, đào tạo, visa và xuất cảnh với ứng viên và đơn hàng nếu có."
             })}
           >
             {filteredRecords.length ? (
@@ -219,7 +219,7 @@ export function TrainingFinancePage() {
             })}
           >
             <div className="space-y-4">
-              <Input label={copy({ en: "Lead ID", vi: "Lead ID" })} value={createForm.leadId} onChange={(e) => setCreateForm((s) => ({ ...s, leadId: e.target.value }))} />
+              <Input label={copy({ en: "Lead ID", vi: "Mã ứng viên" })} value={createForm.leadId} onChange={(e) => setCreateForm((s) => ({ ...s, leadId: e.target.value }))} />
               <Input label={copy({ en: "Order ID", vi: "Order ID" })} value={createForm.orderId} onChange={(e) => setCreateForm((s) => ({ ...s, orderId: e.target.value }))} />
               <Input label={copy({ en: "Order type", vi: "Loại đơn hàng" })} value={createForm.orderType} onChange={(e) => setCreateForm((s) => ({ ...s, orderType: e.target.value }))} />
               <Input label={copy({ en: "Deposit status", vi: "Trạng thái đặt cọc" })} value={createForm.depositStatus} onChange={(e) => setCreateForm((s) => ({ ...s, depositStatus: e.target.value }))} />
@@ -261,7 +261,7 @@ export function TrainingFinancePage() {
                 <DescriptionList
                   items={[
                     { label: copy({ en: "Record ID", vi: "Record ID" }), value: selected.id },
-                    { label: copy({ en: "Lead", vi: "Lead" }), value: selected.lead?.fullName || selected.lead_id },
+                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead?.fullName || selected.lead_id },
                     { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name || selected.order_id || copy({ en: "No order", vi: "Không có đơn hàng" }) },
                     { label: copy({ en: "Updated", vi: "Cập nhật" }), value: selected.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
                   ]}

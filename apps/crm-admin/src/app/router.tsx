@@ -18,6 +18,7 @@ const DocumentsPage = lazy(() => import("@/features/documents/documents-page").t
 const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
+const ExtractPage = lazy(() => import("@/features/imports/extract-page").then((m) => ({ default: m.ExtractPage })));
 
 type IconName =
   | "dashboard"
@@ -30,6 +31,7 @@ type IconName =
   | "documents"
   | "training"
   | "import"
+  | "extract"
   | "admin"
   | "settings"
   | "help";
@@ -42,16 +44,17 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { to: "/dashboard", icon: "dashboard", label: { en: "Dashboard", vi: "Tổng quan" }, hint: { en: "Overview and triage", vi: "Tổng quan và phân loại" } },
-  { to: "/leads", icon: "leads", label: { en: "Leads", vi: "Lead" }, hint: { en: "Inbox and workbench", vi: "Hộp thư và bàn xử lý" } },
+  { to: "/dashboard", icon: "dashboard", label: { en: "Dashboard", vi: "Tổng quan" }, hint: { en: "Overview and triage", vi: "Tổng quan và sàng lọc" } },
+  { to: "/leads", icon: "leads", label: { en: "Leads", vi: "Ứng viên tiềm năng" }, hint: { en: "Inbox and workbench", vi: "Hộp tiếp nhận và xử lý hồ sơ" } },
   { to: "/conversations", icon: "conversations", label: { en: "Conversations", vi: "Hội thoại" }, hint: { en: "Zalo threads and messages", vi: "Luồng và tin nhắn Zalo" } },
-  { to: "/pipeline", icon: "pipeline", label: { en: "Pipeline", vi: "Pipeline" }, hint: { en: "Cross-stage flow", vi: "Luồng liên giai đoạn" } },
-  { to: "/matching", icon: "matching", label: { en: "Matching", vi: "Ghép đơn" }, hint: { en: "Rules and fit", vi: "Quy tắc và độ phù hợp" } },
+  { to: "/pipeline", icon: "pipeline", label: { en: "Pipeline", vi: "Tiến trình hồ sơ" }, hint: { en: "Cross-stage flow", vi: "Luồng xử lý xuất cảnh" } },
+  { to: "/matching", icon: "matching", label: { en: "Matching", vi: "Ghép đơn" }, hint: { en: "Rules and fit", vi: "Quy tắc xét phù hợp" } },
   { to: "/orders", icon: "orders", label: { en: "Orders", vi: "Đơn hàng" }, hint: { en: "Demand catalog", vi: "Danh mục nhu cầu" } },
   { to: "/applications", icon: "applications", label: { en: "Applications", vi: "Hồ sơ ứng tuyển" }, hint: { en: "Placement progress", vi: "Tiến độ sắp xếp" } },
   { to: "/documents", icon: "documents", label: { en: "Documents", vi: "Hồ sơ giấy tờ" }, hint: { en: "Candidate files", vi: "Giấy tờ ứng viên" } },
   { to: "/training-finance", icon: "training", label: { en: "Training & Finance", vi: "Đào tạo & tài chính" }, hint: { en: "Deposits and visa", vi: "Đặt cọc và visa" } },
   { to: "/import", icon: "import", label: { en: "Import", vi: "Nhập dữ liệu" }, hint: { en: "Bulk import from XLSX", vi: "Nhập hàng loạt từ XLSX" } },
+  { to: "/extract", icon: "extract", label: { en: "Extract notes", vi: "Trích xuất ghi chú" }, hint: { en: "Operator-gated AI extraction", vi: "AI trích xuất, nhân sự duyệt" } },
   { to: "/admin", icon: "admin", label: { en: "Admin", vi: "Quản trị" }, hint: { en: "System controls", vi: "Điều khiển hệ thống" } }
 ];
 
@@ -85,6 +88,8 @@ function NavIcon(props: { name: IconName }) {
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16" {...common} /><path d="M7 18V8l5-3 5 3v10" {...common} /><path d="M12 11v7" {...common} /></svg>;
     case "import":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10" {...common} /><path d="m8 10 4 4 4-4" {...common} /><path d="M5 17h14" {...common} /></svg>;
+    case "extract":
+      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h6l4 4v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" {...common} /><path d="M15 5v4h4" {...common} /><path d="m9 14 2 2 4-4" {...common} /></svg>;
     case "admin":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 9.5 4-1.2 7-5 7-9.5V6l-7-3Z" {...common} /><path d="M9.5 12.2 11.2 14l3.6-4" {...common} /></svg>;
     case "settings":
@@ -109,10 +114,10 @@ function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: {
 }
 
 function titleForPath(pathname: string, copy: (value: { en: string; vi: string }) => string) {
-  if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý lead" });
+  if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   return navItems.find((item) => pathname === item.to)?.label
     ? copy(navItems.find((item) => pathname === item.to)!.label)
-    : copy({ en: "Workspace", vi: "Không gian làm việc" });
+    : copy({ en: "Workspace", vi: "Khu vực làm việc" });
 }
 
 function ProtectedLayout() {
@@ -122,7 +127,7 @@ function ProtectedLayout() {
   const { lang, setLang, copy } = useI18n();
   const pageTitle = titleForPath(location.pathname, copy);
   const visibleNavItems = navItems.filter((item) => {
-    if (item.to === "/admin" || item.to === "/import") {
+    if (item.to === "/admin" || item.to === "/import" || item.to === "/extract") {
       return user?.roles?.includes("admin");
     }
     return true;
@@ -146,7 +151,7 @@ function ProtectedLayout() {
             <div className="admin-shell-brand-copy">
               <div className="admin-shell-brand-kicker">Sao Mai HR</div>
               <div className="admin-shell-brand-title">Sao Mai HR CRM</div>
-              <p className="admin-shell-brand-text">{copy({ en: "Recruitment workspace", vi: "Không gian tuyển dụng" })}</p>
+              <p className="admin-shell-brand-text">{copy({ en: "Recruitment workspace", vi: "Hệ thống tuyển dụng" })}</p>
             </div>
           </div>
 
@@ -156,8 +161,8 @@ function ProtectedLayout() {
               <div className="admin-shell-system-value">
                 <span className="admin-shell-system-dot" />
                 {health.data?.status === "ok"
-                  ? copy({ en: "Backend online", vi: "Backend đang hoạt động" })
-                  : copy({ en: "Backend check pending", vi: "Đang chờ kiểm tra backend" })}
+                  ? copy({ en: "Backend online", vi: "API đang hoạt động" })
+                  : copy({ en: "Backend check pending", vi: "Đang kiểm tra API" })}
               </div>
             </div>
             <Badge tone={health.data?.status === "ok" ? "success" : "warning"}>
@@ -250,8 +255,8 @@ function ProtectedLayout() {
                 </div>
                 <Badge tone={health.data?.status === "ok" ? "success" : "warning"}>
                   {health.data?.status === "ok"
-                    ? copy({ en: "Backend healthy", vi: "Backend hoạt động" })
-                    : copy({ en: "Backend status unknown", vi: "Chưa rõ trạng thái backend" })}
+                    ? copy({ en: "Backend healthy", vi: "API hoạt động" })
+                    : copy({ en: "Backend status unknown", vi: "Chưa rõ trạng thái API" })}
                 </Badge>
               </div>
             </div>
@@ -259,7 +264,7 @@ function ProtectedLayout() {
               <span>
                 {copy({
                   en: "Backend-backed modules are being brought into the source CRM visual system first.",
-                  vi: "Các mô-đun đã có backend đang được đưa vào cùng hệ thống giao diện CRM trước tiên."
+                  vi: "Các mô-đun đã có API đang được đưa vào cùng hệ thống giao diện CRM trước tiên."
                 })}
               </span>
               <strong>
@@ -293,7 +298,7 @@ function RouteFallback() {
   return (
     <div className="rounded-[24px] border border-slate-200 bg-white px-6 py-10 text-center shadow-[0_18px_34px_rgba(15,23,42,0.05)]">
       <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">{copy({ en: "Loading module", vi: "Đang tải mô-đun" })}</div>
-      <div className="mt-3 text-lg font-semibold text-slate-900">{copy({ en: "Preparing workspace", vi: "Đang chuẩn bị không gian làm việc" })}</div>
+      <div className="mt-3 text-lg font-semibold text-slate-900">{copy({ en: "Preparing workspace", vi: "Đang chuẩn bị khu vực làm việc" })}</div>
       <div className="mt-2 text-sm text-slate-500">
         {copy({
           en: "Route-level code splitting is active. The selected CRM module is being loaded.",
@@ -349,6 +354,7 @@ export function AppRouter() {
         <Route path="/documents" element={<LazyRoute><DocumentsPage /></LazyRoute>} />
         <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
+        <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
       </Route>
     </Routes>

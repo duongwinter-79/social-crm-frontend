@@ -146,25 +146,25 @@ export function LeadWorkbenchPage() {
   const phoneMergeConflictId = findPhoneMergeCandidate(suggestionsQuery.data);
 
   if (!lead) {
-    return <Panel title={copy({ en: "Lead workbench", vi: "Bàn làm việc lead" })}><EmptyState title={copy({ en: "Lead not loaded", vi: "Chưa tải được lead" })} description={copy({ en: "The selected lead could not be loaded from the backend.", vi: "Không tải được lead đã chọn từ backend." })} /></Panel>;
+    return <Panel title={copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" })}><EmptyState title={copy({ en: "Lead not loaded", vi: "Chưa tải được ứng viên tiềm năng" })} description={copy({ en: "The selected lead could not be loaded from the backend.", vi: "Không tải được ứng viên tiềm năng đã chọn từ API." })} /></Panel>;
   }
 
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Lead workbench", vi: "Bàn làm việc lead" })}
-        title={lead.fullName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })}
+        eyebrow={copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" })}
+        title={lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
         description={`${lead.source.toUpperCase()} · ${lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · ${lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })}`}
       />
 
       {phoneMergeConflictId ? (
         <InfoStrip className="border-rose-300 bg-rose-50 text-rose-900">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge tone="danger">{copy({ en: "Merge required", vi: "Cần gộp lead" })}</Badge>
+            <Badge tone="danger">{copy({ en: "Merge required", vi: "Cần gộp ứng viên" })}</Badge>
             <span>
               {copy({
                 en: "AI extracted a phone number that already belongs to another lead. The phone column was NOT auto-applied.",
-                vi: "AI đã trích xuất số điện thoại trùng với một lead khác. Số điện thoại chưa được tự động áp dụng."
+                vi: "AI đã trích xuất số điện thoại trùng với một ứng viên khác. Số điện thoại chưa được tự động áp dụng."
               })}
             </span>
             <code className="rounded bg-rose-100 px-2 py-0.5 text-xs">{phoneMergeConflictId}</code>
@@ -176,7 +176,7 @@ export function LeadWorkbenchPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="grid gap-3 md:grid-cols-4 xl:flex-1">
             <InfoCard label={copy({ en: "Status", vi: "Trạng thái" })} value={<Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>} className="bg-slate-50" />
-            <InfoCard label={copy({ en: "Lead score", vi: "Điểm lead" })} value={<Badge tone={(lead.leadScore ?? 0) >= 80 ? "success" : (lead.leadScore ?? 0) >= 60 ? "warning" : "neutral"}>{lead.leadScore ?? "-"}</Badge>} className="bg-slate-50" />
+            <InfoCard label={copy({ en: "Lead score", vi: "Điểm ứng viên" })} value={<Badge tone={(lead.leadScore ?? 0) >= 80 ? "success" : (lead.leadScore ?? 0) >= 60 ? "warning" : "neutral"}>{lead.leadScore ?? "-"}</Badge>} className="bg-slate-50" />
             <InfoCard label={copy({ en: "Classification", vi: "Phân loại" })} value={lead.leadClassification ?? copy({ en: "Unclassified", vi: "Chưa phân loại" })} className="bg-slate-50" />
             <InfoCard label={copy({ en: "Threads", vi: "Luồng hội thoại" })} value={lead.threads?.length ?? 0} className="bg-slate-50" />
           </div>
@@ -215,7 +215,7 @@ export function LeadWorkbenchPage() {
         <InfoStrip className="border-rose-300 bg-rose-50 text-rose-900">
           <div className="flex w-full flex-col gap-3">
             <div className="flex items-center gap-2">
-              <Badge tone="danger">{copy({ en: "Confirm disqualification", vi: "Xác nhận loại lead" })}</Badge>
+              <Badge tone="danger">{copy({ en: "Confirm disqualification", vi: "Xác nhận loại ứng viên" })}</Badge>
               <span className="text-sm font-medium">
                 {copy({
                   en: "Provide a reason so the team can review or roll this back later.",
@@ -261,7 +261,7 @@ export function LeadWorkbenchPage() {
           <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="danger">{copy({ en: "Lead disqualified", vi: "Lead đã bị loại" })}</Badge>
+                <Badge tone="danger">{copy({ en: "Lead disqualified", vi: "Hồ sơ đã bị loại" })}</Badge>
                 {lead.previousStatus ? (
                   <span className="text-xs">
                     {copy({ en: "Previous status:", vi: "Trạng thái trước:" })}{" "}
@@ -344,7 +344,7 @@ export function LeadWorkbenchPage() {
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>{copy({ en: "Use backend state transitions first.", vi: "Ưu tiên dùng luồng chuyển trạng thái từ backend." })}</span>
+          <span>{copy({ en: "Use backend state transitions first.", vi: "Ưu tiên dùng luồng chuyển trạng thái do hệ thống kiểm soát." })}</span>
           <Badge tone="neutral">{copy({ en: "Profile completeness drives matching quality", vi: "Độ đầy đủ hồ sơ ảnh hưởng chất lượng ghép đơn" })}</Badge>
           <Badge tone="neutral">
             {hasCandidate
@@ -353,7 +353,7 @@ export function LeadWorkbenchPage() {
                 : copy({ en: "No formal suggestions yet", vi: "Chưa có đề xuất chính thức" })
               : copy({ en: "Qualification required before formal suggestions", vi: "Cần xác minh trước khi có đề xuất chính thức" })}
           </Badge>
-          <Badge tone={candidate ? "success" : "warning"}>{candidate ? `Candidate ${candidate.code ?? candidate.id}` : copy({ en: "No candidate created yet", vi: "Chưa tạo ứng viên" })}</Badge>
+          <Badge tone={candidate ? "success" : "warning"}>{candidate ? `${copy({ en: "Candidate", vi: "Ứng viên" })} ${candidate.code ?? candidate.id}` : copy({ en: "No candidate created yet", vi: "Chưa tạo hồ sơ ứng viên" })}</Badge>
         </div>
       </InfoStrip>
 
@@ -379,7 +379,7 @@ export function LeadWorkbenchPage() {
             title={copy({ en: "Conversation", vi: "Hội thoại" })}
             subtitle={copy({
               en: "Latest messages from this lead's primary thread. Both directions captured (inbound from candidate, outbound when admin replies via Zalo OA).",
-              vi: "Tin nhắn gần nhất từ thread chính. Bao gồm cả 2 chiều (lead gửi vào & admin trả lời qua Zalo OA)."
+              vi: "Tin nhắn gần nhất từ luồng hội thoại chính. Bao gồm cả hai chiều: ứng viên gửi vào và nhân sự trả lời qua Zalo OA."
             })}
           >
             <LeadConversationInline thread={lead.threads?.[0]} />
@@ -403,10 +403,10 @@ export function LeadWorkbenchPage() {
           </Panel>
 
           <Panel
-            title={copy({ en: "Manual AI question", vi: "Hỏi AI thủ công" })}
+            title={copy({ en: "Manual AI question", vi: "Hỏi AI về hội thoại" })}
             subtitle={copy({
               en: "Use this for one-off questions about the conversation. It does not update verified qualification, AI suggestions, score, or matching inputs.",
-              vi: "Dùng để hỏi nhanh về hội thoại. Kết quả này không cập nhật dữ liệu xác minh, gợi ý AI, điểm lead hoặc dữ liệu ghép đơn."
+              vi: "Dùng để hỏi nhanh về hội thoại. Kết quả này không cập nhật dữ liệu xác minh, gợi ý AI, điểm ứng viên hoặc dữ liệu ghép đơn."
             })}
           >
             <div className="space-y-3">
@@ -414,22 +414,22 @@ export function LeadWorkbenchPage() {
                 <div className="text-sm leading-6">
                   {copy({
                     en: "For saved structured extraction, use the AI snapshot action above.",
-                    vi: "Muốn cập nhật dữ liệu trích xuất đã lưu, dùng nút trong khối Tóm tắt AI phía trên."
+                    vi: "Muốn cập nhật dữ liệu trích xuất đã lưu, dùng nút trong khối Dữ liệu AI phía trên."
                   })}
                 </div>
               </InfoStrip>
               <Input label={copy({ en: "Question", vi: "Câu hỏi" })} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
               <div className="flex flex-wrap items-center gap-3">
                 <Button onClick={() => { if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt }); }} disabled={!selectedThreadId || aiMutation.isPending}>
-                  {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Đang chạy truy vấn AI..." }) : copy({ en: "Run query", vi: "Chạy truy vấn" })}
+                  {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Đang hỏi AI..." }) : copy({ en: "Run query", vi: "Hỏi AI" })}
                 </Button>
-                <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng thread ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có thread" })}</span>
+                <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng luồng hội thoại ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có luồng hội thoại" })}</span>
               </div>
               {aiMutation.data ? renderAiQueryResult(aiMutation.data.result, copy) : null}
             </div>
           </Panel>
 
-          <Panel title={copy({ en: "Qualification overlay", vi: "Lớp xác minh điều kiện" })} subtitle={copy({ en: "Staff-verified fields directly influence lead score and matching.", vi: "Các trường đã được nhân viên xác minh ảnh hưởng trực tiếp đến điểm lead và kết quả ghép đơn." })}>
+          <Panel title={copy({ en: "Qualification overlay", vi: "Lớp xác minh điều kiện" })} subtitle={copy({ en: "Staff-verified fields directly influence lead score and matching.", vi: "Các trường đã được nhân viên xác minh ảnh hưởng trực tiếp đến điểm ứng viên và kết quả ghép đơn." })}>
             <FieldGroup columns={2}>
               <FieldWithProvenance
                 fieldKey="age"
@@ -596,10 +596,10 @@ export function LeadWorkbenchPage() {
         </div>
 
         <div className="space-y-6">
-          <Panel title={copy({ en: "Lead summary", vi: "Tóm tắt lead" })} subtitle={copy({ en: "Fast operator snapshot before taking action.", vi: "Tóm tắt nhanh trước khi thao tác." })}>
+          <Panel title={copy({ en: "Lead summary", vi: "Tóm tắt ứng viên tiềm năng" })} subtitle={copy({ en: "Fast operator snapshot before taking action.", vi: "Thông tin nhanh để nhân sự quyết định bước xử lý tiếp theo." })}>
             <DescriptionList
               items={[
-                { label: copy({ en: "Lead ID", vi: "Lead ID" }), value: lead.id },
+                { label: copy({ en: "Lead ID", vi: "Mã ứng viên tiềm năng" }), value: lead.id },
                 { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: candidate?.code ?? candidate?.id ?? copy({ en: "Not created", vi: "Chưa tạo" }) },
                 { label: copy({ en: "Source", vi: "Nguồn" }), value: lead.source },
                 { label: copy({ en: "Phone", vi: "Điện thoại" }), value: lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" }) },
@@ -611,10 +611,10 @@ export function LeadWorkbenchPage() {
           </Panel>
 
           <Panel
-            title={copy({ en: "Lead-stage matching suggestions", vi: "Gợi ý ghép đơn (giai đoạn lead)" })}
+            title={copy({ en: "Lead-stage matching suggestions", vi: "Gợi ý ghép đơn sơ bộ" })}
             subtitle={copy({
               en: "Top orders ranked by the lead-triage engine. Available immediately — no candidate record required.",
-              vi: "Đơn hàng được xếp hạng bởi engine lead-triage. Hiển thị ngay từ giai đoạn sàng lọc, không cần candidate."
+              vi: "Đơn hàng được xếp hạng từ dữ liệu sàng lọc sơ bộ. Có thể xem ngay từ giai đoạn tiếp nhận, chưa cần tạo hồ sơ ứng viên chính thức."
             })}
           >
             {leadOrderSuggestionsQuery.isLoading ? (
@@ -624,7 +624,7 @@ export function LeadWorkbenchPage() {
                 title={copy({ en: "No orders to rank", vi: "Chưa có đơn hàng để xếp hạng" })}
                 description={copy({
                   en: "Add active orders in the Orders module; matches will appear here automatically.",
-                  vi: "Thêm đơn hàng đang hoạt động trong mục Orders, các đơn phù hợp sẽ tự động hiển thị tại đây."
+                  vi: "Thêm đơn hàng đang hoạt động trong mục Đơn hàng, các đơn phù hợp sẽ tự động hiển thị tại đây."
                 })}
               />
             ) : (
@@ -634,20 +634,20 @@ export function LeadWorkbenchPage() {
             )}
           </Panel>
 
-          <Panel title={copy({ en: "Formal suggested orders", vi: "Đơn hàng đề xuất chính thức" })} subtitle={copy({ en: "Shown only after this lead has a linked candidate record.", vi: "Chỉ hiển thị sau khi lead có ứng viên liên kết." })}>
+          <Panel title={copy({ en: "Formal suggested orders", vi: "Đơn hàng đề xuất chính thức" })} subtitle={copy({ en: "Shown only after this lead has a linked candidate record.", vi: "Chỉ hiển thị sau khi ứng viên tiềm năng đã có hồ sơ ứng viên liên kết." })}>
             {!hasCandidate ? (
               <div className="space-y-4">
                 <EmptyState
-                  title={copy({ en: "Candidate required before formal suggestions", vi: "Cần ứng viên trước khi có đề xuất chính thức" })}
+                  title={copy({ en: "Candidate required before formal suggestions", vi: "Cần tạo hồ sơ ứng viên trước khi có đề xuất chính thức" })}
                   description={copy({
                     en: "Complete the qualification overlay and move the lead through the backend transition to qualified. The backend creates the candidate record before formal matching and application creation.",
-                    vi: "Hoàn tất lớp xác minh và chuyển lead theo luồng backend sang đủ điều kiện. Backend sẽ tạo ứng viên trước khi ghép đơn chính thức và tạo hồ sơ ứng tuyển."
+                    vi: "Hoàn tất lớp xác minh và chuyển trạng thái ứng viên tiềm năng sang đủ điều kiện. Hệ thống sẽ tạo hồ sơ ứng viên trước khi ghép đơn chính thức và tạo hồ sơ ứng tuyển."
                   })}
                 />
                 <div className="grid gap-3">
-                  <InfoCard label={copy({ en: "Current lead status", vi: "Trạng thái lead hiện tại" })} value={<Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>} className="bg-slate-50" />
-                  <InfoCard label={copy({ en: "Required operator action", vi: "Hành động cần làm" })} value={copy({ en: "Save verified qualification data, then use the allowed backend transition buttons at the top of this page.", vi: "Lưu dữ liệu xác minh, sau đó dùng nút chuyển trạng thái backend ở đầu trang." })} className="bg-slate-50" />
-                  <InfoCard label={copy({ en: "Why orders are hidden", vi: "Vì sao ẩn đơn hàng" })} value={copy({ en: "Order suggestions here are candidate-stage matching results, not lead-stage catalog previews.", vi: "Đề xuất đơn hàng ở đây là kết quả matching giai đoạn ứng viên, không phải bản xem trước danh mục cho lead." })} className="bg-slate-50" />
+                  <InfoCard label={copy({ en: "Current lead status", vi: "Trạng thái ứng viên tiềm năng hiện tại" })} value={<Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>} className="bg-slate-50" />
+                  <InfoCard label={copy({ en: "Required operator action", vi: "Hành động nhân sự cần làm" })} value={copy({ en: "Save verified qualification data, then use the allowed backend transition buttons at the top of this page.", vi: "Lưu dữ liệu xác minh, sau đó dùng các nút chuyển trạng thái hợp lệ ở đầu trang." })} className="bg-slate-50" />
+                  <InfoCard label={copy({ en: "Why orders are hidden", vi: "Vì sao ẩn đơn hàng" })} value={copy({ en: "Order suggestions here are candidate-stage matching results, not lead-stage catalog previews.", vi: "Đề xuất tại đây là kết quả ghép đơn chính thức cho hồ sơ ứng viên, không phải danh mục xem trước ở giai đoạn tiếp nhận." })} className="bg-slate-50" />
                 </div>
               </div>
             ) : suggestedOrders.length ? (
@@ -676,23 +676,23 @@ export function LeadWorkbenchPage() {
                         {createApplication.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create application", vi: "Tạo hồ sơ ứng tuyển" })}
                       </Button>
                       <span className="text-xs text-slate-500">
-                        {copy({ en: "Uses the linked candidate record from the recruitment API.", vi: "Sử dụng ứng viên đã liên kết từ recruitment API." })}
+                        {copy({ en: "Uses the linked candidate record from the recruitment API.", vi: "Sử dụng hồ sơ ứng viên đã liên kết trong hệ thống tuyển dụng." })}
                       </span>
                     </div>
                   </div>
                 ))}
                 {createApplication.error ? (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {copy({ en: "Application creation failed. Check whether this candidate/order application already exists or whether the backend rejected the request.", vi: "Tạo hồ sơ ứng tuyển thất bại. Kiểm tra hồ sơ ứng viên/đơn hàng đã tồn tại hoặc backend từ chối yêu cầu." })}
+                    {copy({ en: "Application creation failed. Check whether this candidate/order application already exists or whether the backend rejected the request.", vi: "Tạo hồ sơ ứng tuyển thất bại. Kiểm tra hồ sơ ứng viên/đơn hàng đã tồn tại hoặc hệ thống từ chối yêu cầu." })}
                   </div>
                 ) : null}
               </div>
             ) : (
-              <EmptyState title={copy({ en: "No formal suggestions returned", vi: "Chưa có đề xuất chính thức" })} description={copy({ en: "The backend candidate matching suggestion endpoint did not return orders for this candidate yet. Review the verified profile and formal matching page if needed.", vi: "Endpoint đề xuất matching ứng viên chưa trả về đơn hàng cho ứng viên này. Hãy kiểm tra hồ sơ đã xác minh và trang ghép đơn chính thức nếu cần." })} />
+              <EmptyState title={copy({ en: "No formal suggestions returned", vi: "Chưa có đề xuất chính thức" })} description={copy({ en: "The backend candidate matching suggestion endpoint did not return orders for this candidate yet. Review the verified profile and formal matching page if needed.", vi: "API đề xuất ghép đơn chưa trả về đơn hàng cho ứng viên này. Hãy kiểm tra hồ sơ đã xác minh và trang ghép đơn chính thức nếu cần." })} />
             )}
           </Panel>
 
-          <Panel title={copy({ en: "Verified qualification snapshot", vi: "Ảnh chụp dữ liệu đã xác minh" })} subtitle={copy({ en: "Staff-confirmed fields used for scoring and matching.", vi: "Các trường đã được nhân viên xác nhận để tính điểm và ghép đơn." })}>
+          <Panel title={copy({ en: "Verified qualification snapshot", vi: "Dữ liệu xác minh đã lưu" })} subtitle={copy({ en: "Staff-confirmed fields used for scoring and matching.", vi: "Các trường nhân sự đã xác nhận để tính điểm và ghép đơn." })}>
             <DescriptionList
               items={[
                 { label: copy({ en: "Passport", vi: "Hộ chiếu" }), value: yesNoUnknown(qualificationForm.hasPassport) },

@@ -199,13 +199,13 @@ export function ConversationsPage() {
         title={copy({ en: "Conversation inbox", vi: "Hộp thoại hội thoại" })}
         description={copy({
           en: "Inspect Zalo threads, recent messages, lead linkage, and extraction status from the CRM database.",
-          vi: "Theo dõi hội thoại Zalo, tin nhắn gần đây, liên kết lead và trạng thái trích xuất từ database CRM."
+          vi: "Theo dõi hội thoại Zalo, tin nhắn gần đây, liên kết ứng viên và trạng thái trích xuất từ database CRM."
         })}
       />
 
       <FieldGroup columns={4}>
         <InfoCard label={copy({ en: "Loaded threads", vi: "Luồng đã tải" })} value={stats.loaded} hint={copy({ en: `${total} total matches`, vi: `${total} kết quả phù hợp` })} />
-        <InfoCard label={copy({ en: "Linked leads", vi: "Lead đã liên kết" })} value={stats.linkedLeads} hint={copy({ en: "Threads with CRM lead records", vi: "Luồng có bản ghi lead CRM" })} />
+        <InfoCard label={copy({ en: "Linked leads", vi: "Ứng viên đã liên kết" })} value={stats.linkedLeads} hint={copy({ en: "Threads with CRM lead records", vi: "Luồng có bản ghi ứng viên CRM" })} />
         <InfoCard label={copy({ en: "Needs phone", vi: "Thiếu số điện thoại" })} value={stats.needsPhone} hint={copy({ en: "AI should keep enriching these", vi: "AI cần tiếp tục bổ sung" })} />
         <InfoCard label={copy({ en: "Unscanned text", vi: "Tin nhắn chưa quét" })} value={stats.unscanned} hint={copy({ en: "Pending extraction worker", vi: "Đang chờ worker trích xuất" })} />
       </FieldGroup>
@@ -222,7 +222,7 @@ export function ConversationsPage() {
                 setPage(0);
               });
             }}
-            placeholder={copy({ en: "Lead name, phone, or external Zalo id...", vi: "Tên lead, số điện thoại hoặc Zalo external id..." })}
+            placeholder={copy({ en: "Lead name, phone, or external Zalo id...", vi: "Tên ứng viên, số điện thoại hoặc Zalo external id..." })}
           />
           <Select
             label={copy({ en: "Channel", vi: "Kênh" })}
@@ -317,7 +317,7 @@ export function ConversationsPage() {
             subtitle={selectedThread ? `${selectedThread.channel} • ${selectedThread.messageCount} messages • ${formatDateTime(selectedThread.lastMessageAt)}` : undefined}
             action={selectedThread?.lead ? (
               <Link to={`/leads/${selectedThread.lead.id}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                {copy({ en: "Open lead", vi: "Mở lead" })}
+                {copy({ en: "Open lead", vi: "Mở ứng viên" })}
               </Link>
             ) : null}
           >
@@ -339,7 +339,7 @@ export function ConversationsPage() {
                 <InfoCard
                   label={copy({ en: "Source", vi: "Nguồn" })}
                   value={selectedThread.lead?.source || selectedThread.channel}
-                  hint={selectedThread.lead?.status ? `${copy({ en: "Lead status", vi: "Trạng thái lead" })}: ${formatEnum(selectedThread.lead.status)}` : undefined}
+                  hint={selectedThread.lead?.status ? `${copy({ en: "Lead status", vi: "Trạng thái ứng viên" })}: ${formatEnum(selectedThread.lead.status)}` : undefined}
                 />
               </div>
             ) : (

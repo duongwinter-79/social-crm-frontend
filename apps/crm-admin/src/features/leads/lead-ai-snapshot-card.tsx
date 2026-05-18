@@ -82,7 +82,7 @@ function extractionStatusCopy(status: BackgroundExtractionStatus, copy: ReturnTy
                 label: copy({ en: "Starting extraction", vi: "Đang bắt đầu trích xuất" }),
                 description: copy({
                     en: "The backend accepted the request and is preparing the background extraction job.",
-                    vi: "Backend đã nhận yêu cầu và đang chuẩn bị xử lý trích xuất nền."
+                    vi: "API đã nhận yêu cầu và đang chuẩn bị xử lý trích xuất nền."
                 })
             };
         case "running":
@@ -100,7 +100,7 @@ function extractionStatusCopy(status: BackgroundExtractionStatus, copy: ReturnTy
                 label: copy({ en: "Extraction refreshed", vi: "Đã cập nhật trích xuất" }),
                 description: copy({
                     en: "The background extraction run has finished and the latest lead data has been refreshed.",
-                    vi: "Lượt trích xuất nền đã hoàn tất và dữ liệu lead mới nhất đã được cập nhật."
+                    vi: "Lượt trích xuất nền đã hoàn tất và dữ liệu ứng viên mới nhất đã được cập nhật."
                 })
             };
         case "timeout":
@@ -529,7 +529,7 @@ function FieldRow({
                 {suggestion?.reason ? (
                     <div className="break-words text-rose-600" title={suggestion.reason}>
                         {suggestion.reason.startsWith("merge_candidate:")
-                            ? copy({ en: "Merge required", vi: "Cần gộp lead" })
+                            ? copy({ en: "Merge required", vi: "Cần gộp ứng viên" })
                             : suggestion.reason}
                     </div>
                 ) : null}
@@ -618,7 +618,7 @@ export function LeadAiSnapshotCard(props: Props) {
 
     return (
         <Panel
-            title={copy({ en: "AI snapshot", vi: "Tóm tắt AI" })}
+            title={copy({ en: "AI snapshot", vi: "Dữ liệu AI" })}
             subtitle={copy({
                 en: "What AI understood from inbound messages. Staff-verified fields still override AI data when reading.",
                 vi: "Những gì AI hiểu từ tin nhắn đến. Trường đã được nhân viên xác minh vẫn được ưu tiên khi đọc dữ liệu."
@@ -643,17 +643,17 @@ export function LeadAiSnapshotCard(props: Props) {
                     title={copy({ en: "Nothing extracted yet", vi: "AI chưa trích xuất dữ liệu" })}
                     description={copy({
                         en: "Run AI extraction after inbound messages arrive.",
-                        vi: "Bấm trích xuất AI sau khi lead có tin nhắn đến."
+                        vi: "Bấm trích xuất AI sau khi ứng viên có tin nhắn đến."
                     })}
                 />
             )}
 
             {phoneMergeConflictId ? (
                 <div className="mt-4 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-800">
-                    <Badge tone="danger">{copy({ en: "Merge required", vi: "Cần gộp lead" })}</Badge>{" "}
+                    <Badge tone="danger">{copy({ en: "Merge required", vi: "Cần gộp ứng viên" })}</Badge>{" "}
                     {copy({
                         en: "AI extracted a phone number that already belongs to another lead.",
-                        vi: "AI trích xuất số điện thoại trùng với lead khác."
+                        vi: "AI trích xuất số điện thoại trùng với ứng viên khác."
                     })}{" "}
                     <code className="rounded bg-rose-100 px-1.5 text-xs">{phoneMergeConflictId}</code>
                 </div>
@@ -671,7 +671,7 @@ export function LeadAiSnapshotCard(props: Props) {
                 <div className="mb-3 text-xs leading-5 text-slate-500">
                     {copy({
                         en: "This action rebuilds saved extraction data, AI suggestions, profile signals, score, and matching inputs.",
-                        vi: "Thao tác này cập nhật dữ liệu trích xuất đã lưu, gợi ý AI, tín hiệu hồ sơ, điểm lead và dữ liệu ghép đơn."
+                        vi: "Thao tác này cập nhật dữ liệu trích xuất đã lưu, gợi ý AI, tín hiệu hồ sơ, điểm ứng viên và dữ liệu ghép đơn."
                     })}
                 </div>
                 {extractionStatus ? (

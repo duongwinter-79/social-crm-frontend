@@ -53,12 +53,12 @@ export function PipelinePage() {
       <SectionHeader
         eyebrow={copy({ en: "Pipeline", vi: "Luồng hồ sơ" })}
         title={copy({ en: "Cross-stage case flow", vi: "Luồng hồ sơ liên giai đoạn" })}
-        description={copy({ en: "One operational view across lead stage, candidate linkage, application status, document blockers, and training-finance readiness.", vi: "Một góc nhìn vận hành xuyên suốt giữa giai đoạn lead, liên kết ứng viên, trạng thái ứng tuyển, điểm nghẽn hồ sơ và mức sẵn sàng đào tạo - tài chính." })}
+        description={copy({ en: "One operational view across lead stage, candidate linkage, application status, document blockers, and training-finance readiness.", vi: "Một góc nhìn vận hành xuyên suốt từ ứng viên tiềm năng, hồ sơ ứng viên, trạng thái ứng tuyển, điểm nghẽn giấy tờ đến mức sẵn sàng đào tạo - tài chính." })}
       />
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>{copy({ en: "This workspace is backed by the aggregated `/pipeline` endpoint, not by frontend-only stitching.", vi: "Không gian này chạy từ endpoint tổng hợp `/pipeline`, không phải ghép nối chỉ ở frontend." })}</span>
+          <span>{copy({ en: "This workspace is backed by the aggregated `/pipeline` endpoint, not by frontend-only stitching.", vi: "Màn hình này lấy dữ liệu từ API tổng hợp `/pipeline`, không ghép nối dữ liệu chỉ ở giao diện." })}</span>
           <Badge tone="neutral">{pipelineQuery.data?.total ?? 0} {copy({ en: "cases", vi: "hồ sơ" })}</Badge>
         </div>
       </InfoStrip>
@@ -82,7 +82,7 @@ export function PipelinePage() {
 
       <Panel
         title={copy({ en: "Case queue", vi: "Hàng đợi hồ sơ" })}
-        subtitle={copy({ en: "Rows are keyed by lead and summarize the active operational state across modules.", vi: "Mỗi dòng gắn với một lead và tóm tắt trạng thái vận hành hiện tại trên nhiều mô-đun." })}
+        subtitle={copy({ en: "Rows are keyed by lead and summarize the active operational state across modules.", vi: "Mỗi dòng gắn với một ứng viên và tóm tắt trạng thái vận hành hiện tại trên nhiều mô-đun." })}
       >
         {rows.length ? (
           <div className="space-y-3">
@@ -90,7 +90,7 @@ export function PipelinePage() {
               <div key={row.leadId} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="font-semibold text-slate-900">{row.leadName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })}</div>
+                    <div className="font-semibold text-slate-900">{row.leadName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}</div>
                     <div className="mt-1 text-xs text-slate-500">{row.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · {row.source}</div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -116,7 +116,7 @@ export function PipelinePage() {
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Link className="text-sm font-medium text-indigo-700 hover:text-indigo-800" to={`/leads/${row.leadId}`}>
-                    {copy({ en: "Open lead workbench", vi: "Mở bàn xử lý lead" })}
+                    {copy({ en: "Open lead workbench", vi: "Mở bàn xử lý ứng viên" })}
                   </Link>
                   <span className="text-xs text-slate-500">
                     {row.trainingFinance?.departureDate
@@ -130,7 +130,7 @@ export function PipelinePage() {
             ))}
           </div>
         ) : (
-          <EmptyState title={copy({ en: "No pipeline rows found", vi: "Không tìm thấy hồ sơ trong luồng" })} description={copy({ en: "Adjust the filters or wait until lead and downstream workflow data is available.", vi: "Hãy điều chỉnh bộ lọc hoặc chờ đến khi dữ liệu lead và luồng xử lý phía sau sẵn sàng." })} />
+          <EmptyState title={copy({ en: "No pipeline rows found", vi: "Không tìm thấy hồ sơ trong luồng" })} description={copy({ en: "Adjust the filters or wait until lead and downstream workflow data is available.", vi: "Hãy điều chỉnh bộ lọc hoặc chờ đến khi dữ liệu ứng viên và luồng xử lý phía sau sẵn sàng." })} />
         )}
         <PaginationFooter
           page={page}

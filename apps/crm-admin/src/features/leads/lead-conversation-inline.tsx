@@ -69,7 +69,7 @@ export function LeadConversationInline(props: { thread: ThreadLike | undefined }
     if (!threadId) {
         return (
             <EmptyState
-                title={copy({ en: "No thread on this lead", vi: "Lead này chưa có hội thoại" })}
+                title={copy({ en: "No thread on this lead", vi: "Ứng viên này chưa có hội thoại" })}
                 description={copy({
                     en: "An inbound Zalo message will create a thread automatically.",
                     vi: "Tin nhắn Zalo đến đầu tiên sẽ tự động tạo thread."

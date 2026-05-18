@@ -74,24 +74,24 @@ export function LoginPage() {
             <h1>
               {copy({
                 en: "Lead operations, matching control, and recruiting decisions in one CRM workspace.",
-                vi: "Vận hành lead, kiểm soát ghép đơn và quyết định tuyển dụng trong một không gian CRM duy nhất."
+                vi: "Vận hành ứng viên, kiểm soát ghép đơn và quyết định tuyển dụng trong một không gian CRM duy nhất."
               })}
             </h1>
             <p>
               {copy({
                 en: "Use this admin console to process inbound candidates, review structured profile data, evaluate order fit, and monitor the backend integration layer without jumping across disconnected tools.",
-                vi: "Dùng bảng điều khiển này để xử lý ứng viên đầu vào, rà soát hồ sơ có cấu trúc, đánh giá độ phù hợp với đơn hàng và theo dõi lớp tích hợp backend mà không phải chuyển qua nhiều công cụ rời rạc."
+                vi: "Dùng bảng điều khiển này để xử lý ứng viên tiềm năng đầu vào, rà soát hồ sơ có cấu trúc, đánh giá độ phù hợp với đơn hàng và theo dõi lớp tích hợp API mà không phải chuyển qua nhiều công cụ rời rạc."
               })}
             </p>
           </div>
 
           <div className="login-feature-grid">
             <div className="login-feature-card sky">
-              <h3>{copy({ en: "Lead triage queue", vi: "Hàng đợi phân loại lead" })}</h3>
+              <h3>{copy({ en: "Lead triage queue", vi: "Hàng đợi sàng lọc ứng viên" })}</h3>
               <p>
                 {copy({
                   en: "Search, filter, and move candidates through the backend state machine with clear next actions.",
-                  vi: "Tìm kiếm, lọc và đẩy ứng viên qua state machine của backend với các bước tiếp theo rõ ràng."
+                  vi: "Tìm kiếm, lọc và chuyển ứng viên tiềm năng qua các bước xử lý được hệ thống kiểm soát."
                 })}
               </p>
             </div>
@@ -100,7 +100,7 @@ export function LoginPage() {
               <p>
                 {copy({
                   en: "Validate AI extraction, update profile fields, and compare operator judgment with backend data.",
-                  vi: "Xác thực dữ liệu AI trích xuất, cập nhật trường hồ sơ và đối chiếu đánh giá nhân sự với dữ liệu backend."
+                  vi: "Xác thực dữ liệu AI trích xuất, cập nhật trường hồ sơ và đối chiếu đánh giá nhân sự với dữ liệu hệ thống."
                 })}
               </p>
             </div>
@@ -117,8 +117,8 @@ export function LoginPage() {
 
           <div className="login-meta-grid">
             <SystemPoint label={copy({ en: "Auth model", vi: "Mô hình xác thực" })} value="JWT + refresh token" />
-            <SystemPoint label={copy({ en: "Operator surface", vi: "Bề mặt vận hành" })} value={copy({ en: "Admin-only CRM console", vi: "CRM chỉ dành cho quản trị nội bộ" })} />
-            <SystemPoint label={copy({ en: "Backend dependency", vi: "Phụ thuộc backend" })} value={copy({ en: "Live API connection required", vi: "Yêu cầu kết nối API trực tiếp" })} />
+            <SystemPoint label={copy({ en: "Operator surface", vi: "Màn hình vận hành" })} value={copy({ en: "Admin-only CRM console", vi: "CRM dành cho nhân sự nội bộ" })} />
+            <SystemPoint label={copy({ en: "Backend dependency", vi: "Phụ thuộc API" })} value={copy({ en: "Live API connection required", vi: "Yêu cầu kết nối API trực tiếp" })} />
           </div>
         </section>
 
@@ -185,7 +185,7 @@ export function LoginPage() {
             <span>
               {copy({
                 en: "If authentication fails here, verify backend health and JWT configuration before reviewing protected routes.",
-                vi: "Nếu đăng nhập thất bại tại đây, hãy kiểm tra tình trạng backend và cấu hình JWT trước khi rà soát các route được bảo vệ."
+                vi: "Nếu đăng nhập thất bại tại đây, hãy kiểm tra tình trạng API và cấu hình JWT trước khi rà soát các route được bảo vệ."
               })}
             </span>
           </div>

@@ -69,7 +69,7 @@ export function DashboardPage() {
         title={copy({ en: "Daily control surface", vi: "Bề mặt điều hành hằng ngày" })}
         description={copy({
           en: "Backend-backed recruiting metrics arranged in the same dense, operator-first UI language as the source CRM.",
-          vi: "Các chỉ số tuyển dụng chạy bằng backend được trình bày theo cùng ngôn ngữ giao diện ưu tiên vận hành như CRM gốc."
+          vi: "Các chỉ số tuyển dụng từ API được trình bày theo giao diện tác nghiệp thống nhất của CRM."
         })}
       />
 
@@ -77,17 +77,17 @@ export function DashboardPage() {
         <div className="dashboard-hero-grid">
           <div>
             <div className="dashboard-hero-kicker">{copy({ en: "Today's operating picture", vi: "Bức tranh vận hành hôm nay" })}</div>
-            <h2>{copy({ en: "Track intake pressure, live lead quality, and where recruiters should act next.", vi: "Theo dõi áp lực đầu vào, chất lượng lead hiện tại và nơi đội tuyển dụng cần hành động tiếp theo." })}</h2>
+            <h2>{copy({ en: "Track intake pressure, live lead quality, and where recruiters should act next.", vi: "Theo dõi áp lực đầu vào, chất lượng ứng viên hiện tại và nơi đội tuyển dụng cần hành động tiếp theo." })}</h2>
             <p>
               {copy({
                 en: "This dashboard stays grounded in current backend coverage: lead load, stage concentration, and the highest-priority records in the visible working set.",
-                vi: "Dashboard này bám sát đúng phạm vi backend hiện có: tải lead, mức độ tập trung theo giai đoạn và các hồ sơ ưu tiên cao nhất trong tập làm việc đang hiển thị."
+          vi: "Bảng tổng quan này bám sát phạm vi API hiện có: danh sách ứng viên tiềm năng, phân bổ theo giai đoạn và các hồ sơ ưu tiên cao nhất đang hiển thị."
               })}
             </p>
 
             <div className="dashboard-hero-stats">
               <div className="dashboard-hero-stat">
-                <div className="dashboard-hero-stat-label">{copy({ en: "Total leads", vi: "Tổng lead" })}</div>
+                <div className="dashboard-hero-stat-label">{copy({ en: "Total leads", vi: "Tổng ứng viên" })}</div>
                 <div className="dashboard-hero-stat-value">{stats.data?.totalLeads ?? "-"}</div>
               </div>
               <div className="dashboard-hero-stat">
@@ -105,7 +105,7 @@ export function DashboardPage() {
             <div className="dashboard-hero-panel-title">{copy({ en: "Immediate focus", vi: "Ưu tiên tức thời" })}</div>
             <div className="dashboard-hero-panel-list">
               <div className="dashboard-hero-panel-item">
-                <div className="dashboard-hero-panel-name">{copy({ en: "High-score leads", vi: "Lead điểm cao" })}</div>
+                <div className="dashboard-hero-panel-name">{copy({ en: "High-score leads", vi: "Ứng viên điểm cao" })}</div>
                 <div className="dashboard-hero-panel-value">{operationalStats.highScore}</div>
               </div>
               <div className="dashboard-hero-panel-item">
@@ -133,7 +133,7 @@ export function DashboardPage() {
           </div>
         </Panel>
 
-        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Lead temperature", vi: "Nhiệt độ lead" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Classification spread across the visible backend query.", vi: "Phân bổ phân loại trên tập truy vấn backend đang hiển thị." })}</span>}>
+        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Lead temperature", vi: "Mức ưu tiên ứng viên" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Classification spread across the visible backend query.", vi: "Phân bổ phân loại trên tập dữ liệu API đang hiển thị." })}</span>}>
           {classification.length ? (
             <div className="dashboard-chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
@@ -156,13 +156,13 @@ export function DashboardPage() {
               </div>
             </div>
           ) : (
-            <EmptyState title={copy({ en: "No classification data yet", vi: "Chưa có dữ liệu phân loại" })} description={copy({ en: "Lead scoring may still be populating, or the current dashboard window returned no scored leads.", vi: "Điểm lead có thể vẫn đang được cập nhật, hoặc cửa sổ dashboard hiện tại chưa trả về lead nào đã chấm điểm." })} />
+            <EmptyState title={copy({ en: "No classification data yet", vi: "Chưa có dữ liệu phân loại" })} description={copy({ en: "Lead scoring may still be populating, or the current dashboard window returned no scored leads.", vi: "Điểm ứng viên có thể vẫn đang được cập nhật, hoặc cửa sổ dashboard hiện tại chưa trả về ứng viên nào đã chấm điểm." })} />
           )}
         </Panel>
       </div>
 
       <div className="dashboard-lower-grid">
-        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Status distribution", vi: "Phân bổ trạng thái" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Top current statuses in the loaded lead window.", vi: "Các trạng thái nổi bật trong cửa sổ lead hiện đang tải." })}</span>}>
+        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Status distribution", vi: "Phân bổ trạng thái" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Top current statuses in the loaded lead window.", vi: "Các trạng thái nổi bật trong cửa sổ ứng viên hiện đang tải." })}</span>}>
           {statusDistribution.length ? (
             <div className="dashboard-status-list">
               {statusDistribution.map((item) => (
@@ -173,16 +173,16 @@ export function DashboardPage() {
               ))}
             </div>
           ) : (
-            <EmptyState title={copy({ en: "No lead statuses loaded", vi: "Chưa tải được trạng thái lead" })} description={copy({ en: "The current lead query returned no records to summarize.", vi: "Truy vấn lead hiện tại không trả về bản ghi nào để tổng hợp." })} />
+        <EmptyState title={copy({ en: "No lead statuses loaded", vi: "Chưa tải được trạng thái ứng viên" })} description={copy({ en: "The current lead query returned no records to summarize.", vi: "Bộ lọc ứng viên hiện tại không có bản ghi để tổng hợp." })} />
           )}
         </Panel>
 
-        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Priority lead queue", vi: "Hàng đợi lead ưu tiên" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Highest score first, for immediate operator review.", vi: "Ưu tiên điểm cao nhất trước để nhân sự rà soát ngay." })}</span>}>
+        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Priority lead queue", vi: "Hàng đợi ứng viên ưu tiên" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Highest score first, for immediate operator review.", vi: "Ưu tiên điểm cao nhất trước để nhân sự rà soát ngay." })}</span>}>
           {priorityQueue.length ? (
             <table className="dashboard-table">
               <thead>
                 <tr>
-                  <th>{copy({ en: "Lead", vi: "Lead" })}</th>
+                  <th>{copy({ en: "Lead", vi: "Ứng viên" })}</th>
                   <th>{copy({ en: "Status", vi: "Trạng thái" })}</th>
                   <th>{copy({ en: "Channel", vi: "Kênh" })}</th>
                   <th>{copy({ en: "Score", vi: "Điểm" })}</th>
@@ -192,7 +192,7 @@ export function DashboardPage() {
                 {priorityQueue.map((lead) => (
                   <tr key={lead.id}>
                     <td>
-                      <strong>{lead.fullName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })}</strong>
+                      <strong>{lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}</strong>
                       <div className="dashboard-cell-sub">{lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })} · {lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })}</div>
                     </td>
                     <td>
@@ -205,7 +205,7 @@ export function DashboardPage() {
               </tbody>
             </table>
           ) : (
-            <EmptyState title={copy({ en: "No leads loaded", vi: "Chưa tải được lead" })} description={copy({ en: "The current dashboard window has no leads to prioritize.", vi: "Cửa sổ dashboard hiện tại không có lead nào để ưu tiên." })} />
+            <EmptyState title={copy({ en: "No leads loaded", vi: "Chưa tải được ứng viên" })} description={copy({ en: "The current dashboard window has no leads to prioritize.", vi: "Cửa sổ dashboard hiện tại không có ứng viên nào để ưu tiên." })} />
           )}
         </Panel>
       </div>

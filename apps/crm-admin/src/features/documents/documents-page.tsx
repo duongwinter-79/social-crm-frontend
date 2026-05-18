@@ -103,22 +103,22 @@ export function DocumentsPage() {
       <SectionHeader
         eyebrow={copy({ en: "Documents", vi: "Hồ sơ giấy tờ" })}
         title={copy({ en: "Candidate document readiness", vi: "Mức sẵn sàng giấy tờ ứng viên" })}
-        description={copy({ en: "Track required recruitment documents, review missing and expired items, and update document status from a real backend-backed checklist.", vi: "Theo dõi các giấy tờ tuyển dụng bắt buộc, rà soát mục còn thiếu hoặc hết hạn và cập nhật trạng thái giấy tờ từ checklist thật chạy bằng backend." })}
+        description={copy({ en: "Track required recruitment documents, review missing and expired items, and update document status from a real backend-backed checklist.", vi: "Theo dõi các giấy tờ tuyển dụng bắt buộc, rà soát mục còn thiếu hoặc hết hạn và cập nhật trạng thái giấy tờ từ danh sách kiểm tra của hệ thống." })}
       />
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>{copy({ en: "Document records are live backend entities. File handling is metadata-first for now.", vi: "Bản ghi giấy tờ là entity thật từ backend. Hiện tại việc xử lý file vẫn theo hướng metadata-first." })}</span>
+          <span>{copy({ en: "Document records are live backend entities. File handling is metadata-first for now.", vi: "Bản ghi giấy tờ là dữ liệu thật từ API. Hiện tại hệ thống lưu thông tin mô tả file trước." })}</span>
           <Badge tone={resolvedCandidateId ? "success" : "warning"}>
-            {resolvedCandidateId ? `${copy({ en: "Candidate", vi: "Ứng viên" })} ${resolvedCandidateId}` : copy({ en: "Lead-only checklist mode", vi: "Chế độ checklist theo lead" })}
+            {resolvedCandidateId ? `${copy({ en: "Candidate", vi: "Ứng viên" })} ${resolvedCandidateId}` : copy({ en: "Lead-only checklist mode", vi: "Chế độ kiểm tra theo ứng viên tiềm năng" })}
           </Badge>
         </div>
       </InfoStrip>
 
       <Toolbar compact className="border-slate-200/90">
         <FieldGroup columns={4} className="xl:grid-cols-5">
-          <Input label={copy({ en: "Lead ID", vi: "ID lead" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
-          <Input label={copy({ en: "Candidate ID", vi: "ID ứng viên" })} value={filters.candidateId} onChange={(e) => setFilters((s) => ({ ...s, candidateId: e.target.value }))} />
+          <Input label={copy({ en: "Lead ID", vi: "Mã ứng viên" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
+          <Input label={copy({ en: "Candidate ID", vi: "Mã hồ sơ" })} value={filters.candidateId} onChange={(e) => setFilters((s) => ({ ...s, candidateId: e.target.value }))} />
           <Select label={copy({ en: "Doc type", vi: "Loại giấy tờ" })} value={filters.docType} onChange={(e) => setFilters((s) => ({ ...s, docType: e.target.value }))}>
             <option value="">{copy({ en: "All types", vi: "Tất cả loại" })}</option>
             {DOC_TYPES.filter(Boolean).map((value) => (
@@ -143,7 +143,7 @@ export function DocumentsPage() {
         <div className="space-y-6">
           <Panel
             title={copy({ en: "Checklist overview", vi: "Tổng quan checklist" })}
-            subtitle={copy({ en: "Required-document progress from backend rules, with lead or candidate scope depending on available context.", vi: "Tiến độ giấy tờ bắt buộc theo luật backend, với phạm vi theo lead hoặc theo ứng viên tùy ngữ cảnh hiện có." })}
+            subtitle={copy({ en: "Required-document progress from backend rules, with lead or candidate scope depending on available context.", vi: "Tiến độ giấy tờ bắt buộc theo quy tắc hệ thống, theo phạm vi ứng viên tiềm năng hoặc hồ sơ ứng viên tùy dữ liệu hiện có." })}
           >
             {checklist ? (
               <div className="space-y-4">
@@ -168,13 +168,13 @@ export function DocumentsPage() {
                 </div>
               </div>
             ) : (
-              <EmptyState title={copy({ en: "Checklist not loaded", vi: "Chưa tải checklist" })} description={copy({ en: "Provide a lead ID or candidate ID to load the real backend checklist summary.", vi: "Hãy cung cấp ID lead hoặc ID ứng viên để tải checklist tổng hợp thật từ backend." })} />
+              <EmptyState title={copy({ en: "Checklist not loaded", vi: "Chưa tải danh sách kiểm tra" })} description={copy({ en: "Provide a lead ID or candidate ID to load the real backend checklist summary.", vi: "Hãy cung cấp mã ứng viên tiềm năng hoặc mã hồ sơ ứng viên để tải danh sách kiểm tra từ API." })} />
             )}
           </Panel>
 
           <Panel
             title={copy({ en: "Document register", vi: "Sổ đăng ký giấy tờ" })}
-            subtitle={copy({ en: "Metadata-driven records for passport, health, criminal record, diploma, and other required files.", vi: "Các bản ghi dựa trên metadata cho hộ chiếu, khám sức khỏe, lý lịch tư pháp, bằng cấp và các giấy tờ bắt buộc khác." })}
+            subtitle={copy({ en: "Metadata-driven records for passport, health, criminal record, diploma, and other required files.", vi: "Các bản ghi thông tin giấy tờ cho hộ chiếu, khám sức khỏe, lý lịch tư pháp, bằng cấp và giấy tờ bắt buộc khác." })}
           >
             {filteredRecords.length ? (
               <div className="max-h-[calc(100vh-30rem)] min-h-[320px] space-y-3 overflow-auto pr-1">
@@ -213,7 +213,7 @@ export function DocumentsPage() {
                 })}
               </div>
             ) : (
-              <EmptyState title={copy({ en: "No documents found", vi: "Không tìm thấy giấy tờ" })} description={copy({ en: "Create the first document record for this lead or candidate scope.", vi: "Tạo bản ghi giấy tờ đầu tiên cho phạm vi lead hoặc ứng viên này." })} />
+              <EmptyState title={copy({ en: "No documents found", vi: "Không tìm thấy giấy tờ" })} description={copy({ en: "Create the first document record for this lead or candidate scope.", vi: "Tạo bản ghi giấy tờ đầu tiên cho ứng viên tiềm năng hoặc hồ sơ ứng viên này." })} />
             )}
             <PaginationFooter
               page={page}
@@ -234,13 +234,13 @@ export function DocumentsPage() {
         <div className="space-y-6">
           <Panel
             title={copy({ en: "Create document record", vi: "Tạo bản ghi giấy tờ" })}
-            subtitle={copy({ en: "This records document metadata and readiness status. Binary file upload can be added later without changing the workflow model.", vi: "Phần này ghi nhận metadata giấy tờ và trạng thái sẵn sàng. Upload file nhị phân có thể bổ sung sau mà không cần đổi mô hình luồng xử lý." })}
+            subtitle={copy({ en: "This records document metadata and readiness status. Binary file upload can be added later without changing the workflow model.", vi: "Phần này ghi nhận thông tin giấy tờ và trạng thái sẵn sàng. Tải file có thể bổ sung sau mà không cần đổi luồng xử lý." })}
           >
             <div className="space-y-4">
               <DescriptionList
                 items={[
-                  { label: copy({ en: "Lead scope", vi: "Phạm vi lead" }), value: filters.leadId || copy({ en: "Required", vi: "Bắt buộc" }) },
-                  { label: copy({ en: "Candidate scope", vi: "Phạm vi ứng viên" }), value: resolvedCandidateId ?? copy({ en: "Optional / unresolved", vi: "Tùy chọn / chưa xác định" }) }
+                  { label: copy({ en: "Lead scope", vi: "Phạm vi ứng viên tiềm năng" }), value: filters.leadId || copy({ en: "Required", vi: "Bắt buộc" }) },
+                  { label: copy({ en: "Candidate scope", vi: "Phạm vi hồ sơ ứng viên" }), value: resolvedCandidateId ?? copy({ en: "Optional / unresolved", vi: "Tùy chọn / chưa xác định" }) }
                 ]}
               />
               <FieldGroup>
@@ -281,7 +281,7 @@ export function DocumentsPage() {
 
           <Panel
             title={copy({ en: "Selected document", vi: "Giấy tờ đã chọn" })}
-            subtitle={copy({ en: "Update backend status and document metadata from the same workspace.", vi: "Cập nhật trạng thái backend và metadata giấy tờ ngay trong cùng không gian làm việc." })}
+            subtitle={copy({ en: "Update backend status and document metadata from the same workspace.", vi: "Cập nhật trạng thái xử lý và thông tin giấy tờ ngay trong cùng màn hình." })}
           >
             {selected ? (
               <div className="space-y-4">
@@ -289,8 +289,8 @@ export function DocumentsPage() {
                   items={[
                     { label: copy({ en: "Document ID", vi: "ID giấy tờ" }), value: selected.id },
                     { label: copy({ en: "Type", vi: "Loại" }), value: formatDocumentType(selected.docType) },
-                    { label: copy({ en: "Lead", vi: "Lead" }), value: selected.lead_id },
-                    { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: selected.candidate_id ?? copy({ en: "No candidate scope", vi: "Không có phạm vi ứng viên" }) }
+                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead_id },
+                    { label: copy({ en: "Candidate", vi: "Hồ sơ ứng viên" }), value: selected.candidate_id ?? copy({ en: "No candidate scope", vi: "Không có phạm vi hồ sơ ứng viên" }) }
                   ]}
                 />
                 <FieldGroup>
@@ -323,7 +323,7 @@ export function DocumentsPage() {
                 </Button>
               </div>
             ) : (
-              <EmptyState title={copy({ en: "No document selected", vi: "Chưa chọn giấy tờ" })} description={copy({ en: "Pick a document from the register to update its status and metadata.", vi: "Chọn một giấy tờ từ sổ đăng ký để cập nhật trạng thái và metadata." })} />
+              <EmptyState title={copy({ en: "No document selected", vi: "Chưa chọn giấy tờ" })} description={copy({ en: "Pick a document from the register to update its status and metadata.", vi: "Chọn một giấy tờ từ sổ đăng ký để cập nhật trạng thái và thông tin giấy tờ." })} />
             )}
           </Panel>
         </div>

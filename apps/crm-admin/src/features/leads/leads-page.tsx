@@ -155,17 +155,17 @@ export function LeadsPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Lead operations", vi: "Vận hành lead" })}
-        title={copy({ en: "Lead inbox", vi: "Hộp thư lead" })}
+        eyebrow={copy({ en: "Lead operations", vi: "Vận hành ứng viên" })}
+        title={copy({ en: "Lead inbox", vi: "Hộp thư ứng viên" })}
         description={copy({
           en: "Source-style triage surface: compact filters, operational metrics, and a paginated lead table driven by the backend list APIs.",
-          vi: "Màn hình phân loại lead theo phong cách CRM: bộ lọc gọn, chỉ số vận hành và bảng lead có phân trang từ API danh sách backend."
+          vi: "Màn hình sàng lọc ứng viên tiềm năng: bộ lọc gọn, chỉ số vận hành và bảng ứng viên có phân trang từ API danh sách."
         })}
       />
 
       <div className="grid gap-3 md:grid-cols-4">
         <Strip label={copy({ en: "Loaded", vi: "Đã tải" })} value={leads.length} hint={copy({ en: "Rows on this page", vi: "Số dòng trên trang này" })} />
-        <Strip label={copy({ en: "Total", vi: "Tổng" })} value={total} hint={copy({ en: "Backend result size", vi: "Tổng kết quả từ backend" })} />
+      <Strip label={copy({ en: "Total", vi: "Tổng" })} value={total} hint={copy({ en: "Backend result size", vi: "Tổng kết quả từ API" })} />
         <Strip label={copy({ en: "Hot", vi: "Nóng" })} value={stats.hot} hint={copy({ en: "Score >= 80 on this page", vi: "Điểm >= 80 trên trang này" })} tone="accent" />
         <Strip label={copy({ en: "Blocked", vi: "Bị chặn" })} value={stats.blocked} hint={copy({ en: "Failed or disqualified on this page", vi: "Trượt hoặc bị loại trên trang này" })} tone="danger" />
       </div>
@@ -174,7 +174,7 @@ export function LeadsPage() {
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr_1fr_auto]">
             <Input
-              label={copy({ en: "Lead search", vi: "Tìm lead" })}
+              label={copy({ en: "Lead search", vi: "Tìm ứng viên" })}
               value={search}
               onChange={(event) => {
                 const value = event.target.value;
@@ -183,7 +183,7 @@ export function LeadsPage() {
                   resetPage();
                 });
               }}
-              placeholder={copy({ en: "Name...", vi: "Tên lead..." })}
+              placeholder={copy({ en: "Name...", vi: "Tên ứng viên..." })}
             />
             <Select
               label={copy({ en: "Status", vi: "Trạng thái" })}
@@ -283,7 +283,7 @@ export function LeadsPage() {
           <div className="border-b border-slate-200 px-6 py-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="text-base font-semibold text-slate-900">{copy({ en: "Lead list", vi: "Danh sách lead" })}</div>
+                <div className="text-base font-semibold text-slate-900">{copy({ en: "Lead list", vi: "Danh sách ứng viên" })}</div>
                 <div className="mt-1 text-sm text-slate-500">
                   {copy({
                     en: `Showing ${currentStart}-${currentEnd} of ${total} records. ${stats.stale} on this page still look untouched since capture.`,
@@ -314,7 +314,7 @@ export function LeadsPage() {
                       className="h-4 w-4 cursor-pointer rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
                   </th>
-                  <th className="py-4 pr-4">{copy({ en: "Candidate", vi: "Ứng viên" })}</th>
+                  <th className="py-4 pr-4">{copy({ en: "Candidate", vi: "Ứng viên tiềm năng" })}</th>
                   <th className="py-4 pr-4">{copy({ en: "Source", vi: "Nguồn" })}</th>
                   <th className="py-4 pr-4">{copy({ en: "Experience & education", vi: "Kinh nghiệm & học vấn" })}</th>
                   <th className="py-4 pr-4">{copy({ en: "Job needs", vi: "Nhu cầu" })}</th>
@@ -366,7 +366,7 @@ export function LeadsPage() {
                             </div>
                             <div className="min-w-0">
                               <Link to={`/leads/${lead.id}`} className="font-semibold text-slate-900 hover:text-indigo-700">
-                                {lead.fullName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })}
+                                {lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
                               </Link>
                               <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs leading-5 text-slate-500">
                                 <span>{lead.phone || copy({ en: "No phone", vi: "Chưa có số" })}</span>
@@ -458,7 +458,7 @@ export function LeadsPage() {
                 ) : (
                   <tr>
                     <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
-                      {copy({ en: "No leads match the current filters.", vi: "Không có lead phù hợp với bộ lọc hiện tại." })}
+                      {copy({ en: "No leads match the current filters.", vi: "Không có ứng viên phù hợp với bộ lọc hiện tại." })}
                     </td>
                   </tr>
                 )}
@@ -471,7 +471,7 @@ export function LeadsPage() {
             pageSize={pageSize}
             total={total}
             isFetching={query.isFetching}
-            itemLabel={copy({ en: "leads", vi: "lead" })}
+            itemLabel={copy({ en: "leads", vi: "Ứng viên" })}
             pageLabel={copy({ en: "Page", vi: "Trang" })}
             previousLabel={copy({ en: "Previous", vi: "Trước" })}
             nextLabel={copy({ en: "Next", vi: "Sau" })}

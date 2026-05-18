@@ -111,7 +111,7 @@ export function AdminPage() {
         title={copy({ en: "Identity and access control", vi: "Quản lý danh tính và quyền truy cập" })}
         description={copy({
           en: "Manage CRM operators, assign roles, review sessions, and audit recent admin actions.",
-          vi: "Quản lý tài khoản vận hành CRM, phân quyền, xem session và kiểm tra nhật ký quản trị gần đây."
+          vi: "Quản lý tài khoản nhân sự CRM, phân quyền, xem phiên đăng nhập và kiểm tra nhật ký quản trị gần đây."
         })}
       />
 
@@ -120,7 +120,7 @@ export function AdminPage() {
           <span>
             {copy({
               en: "This workspace stays limited to backend-enforced admin controls.",
-              vi: "Không gian này chỉ bao gồm các điều khiển quản trị do backend thực thi."
+              vi: "Khu vực này chỉ bao gồm các điều khiển quản trị do hệ thống thực thi."
             })}
           </span>
           <Badge tone="warning">{copy({ en: "No raw policy editing", vi: "Không chỉnh sửa chính sách trực tiếp" })}</Badge>
@@ -132,7 +132,7 @@ export function AdminPage() {
         <MetricCard label={copy({ en: "Admins", vi: "Quản trị viên" })} value={String(summary.admins)} tone="accent" />
         <MetricCard label={copy({ en: "Active accounts", vi: "Tài khoản hoạt động" })} value={`${summary.active} / ${rows.length || 0}`} tone="success" />
         <MetricCard
-          label={copy({ en: "Backend", vi: "Backend" })}
+          label={copy({ en: "Backend", vi: "API" })}
           value={health.data?.status ?? copy({ en: "Unknown", vi: "Chưa rõ" })}
           tone={health.data?.status === "ok" ? "success" : "neutral"}
         />
@@ -156,14 +156,14 @@ export function AdminPage() {
           </Select>
         </FieldGroup>
         <ToolbarActions>
-          <Badge tone="neutral">{copy({ en: `${usersQuery.data?.total ?? 0} total in backend`, vi: `${usersQuery.data?.total ?? 0} tổng trong backend` })}</Badge>
+          <Badge tone="neutral">{copy({ en: `${usersQuery.data?.total ?? 0} total in backend`, vi: `${usersQuery.data?.total ?? 0} tài khoản trong hệ thống` })}</Badge>
         </ToolbarActions>
       </Toolbar>
 
       {/* Operator list + Selected account editor — same row, heights match. */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel
-          title={copy({ en: "Operator accounts", vi: "Tài khoản vận hành" })}
+          title={copy({ en: "Operator accounts", vi: "Tài khoản nhân sự" })}
           subtitle={copy({
             en: "Select an account to inspect or update role and activation state.",
             vi: "Chọn tài khoản để xem và cập nhật vai trò hoặc trạng thái hoạt động."
@@ -201,7 +201,7 @@ export function AdminPage() {
               title={copy({ en: "No users found", vi: "Không tìm thấy người dùng" })}
               description={copy({
                 en: "Adjust filters or create the first operator account.",
-                vi: "Điều chỉnh bộ lọc hoặc tạo tài khoản vận hành đầu tiên."
+                vi: "Điều chỉnh bộ lọc hoặc tạo tài khoản nhân sự đầu tiên."
               })}
             />
           )}
@@ -224,7 +224,7 @@ export function AdminPage() {
           title={copy({ en: "Selected account", vi: "Tài khoản được chọn" })}
           subtitle={copy({
             en: "Live role and activation updates for the chosen operator.",
-            vi: "Cập nhật vai trò và trạng thái cho tài khoản đang chọn."
+            vi: "Cập nhật vai trò và trạng thái hoạt động cho tài khoản đang chọn."
           })}
         >
           {selected ? (
@@ -269,7 +269,7 @@ export function AdminPage() {
           ) : (
             <EmptyState
               title={copy({ en: "No user selected", vi: "Chưa chọn người dùng" })}
-              description={copy({ en: "Select an operator account to review or update.", vi: "Chọn tài khoản vận hành để xem hoặc cập nhật." })}
+              description={copy({ en: "Select an operator account to review or update.", vi: "Chọn tài khoản nhân sự để xem hoặc cập nhật." })}
             />
           )}
         </Panel>
@@ -324,17 +324,17 @@ export function AdminPage() {
           title={copy({ en: "System status", vi: "Trạng thái hệ thống" })}
           subtitle={copy({
             en: "Read-only operational context for backend health and active sessions.",
-            vi: "Thông tin chỉ đọc cho tình trạng backend và session đang hoạt động."
+            vi: "Thông tin chỉ đọc về tình trạng API và phiên đăng nhập đang hoạt động."
           })}
         >
           <DescriptionList
             items={[
               {
-                label: copy({ en: "Backend", vi: "Backend" }),
+                label: copy({ en: "Backend", vi: "API" }),
                 value: <Badge tone={health.data?.status === "ok" ? "success" : "warning"}>{health.data?.status ?? copy({ en: "Unknown", vi: "Chưa rõ" })}</Badge>
               },
               {
-                label: copy({ en: "Active sessions", vi: "Session đang hoạt động" }),
+                label: copy({ en: "Active sessions", vi: "Phiên đăng nhập đang hoạt động" }),
                 value: String(systemStatus.data?.auth.activeSessions ?? "-")
               },
               {
@@ -351,7 +351,7 @@ export function AdminPage() {
         title={copy({ en: "AI extraction worker", vi: "Worker AI trích xuất" })}
         subtitle={copy({
           en: "Background process that scans new Zalo messages and imported lead notes. Trigger manually right after a big import to drain the backlog without waiting for the next scheduled tick.",
-          vi: "Tiến trình nền quét tin nhắn Zalo mới và ghi chú lead đã nhập. Chạy thủ công ngay sau khi nhập dữ liệu lớn để xử lý hết tồn đọng mà không phải chờ tick kế tiếp."
+          vi: "Tiến trình nền quét tin nhắn Zalo mới và ghi chú ứng viên đã nhập. Chạy thủ công ngay sau khi nhập dữ liệu lớn để xử lý hết tồn đọng mà không phải chờ tick kế tiếp."
         })}
         action={
           <Button
@@ -375,7 +375,7 @@ export function AdminPage() {
             <span>
               {copy({
                 en: "Worker is disabled via AI_EXTRACTION_WORKER_ENABLED. Re-enable in backend.env and recreate the API container before triggering.",
-                vi: "Worker đang tắt qua AI_EXTRACTION_WORKER_ENABLED. Bật lại trong backend.env và recreate container API trước khi kích hoạt."
+                vi: "Worker đang tắt qua AI_EXTRACTION_WORKER_ENABLED. Bật lại trong backend.env và khởi động lại container API trước khi kích hoạt."
               })}
             </span>
           </InfoStrip>
@@ -419,7 +419,7 @@ export function AdminPage() {
             {
               label: copy({ en: "Processed last tick", vi: "Đã xử lý lần trước" }),
               value: aiWorkerStatus.data
-                ? `${aiWorkerStatus.data.lastTickThreadsProcessed} threads · ${aiWorkerStatus.data.lastTickImportedLeadsProcessed} ${copy({ en: "imported leads", vi: "lead nhập" })}`
+                ? `${aiWorkerStatus.data.lastTickThreadsProcessed} threads · ${aiWorkerStatus.data.lastTickImportedLeadsProcessed} ${copy({ en: "imported leads", vi: "Ứng viên nhập" })}`
                 : "—"
             }
           ]}

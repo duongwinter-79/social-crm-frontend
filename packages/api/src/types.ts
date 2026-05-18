@@ -289,6 +289,7 @@ export interface ImportBatchRow {
   batch_id: string;
   sourceRow: number;
   mappedFields: {
+    _importAction?: "create_lead" | "enrich_existing_lead";
     fullName?: string;
     phone?: string;
     source?: string;
@@ -305,6 +306,8 @@ export interface ImportBatchRow {
   duplicateOfLeadId?: string | null;
   applied: boolean;
   createdLeadId?: string | null;
+  /** VN-language warnings raised during parsing (e.g. note too long, value dropped). */
+  validationWarnings?: string[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -312,6 +315,31 @@ export interface ImportBatchRow {
 export interface ImportBatchListResponse {
   data: ImportBatch[];
   total: number;
+}
+
+export interface ImportNotes {
+  general?: string;
+  specialRequest?: string;
+  profile?: string;
+  experience?: string;
+}
+
+export interface ImportNotesSuggestion {
+  id: string;
+  fieldName: string;
+  value: unknown;
+  confidence: "high" | "medium" | "low";
+  source: string;
+  reason: string | null;
+  extractedAt: string;
+}
+
+export interface ImportNotesLeadGroup {
+  leadId: string;
+  leadName: string | null;
+  leadPhone: string | null;
+  importNotes: ImportNotes | null;
+  suggestions: ImportNotesSuggestion[];
 }
 
 export interface AiExtractionWorkerStatus {

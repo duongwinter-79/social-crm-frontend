@@ -94,6 +94,51 @@ export function useApplyImportBatchMutation() {
   });
 }
 
+// Notes extraction — operator-triggered preview + apply gate.
+export function useImportNotesSuggestionsQuery(
+  id: string | undefined,
+  opts: { pollWhileEmpty?: boolean } = {}
+) {
+  return useQuery({
+    queryKey: ["imports", "batch", id, "notes-suggestions"],
+    queryFn: () => apiClient.listImportNotesSuggestions(id as string),
+    enabled: Boolean(id),
+    refetchInterval: (query) => {
+      if (!opts.pollWhileEmpty) return false;
+      const data = query.state.data as unknown[] | undefined;
+      // The extract endpoint is async — poll until suggestions actually
+      // appear, then stop. Caller flips `pollWhileEmpty` true on click.
+      return data && data.length > 0 ? false : 2000;
+    }
+  });
+}
+
+export function useTriggerImportNotesExtractionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.triggerImportNotesExtraction(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["imports", "batch", id, "notes-suggestions"] });
+    },
+    meta: { successMessage: "Notes extraction started" }
+  });
+}
+
+export function useApplyImportNotesSuggestionsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: {
+      id: string;
+      selections: Array<{ leadId: string; fieldNames: string[] }>;
+    }) => apiClient.applyImportNotesSuggestions(args.id, args.selections),
+    onSuccess: (_data, args) => {
+      queryClient.invalidateQueries({ queryKey: ["imports", "batch", args.id, "notes-suggestions"] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    meta: { successMessage: "Suggestions applied" }
+  });
+}
+
 export function useCancelImportBatchMutation() {
   const queryClient = useQueryClient();
   return useMutation({

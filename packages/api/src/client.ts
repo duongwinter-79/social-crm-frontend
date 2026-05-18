@@ -33,6 +33,7 @@ import type {
   ImportBatch,
   ImportBatchListResponse,
   ImportBatchRowListResponse,
+  ImportNotesLeadGroup,
   ImportRowDedupStatus,
   Lead,
   LeadQualificationSnapshot,
@@ -288,6 +289,33 @@ export class SocialCrmApiClient {
       `/imports/leads/${id}/cancel`,
       {}
     );
+    return unwrapEnvelope(response.data);
+  }
+
+  // ── Operator-triggered notes extraction (preview/apply gate) ─────────
+
+  async triggerImportNotesExtraction(id: string) {
+    const response = await this.http.post<
+      | ApiEnvelope<{ id: string; status: string; message?: string }>
+      | { id: string; status: string; message?: string }
+    >(`/imports/leads/${id}/extract-notes`, {});
+    return unwrapEnvelope(response.data);
+  }
+
+  async listImportNotesSuggestions(id: string): Promise<ImportNotesLeadGroup[]> {
+    const response = await this.http.get<ApiEnvelope<ImportNotesLeadGroup[]> | ImportNotesLeadGroup[]>(
+      `/imports/leads/${id}/notes-suggestions`
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async applyImportNotesSuggestions(
+    id: string,
+    selections: Array<{ leadId: string; fieldNames: string[] }>
+  ): Promise<{ applied: number; skipped: number; skipReasons?: Record<string, number> }> {
+    const response = await this.http.post<
+      ApiEnvelope<{ applied: number; skipped: number; skipReasons?: Record<string, number> }> | { applied: number; skipped: number; skipReasons?: Record<string, number> }
+    >(`/imports/leads/${id}/apply-suggestions`, { selections });
     return unwrapEnvelope(response.data);
   }
 

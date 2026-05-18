@@ -103,7 +103,7 @@ export function FieldWithProvenance(props: FieldWithProvenanceProps) {
         {sug?.reason ? (
           <span className="text-rose-500" title={sug.reason}>
             {sug.reason.startsWith("merge_candidate:")
-              ? copy({ en: "Merge required", vi: "Cần gộp lead" })
+              ? copy({ en: "Merge required", vi: "Cần gộp ứng viên" })
               : sug.reason}
           </span>
         ) : null}

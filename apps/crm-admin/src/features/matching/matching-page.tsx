@@ -56,17 +56,17 @@ export function MatchingPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Matching", vi: "Ghép đơn" })}
-        title={copy({ en: "Matching workbench", vi: "Bàn làm việc ghép đơn" })}
+        title={copy({ en: "Matching workbench", vi: "Bàn xử lý ghép đơn" })}
         description={copy({
           en: "Run preliminary lead triage or formal candidate matching against real backend rules, then inspect score, hard failures, risk flags, and approval needs.",
-          vi: "Chạy sàng lọc lead sơ bộ hoặc ghép ứng viên chính thức theo luật backend, sau đó kiểm tra điểm, điều kiện loại, cờ rủi ro và yêu cầu phê duyệt."
+          vi: "Chạy sàng lọc sơ bộ cho ứng viên tiềm năng hoặc ghép đơn chính thức cho ứng viên đã đủ hồ sơ, sau đó kiểm tra điểm, điều kiện loại, cờ rủi ro và yêu cầu phê duyệt."
         })}
       />
 
       <div className="grid gap-3 md:grid-cols-4">
-        <TopStat label={copy({ en: "Leads loaded", vi: "Lead đã tải" })} value={leads.data?.data?.length ?? 0} />
+        <TopStat label={copy({ en: "Leads loaded", vi: "Ứng viên tiềm năng đã tải" })} value={leads.data?.data?.length ?? 0} />
         <TopStat label={copy({ en: "Orders loaded", vi: "Đơn hàng đã tải" })} value={orders.data?.length ?? 0} />
-        <TopStat label={copy({ en: "Mode", vi: "Chế độ" })} value={mode === "lead_triage" ? copy({ en: "Lead triage", vi: "Sàng lọc lead" }) : copy({ en: "Formal", vi: "Chính thức" })} tone="accent" />
+        <TopStat label={copy({ en: "Mode", vi: "Chế độ" })} value={mode === "lead_triage" ? copy({ en: "Lead triage", vi: "Sàng lọc sơ bộ" }) : copy({ en: "Formal", vi: "Ghép đơn chính thức" })} tone="accent" />
         <TopStat
           label={copy({ en: "Result", vi: "Kết quả" })}
           value={activeMatching?.isEligible ? copy({ en: "Eligible", vi: "Phù hợp" }) : activeMatching ? copy({ en: "Rejected", vi: "Không phù hợp" }) : copy({ en: "Waiting", vi: "Chờ chạy" })}
@@ -77,20 +77,20 @@ export function MatchingPage() {
       <Toolbar className="border-slate-200/90">
         <div className="mb-4 flex flex-wrap gap-2">
           <Button variant={mode === "lead_triage" ? "primary" : "secondary"} size="sm" onClick={() => setMode("lead_triage")}>
-            {copy({ en: "Lead triage", vi: "Sàng lọc lead" })}
+            {copy({ en: "Lead triage", vi: "Sàng lọc sơ bộ" })}
           </Button>
           <Button variant={mode === "candidate_formal" ? "primary" : "secondary"} size="sm" onClick={() => setMode("candidate_formal")}>
-            {copy({ en: "Formal candidate match", vi: "Ghép ứng viên chính thức" })}
+            {copy({ en: "Formal candidate match", vi: "Ghép đơn chính thức" })}
           </Button>
         </div>
 
         {mode === "lead_triage" ? (
           <div className="grid gap-4 xl:grid-cols-[1fr_1fr_auto]">
-            <Select label={copy({ en: "Lead", vi: "Lead" })} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
-              <option value="">{copy({ en: "Select a lead", vi: "Chọn lead" })}</option>
+            <Select label={copy({ en: "Lead", vi: "Ứng viên tiềm năng" })} value={leadId} onChange={(e) => setLeadId(e.target.value)}>
+              <option value="">{copy({ en: "Select a lead", vi: "Chọn ứng viên tiềm năng" })}</option>
               {(leads.data?.data ?? []).map((lead) => (
                 <option key={lead.id} value={lead.id}>
-                  {lead.fullName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })} - {formatLeadStatus(lead.status)}
+                  {lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })} - {formatLeadStatus(lead.status)}
                 </option>
               ))}
             </Select>
@@ -104,7 +104,7 @@ export function MatchingPage() {
             </Select>
             <ToolbarActions className="justify-start xl:justify-end">
               <Button onClick={() => leadEvaluation.mutate({ leadId, orderId: leadOrderId })} disabled={!leadId || !leadOrderId || leadEvaluation.isPending}>
-                {leadEvaluation.isPending ? copy({ en: "Evaluating...", vi: "Đang đánh giá..." }) : copy({ en: "Run lead triage", vi: "Chạy sàng lọc lead" })}
+                {leadEvaluation.isPending ? copy({ en: "Evaluating...", vi: "Đang đánh giá..." }) : copy({ en: "Run lead triage", vi: "Chạy sàng lọc sơ bộ" })}
               </Button>
             </ToolbarActions>
           </div>
@@ -113,9 +113,9 @@ export function MatchingPage() {
             <CandidatePicker
               label={copy({ en: "Candidate", vi: "Ứng viên" })}
               searchLabel={copy({ en: "Candidate search", vi: "Tìm ứng viên" })}
-              placeholder={copy({ en: "Code, lead name, or phone", vi: "Mã, tên lead hoặc số điện thoại" })}
+              placeholder={copy({ en: "Code, lead name, or phone", vi: "Mã, tên ứng viên hoặc số điện thoại" })}
               emptyLabel={copy({ en: "Select a candidate", vi: "Chọn ứng viên" })}
-              noLeadDetailLabel={copy({ en: "No linked lead detail", vi: "Chưa có thông tin lead liên kết" })}
+              noLeadDetailLabel={copy({ en: "No linked lead detail", vi: "Chưa có thông tin ứng viên liên kết" })}
               value={candidateId}
               onChange={(nextCandidateId, candidate) => {
                 setCandidateId(nextCandidateId);
@@ -146,11 +146,11 @@ export function MatchingPage() {
         {mode === "lead_triage"
           ? copy({
               en: "Lead triage is preliminary. It helps operators decide whether to complete profile data and move a lead toward candidate qualification; it is not the final recruitment match.",
-              vi: "Sàng lọc lead là bước sơ bộ. Kết quả này giúp nhân viên quyết định có cần hoàn thiện hồ sơ và chuyển lead sang bước đủ điều kiện ứng viên hay không; đây chưa phải kết quả ghép đơn cuối cùng."
+              vi: "Sàng lọc sơ bộ giúp nhân sự quyết định có cần hoàn thiện hồ sơ và chuyển ứng viên tiềm năng sang giai đoạn ứng viên đủ điều kiện hay không; đây chưa phải kết quả ghép đơn cuối cùng."
             })
           : copy({
               en: "Formal candidate matching uses candidate profile data and persisted order criteria. Use this result for recruitment fit review, manager approval needs, and application decisions.",
-              vi: "Ghép ứng viên chính thức dùng dữ liệu hồ sơ ứng viên và tiêu chí đơn hàng đã lưu. Dùng kết quả này để xem mức độ phù hợp, nhu cầu phê duyệt quản lý và quyết định tạo hồ sơ ứng tuyển."
+              vi: "Ghép đơn chính thức dùng dữ liệu hồ sơ ứng viên và tiêu chí đơn hàng đã lưu. Dùng kết quả này để xem mức độ phù hợp, nhu cầu phê duyệt quản lý và quyết định tạo hồ sơ ứng tuyển."
             })}
       </InfoStrip>
 
@@ -160,7 +160,7 @@ export function MatchingPage() {
             title={copy({ en: "Selected context", vi: "Ngữ cảnh đã chọn" })}
             subtitle={copy({
               en: mode === "lead_triage" ? "Lead and order summary before preliminary triage." : "Candidate and order summary before formal matching.",
-              vi: mode === "lead_triage" ? "Tóm tắt lead và đơn hàng trước khi sàng lọc sơ bộ." : "Tóm tắt ứng viên và đơn hàng trước khi ghép chính thức."
+              vi: mode === "lead_triage" ? "Tóm tắt ứng viên tiềm năng và đơn hàng trước khi sàng lọc sơ bộ." : "Tóm tắt ứng viên và đơn hàng trước khi ghép chính thức."
             })}
           >
             {mode === "lead_triage" ? (
@@ -189,7 +189,7 @@ function LeadContext(props: { lead?: Lead; order?: Order; formatLeadStatus: (sta
   if (!props.lead || !props.order) {
     return (
       <EmptyState
-        title={copy({ en: "Choose lead and order", vi: "Chọn lead và đơn hàng" })}
+        title={copy({ en: "Choose lead and order", vi: "Chọn ứng viên tiềm năng và đơn hàng" })}
         description={copy({ en: "Select both entities to inspect a preliminary triage result.", vi: "Chọn đủ hai dữ liệu để xem kết quả sàng lọc sơ bộ." })}
       />
     );
@@ -198,13 +198,13 @@ function LeadContext(props: { lead?: Lead; order?: Order; formatLeadStatus: (sta
   return (
     <div className="space-y-5">
       <div className="grid gap-3 md:grid-cols-2">
-        <ContextCard label="Lead" value={props.lead.fullName || copy({ en: "Unnamed lead", vi: "Lead chưa có tên" })} note={props.lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} />
+        <ContextCard label={copy({ en: "Lead", vi: "Ứng viên tiềm năng" })} value={props.lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })} note={props.lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} />
         <ContextCard label={copy({ en: "Order", vi: "Đơn hàng" })} value={props.order.name} note={props.order.region || copy({ en: "No region", vi: "Chưa có khu vực" })} />
       </div>
       <DescriptionList
         items={[
-          { label: copy({ en: "Lead status", vi: "Trạng thái lead" }), value: <Badge tone={toneForStatus(props.lead.status)}>{props.formatLeadStatus(props.lead.status)}</Badge> },
-          { label: copy({ en: "Lead score", vi: "Điểm lead" }), value: props.lead.leadScore ?? "-" },
+          { label: copy({ en: "Lead status", vi: "Trạng thái ứng viên tiềm năng" }), value: <Badge tone={toneForStatus(props.lead.status)}>{props.formatLeadStatus(props.lead.status)}</Badge> },
+          { label: copy({ en: "Lead score", vi: "Điểm sàng lọc" }), value: props.lead.leadScore ?? "-" },
           { label: copy({ en: "Classification", vi: "Phân loại" }), value: props.lead.leadClassification ?? copy({ en: "Unclassified", vi: "Chưa phân loại" }) },
           { label: copy({ en: "Industry", vi: "Ngành nghề" }), value: props.order.industry || copy({ en: "No industry", vi: "Chưa có ngành nghề" }) },
           { label: copy({ en: "Gender rule", vi: "Yêu cầu giới tính" }), value: props.order.genderRequired },
@@ -237,7 +237,7 @@ function CandidateContext(props: { candidate?: CandidateRef; order?: Order }) {
       </div>
       <DescriptionList
         items={[
-          { label: copy({ en: "Linked lead", vi: "Lead liên kết" }), value: props.candidate.lead?.fullName || props.candidate.lead?.phone || copy({ en: "No linked lead detail", vi: "Chưa có thông tin lead liên kết" }) },
+          { label: copy({ en: "Linked lead", vi: "Ứng viên liên kết" }), value: props.candidate.lead?.fullName || props.candidate.lead?.phone || copy({ en: "No linked lead detail", vi: "Chưa có thông tin ứng viên liên kết" }) },
           { label: copy({ en: "Candidate status", vi: "Trạng thái ứng viên" }), value: <Badge tone={toneForStatus(props.candidate.lifecycleStatus || "")}>{props.candidate.lifecycleStatus || copy({ en: "Unknown", vi: "Chưa rõ" })}</Badge> },
           { label: copy({ en: "Profile gender", vi: "Giới tính hồ sơ" }), value: profileValue(props.candidate.profile, "gender") },
           { label: copy({ en: "Profile height", vi: "Chiều cao hồ sơ" }), value: profileValue(props.candidate.profile, "heightCm") },
@@ -264,7 +264,7 @@ function LeadTriageResult(props: {
   const { copy } = useI18n();
 
   return (
-    <Panel title={copy({ en: "Lead triage result", vi: "Kết quả sàng lọc lead" })} subtitle={copy({ en: "Preliminary screening exposes missing inputs and data quality before candidate qualification.", vi: "Bước sàng lọc sơ bộ cho biết dữ liệu còn thiếu và chất lượng dữ liệu trước khi xác nhận ứng viên." })}>
+    <Panel title={copy({ en: "Lead triage result", vi: "Kết quả sàng lọc sơ bộ" })} subtitle={copy({ en: "Preliminary screening exposes missing inputs and data quality before candidate qualification.", vi: "Bước sàng lọc sơ bộ cho biết dữ liệu còn thiếu và chất lượng dữ liệu trước khi xác nhận ứng viên đủ điều kiện." })}>
       {props.result ? (
         <div className="space-y-5">
           <MatchingSummary matching={props.result.matching} />
@@ -276,7 +276,7 @@ function LeadTriageResult(props: {
           <ReasonBox
             title={copy({ en: "Missing requirements", vi: "Yêu cầu còn thiếu" })}
             tone="warning"
-            value={props.result.missingRequirements.length ? props.result.missingRequirements.join(", ") : copy({ en: "No required triage signals are missing.", vi: "Không thiếu tín hiệu sàng lọc bắt buộc." })}
+            value={props.result.missingRequirements.length ? props.result.missingRequirements.join(", ") : copy({ en: "No required triage signals are missing.", vi: "Không thiếu dữ liệu sàng lọc bắt buộc." })}
           />
           <ReasonBox
             title={copy({ en: "Warnings", vi: "Cảnh báo" })}
@@ -285,7 +285,7 @@ function LeadTriageResult(props: {
           />
         </div>
       ) : (
-        <EmptyState title={copy({ en: "No lead triage yet", vi: "Chưa có kết quả sàng lọc lead" })} description={copy({ en: "Run lead triage to see score, flags, penalties, missing inputs, and reject reasons.", vi: "Chạy sàng lọc lead để xem điểm, cờ rủi ro, điểm trừ, dữ liệu thiếu và lý do loại." })} />
+        <EmptyState title={copy({ en: "No lead triage yet", vi: "Chưa có kết quả sàng lọc sơ bộ" })} description={copy({ en: "Run lead triage to see score, flags, penalties, missing inputs, and reject reasons.", vi: "Chạy sàng lọc sơ bộ để xem điểm, cờ rủi ro, điểm trừ, dữ liệu thiếu và lý do loại." })} />
       )}
     </Panel>
   );
@@ -295,7 +295,7 @@ function FormalCandidateResult(props: { result?: MatchingResult }) {
   const { copy } = useI18n();
 
   return (
-    <Panel title={copy({ en: "Formal candidate result", vi: "Kết quả ghép ứng viên chính thức" })} subtitle={copy({ en: "Candidate-stage matching exposes eligibility, penalties, risk flags, and manager approval requirements.", vi: "Ghép đơn ở giai đoạn ứng viên cho biết mức phù hợp, điểm trừ, cờ rủi ro và yêu cầu duyệt quản lý." })}>
+    <Panel title={copy({ en: "Formal candidate result", vi: "Kết quả ghép đơn chính thức" })} subtitle={copy({ en: "Candidate-stage matching exposes eligibility, penalties, risk flags, and manager approval requirements.", vi: "Ghép đơn ở giai đoạn ứng viên cho biết mức phù hợp, điểm trừ, cờ rủi ro và yêu cầu duyệt quản lý." })}>
       {props.result ? (
         <div className="space-y-5">
           <MatchingSummary matching={props.result} />
