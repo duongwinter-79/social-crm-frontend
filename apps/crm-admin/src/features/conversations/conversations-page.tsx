@@ -113,7 +113,27 @@ function MessageBubble(props: { message: MessageRecord; formatEnum: (value: stri
           <Badge tone="neutral">{props.formatEnum(props.message.type)}</Badge>
           {props.message.aiScannedAt ? <Badge tone="success">AI scanned</Badge> : <Badge tone="warning">Pending AI</Badge>}
         </div>
-        <div className="whitespace-pre-wrap text-sm leading-6 text-slate-800">{props.message.content || "(empty message)"}</div>
+        {props.message.type === "image" && props.message.mediaUrl ? (
+          <img
+            src={`/api/interactions/messages/${props.message.id}/media`}
+            alt="Ảnh Zalo"
+            className="max-w-full rounded-xl"
+            onError={(e) => {
+              const img = e.currentTarget;
+              img.style.display = "none";
+              const fallback = img.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = "block";
+            }}
+          />
+        ) : null}
+        <div
+          className="whitespace-pre-wrap text-sm leading-6 text-slate-800"
+          style={props.message.type === "image" && props.message.mediaUrl ? { display: "none" } : undefined}
+        >
+          {props.message.type === "image"
+            ? (props.message.mediaUrl ? "[Không tải được ảnh]" : "[Ảnh — không có URL]")
+            : (props.message.content || "(empty message)")}
+        </div>
         <div className="mt-2 text-xs text-slate-400">{formatDateTime(props.message.createdAt)}</div>
         {props.message.rawPayload ? (
           <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">

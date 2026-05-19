@@ -231,7 +231,7 @@ export function AdminPage() {
             <div className="space-y-4">
               <DescriptionList
                 items={[
-                  { label: copy({ en: "User ID", vi: "User ID" }), value: selected.id },
+                  { label: copy({ en: "User ID", vi: "Mã người dùng" }), value: selected.id },
                   { label: copy({ en: "Username", vi: "Tên đăng nhập" }), value: selected.username },
                   { label: copy({ en: "Role", vi: "Vai trò" }), value: formatEnum(selected.role) },
                   { label: copy({ en: "Status", vi: "Trạng thái" }), value: selected.isActive ? copy({ en: "Active", vi: "Hoạt động" }) : copy({ en: "Inactive", vi: "Ngừng hoạt động" }) }
@@ -466,7 +466,7 @@ export function AdminPage() {
         </Panel>
 
         <Panel
-          title={copy({ en: "Recent sessions", vi: "Session gần đây" })}
+          title={copy({ en: "Recent sessions", vi: "Phiên đăng nhập gần đây" })}
           subtitle={copy({
             en: "Review active operator sessions and revoke them when needed.",
             vi: "Xem các session đang hoạt động và thu hồi khi cần."
