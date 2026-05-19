@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -32,6 +32,7 @@ import {
 } from "@social-crm/api";
 import type { CandidateSuggestion, LeadOrderSuggestion, Order } from "@social-crm/api";
 import { useI18n } from "../../i18n";
+import { resolveReturnState } from "@/app/navigation-state";
 import {
   FieldWithProvenance,
   findPhoneMergeCandidate,
@@ -50,6 +51,17 @@ function toneForStatus(status: string) {
 export function LeadWorkbenchPage() {
   const { copy, formatLeadStatus, formatEnum, yesNoUnknown } = useI18n();
   const { leadId = "" } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const returnState = resolveReturnState(location.state, {
+    from: "/leads",
+    fromLabel: copy({ en: "Leads", vi: "Leads" })
+  });
+  const backAction = (
+    <Button variant="secondary" size="sm" onClick={() => navigate(returnState.from)}>
+      {copy({ en: `Back to ${returnState.fromLabel}`, vi: `Back to ${returnState.fromLabel}` })}
+    </Button>
+  );
   const leadQuery = useLeadDetailQuery(leadId);
   const candidateQuery = useCandidateByLeadQuery(leadId);
   const transitionsQuery = useLeadTransitionsQuery(leadId);
@@ -152,6 +164,7 @@ export function LeadWorkbenchPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
+        action={backAction}
         eyebrow={copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" })}
         title={lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
         description={`${lead.source.toUpperCase()} · ${lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · ${lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })}`}

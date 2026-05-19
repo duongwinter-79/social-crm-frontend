@@ -1,7 +1,9 @@
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Badge, Button, DataTable, Input, PaginationFooter, SectionHeader, Select, Toolbar, ToolbarActions } from "@social-crm/ui";
 import { apiClient, triggerBlobDownload, useLeadsQuery, type Lead } from "@social-crm/api";
+import { createReturnState } from "@/app/navigation-state";
+import { applySearchParamUpdates, readNumberOption, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { useI18n } from "@/i18n";
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
@@ -70,20 +72,44 @@ const LEAD_STATUS_OPTIONS = [
   "visa_processing",
   "departed",
   "disqualified"
-];
+] as const;
+
+const LEAD_SOURCE_OPTIONS = ["zalo", "facebook", "miniapp"] as const;
+const LEAD_PARAM_DEFAULTS = {
+  page: 1,
+  pageSize: 20,
+  q: "",
+  status: "",
+  source: "",
+  from: "",
+  to: ""
+};
 
 export function LeadsPage() {
   const { copy, formatLeadStatus, formatEnum, formatChannel, lang } = useI18n();
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [source, setSource] = useState("");
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState<PageSize>(20);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("q") ?? "";
+  const status = readStringOption(searchParams, "status", LEAD_STATUS_OPTIONS);
+  const source = readStringOption(searchParams, "source", LEAD_SOURCE_OPTIONS);
+  const page = readPageIndex(searchParams);
+  const pageSize = readNumberOption(searchParams, "pageSize", PAGE_SIZE_OPTIONS, 20) as PageSize;
+  const dateFrom = searchParams.get("from") ?? "";
+  const dateTo = searchParams.get("to") ?? "";
   const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const deferredSearch = useDeferredValue(search);
+  const leadReturnState = createReturnState(location, copy({ en: "Leads", vi: "Leads" }));
+
+  const updateLeadParams = (
+    updates: Record<string, SearchParamValue>,
+    options: { replace?: boolean } = {}
+  ) => {
+    setSearchParams(
+      (current) => applySearchParamUpdates(current, updates, LEAD_PARAM_DEFAULTS),
+      { replace: options.replace }
+    );
+  };
 
   const query = useLeadsQuery({
     offset: page * pageSize,
@@ -118,7 +144,7 @@ export function LeadsPage() {
     }
   };
 
-  const resetPage = () => setPage(0);
+  const resetPageUpdate = { page: null };
 
   const pageLeadIds = leads.map((lead) => lead.id);
   const allSelectedOnPage = pageLeadIds.length > 0 && pageLeadIds.every((id) => selectedIds.has(id));
@@ -179,8 +205,7 @@ export function LeadsPage() {
               onChange={(event) => {
                 const value = event.target.value;
                 startTransition(() => {
-                  setSearch(value);
-                  resetPage();
+                  updateLeadParams({ q: value, ...resetPageUpdate }, { replace: true });
                 });
               }}
               placeholder={copy({ en: "Name...", vi: "Tên ứng viên..." })}
@@ -189,8 +214,7 @@ export function LeadsPage() {
               label={copy({ en: "Status", vi: "Trạng thái" })}
               value={status}
               onChange={(event) => {
-                setStatus(event.target.value);
-                resetPage();
+                updateLeadParams({ status: event.target.value, ...resetPageUpdate });
               }}
             >
               <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
@@ -204,12 +228,11 @@ export function LeadsPage() {
               label={copy({ en: "Channel", vi: "Kênh" })}
               value={source}
               onChange={(event) => {
-                setSource(event.target.value);
-                resetPage();
+                updateLeadParams({ source: event.target.value, ...resetPageUpdate });
               }}
             >
               <option value="">{copy({ en: "All channels", vi: "Tất cả kênh" })}</option>
-              {["zalo", "facebook", "miniapp"].map((value) => (
+              {LEAD_SOURCE_OPTIONS.map((value) => (
                 <option key={value} value={value}>
                   {formatChannel(value)}
                 </option>
@@ -224,12 +247,15 @@ export function LeadsPage() {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setSearch("");
-                  setStatus("");
-                  setSource("");
-                  setDateFrom("");
-                  setDateTo("");
-                  resetPage();
+                  updateLeadParams({
+                    q: null,
+                    status: null,
+                    source: null,
+                    from: null,
+                    to: null,
+                    page: null,
+                    pageSize: null
+                  });
                 }}
               >
                 {copy({ en: "Reset", vi: "Đặt lại" })}
@@ -244,8 +270,7 @@ export function LeadsPage() {
               value={dateFrom}
               max={dateTo || undefined}
               onChange={(event) => {
-                setDateFrom(event.target.value);
-                resetPage();
+                updateLeadParams({ from: event.target.value, ...resetPageUpdate });
               }}
             />
             <Input
@@ -254,8 +279,7 @@ export function LeadsPage() {
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(event) => {
-                setDateTo(event.target.value);
-                resetPage();
+                updateLeadParams({ to: event.target.value, ...resetPageUpdate });
               }}
             />
             <Select
@@ -263,8 +287,7 @@ export function LeadsPage() {
               value={String(pageSize)}
               onChange={(event) => {
                 const next = Number(event.target.value) as PageSize;
-                setPageSize(next);
-                resetPage();
+                updateLeadParams({ pageSize: next, ...resetPageUpdate });
               }}
               className="min-w-[8rem] xl:w-40"
             >
@@ -365,7 +388,11 @@ export function LeadsPage() {
                               {(lead.fullName ?? "L").slice(0, 1).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <Link to={`/leads/${lead.id}`} className="font-semibold text-slate-900 hover:text-indigo-700">
+                              <Link
+                                to={`/leads/${lead.id}`}
+                                state={leadReturnState}
+                                className="font-semibold text-slate-900 hover:text-indigo-700"
+                              >
                                 {lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
                               </Link>
                               <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs leading-5 text-slate-500">
@@ -447,6 +474,7 @@ export function LeadsPage() {
                         <td className="py-5 pr-6 text-right">
                           <Link
                             to={`/leads/${lead.id}`}
+                            state={leadReturnState}
                             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
                           >
                             {copy({ en: "Details", vi: "Chi tiết" })}
@@ -475,8 +503,8 @@ export function LeadsPage() {
             pageLabel={copy({ en: "Page", vi: "Trang" })}
             previousLabel={copy({ en: "Previous", vi: "Trước" })}
             nextLabel={copy({ en: "Next", vi: "Sau" })}
-            onPrevious={() => setPage((current) => Math.max(0, current - 1))}
-            onNext={() => setPage((current) => current + 1)}
+            onPrevious={() => updateLeadParams({ page: Math.max(1, page) })}
+            onNext={() => updateLeadParams({ page: page + 2 })}
           />
         </DataTable>
 

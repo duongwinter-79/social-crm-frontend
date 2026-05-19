@@ -1,5 +1,5 @@
-import { startTransition, useDeferredValue, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { startTransition, useDeferredValue, useEffect, useMemo } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -15,10 +15,22 @@ import {
   ToolbarActions
 } from "@social-crm/ui";
 import { useThreadMessagesQuery, useThreadsQuery, type MessageRecord, type ThreadSummary } from "@social-crm/api";
+import { createReturnState } from "@/app/navigation-state";
+import { applySearchParamUpdates, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { useI18n } from "@/i18n";
 
 const PAGE_SIZE = 20;
 const MESSAGE_LIMIT = 50;
+const CHANNEL_OPTIONS = ["zalo", "facebook", "miniapp"] as const;
+const CHANNEL_FILTER_OPTIONS = ["all", ...CHANNEL_OPTIONS] as const;
+const ANALYZE_STATUS_OPTIONS = ["pending", "analyzing", "completed", "needs_phone"] as const;
+const CONVERSATION_PARAM_DEFAULTS = {
+  page: 1,
+  q: "",
+  channel: "zalo",
+  analyzeStatus: "",
+  threadId: ""
+};
 
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
@@ -187,17 +199,30 @@ function ExtractedDataPanel(props: {
 
 export function ConversationsPage() {
   const { copy, formatEnum } = useI18n();
-  const [search, setSearch] = useState("");
-  const [channel, setChannel] = useState("zalo");
-  const [analyzeStatus, setAnalyzeStatus] = useState("");
-  const [page, setPage] = useState(0);
-  const [selectedThreadId, setSelectedThreadId] = useState("");
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("q") ?? "";
+  const channel = readStringOption(searchParams, "channel", CHANNEL_FILTER_OPTIONS, "zalo");
+  const analyzeStatus = readStringOption(searchParams, "analyzeStatus", ANALYZE_STATUS_OPTIONS);
+  const page = readPageIndex(searchParams);
+  const selectedThreadId = searchParams.get("threadId") ?? "";
   const deferredSearch = useDeferredValue(search);
+  const leadReturnState = createReturnState(location, copy({ en: "Conversations", vi: "Conversations" }));
+
+  const updateConversationParams = (
+    updates: Record<string, SearchParamValue>,
+    options: { replace?: boolean } = {}
+  ) => {
+    setSearchParams(
+      (current) => applySearchParamUpdates(current, updates, CONVERSATION_PARAM_DEFAULTS),
+      { replace: options.replace }
+    );
+  };
 
   const threadsQuery = useThreadsQuery({
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
-    channel: channel || undefined,
+    channel: channel === "all" ? undefined : channel,
     analyzeStatus: analyzeStatus || undefined,
     search: deferredSearch || undefined
   });
@@ -207,6 +232,19 @@ export function ConversationsPage() {
   const selectedThread = useMemo(() => {
     return threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
   }, [selectedThreadId, threads]);
+
+  useEffect(() => {
+    if (threadsQuery.isLoading) return;
+    if (!threads.length) {
+      if (selectedThreadId) updateConversationParams({ threadId: null }, { replace: true });
+      return;
+    }
+
+    const selectedThreadIsVisible = selectedThreadId && threads.some((thread) => thread.id === selectedThreadId);
+    if (!selectedThreadIsVisible) {
+      updateConversationParams({ threadId: threads[0].id }, { replace: true });
+    }
+  }, [selectedThreadId, threads, threadsQuery.isLoading]);
 
   const messagesQuery = useThreadMessagesQuery(selectedThread?.id, {
     offset: 0,
@@ -249,8 +287,7 @@ export function ConversationsPage() {
             onChange={(event) => {
               const value = event.target.value;
               startTransition(() => {
-                setSearch(value);
-                setPage(0);
+                updateConversationParams({ q: value, page: null, threadId: null }, { replace: true });
               });
             }}
             placeholder={copy({ en: "Lead name, phone, or external Zalo id...", vi: "Tên ứng viên, số điện thoại hoặc Zalo external id..." })}
@@ -259,25 +296,23 @@ export function ConversationsPage() {
             label={copy({ en: "Channel", vi: "Kênh" })}
             value={channel}
             onChange={(event) => {
-              setChannel(event.target.value);
-              setPage(0);
+              updateConversationParams({ channel: event.target.value, page: null, threadId: null });
             }}
           >
-            <option value="">{copy({ en: "All channels", vi: "Tất cả kênh" })}</option>
-            <option value="zalo">Zalo</option>
-            <option value="facebook">Facebook</option>
-            <option value="miniapp">Mini app</option>
+            <option value="all">{copy({ en: "All channels", vi: "Tất cả kênh" })}</option>
+            {CHANNEL_OPTIONS.map((value) => (
+              <option key={value} value={value}>{formatEnum(value)}</option>
+            ))}
           </Select>
           <Select
             label={copy({ en: "Extraction status", vi: "Trạng thái trích xuất" })}
             value={analyzeStatus}
             onChange={(event) => {
-              setAnalyzeStatus(event.target.value);
-              setPage(0);
+              updateConversationParams({ analyzeStatus: event.target.value, page: null, threadId: null });
             }}
           >
             <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
-            {["pending", "analyzing", "completed", "needs_phone"].map((value) => (
+            {ANALYZE_STATUS_OPTIONS.map((value) => (
               <option key={value} value={value}>{formatEnum(value)}</option>
             ))}
           </Select>
@@ -285,10 +320,13 @@ export function ConversationsPage() {
             <Button
               variant="secondary"
               onClick={() => {
-                setSearch("");
-                setChannel("zalo");
-                setAnalyzeStatus("");
-                setPage(0);
+                updateConversationParams({
+                  q: null,
+                  channel: null,
+                  analyzeStatus: null,
+                  page: null,
+                  threadId: null
+                });
               }}
             >
               {copy({ en: "Reset", vi: "Đặt lại" })}
@@ -313,7 +351,7 @@ export function ConversationsPage() {
                   key={thread.id}
                   thread={thread}
                   selected={selectedThread?.id === thread.id}
-                  onSelect={() => setSelectedThreadId(thread.id)}
+                  onSelect={() => updateConversationParams({ threadId: thread.id })}
                   formatEnum={formatEnum}
                 />
               ))
@@ -336,8 +374,8 @@ export function ConversationsPage() {
             pageLabel={copy({ en: "Page", vi: "Trang" })}
             previousLabel={copy({ en: "Previous", vi: "Trước" })}
             nextLabel={copy({ en: "Next", vi: "Sau" })}
-            onPrevious={() => setPage((current) => Math.max(0, current - 1))}
-            onNext={() => setPage((current) => current + 1)}
+            onPrevious={() => updateConversationParams({ page: Math.max(1, page), threadId: null })}
+            onNext={() => updateConversationParams({ page: page + 2, threadId: null })}
             className="mt-4 shrink-0 border-slate-100 px-0 pb-0 pt-4"
           />
         </Panel>
@@ -347,7 +385,11 @@ export function ConversationsPage() {
             title={selectedThread ? getLeadName(selectedThread) : copy({ en: "Conversation detail", vi: "Chi tiết hội thoại" })}
             subtitle={selectedThread ? `${selectedThread.channel} • ${selectedThread.messageCount} messages • ${formatDateTime(selectedThread.lastMessageAt)}` : undefined}
             action={selectedThread?.lead ? (
-              <Link to={`/leads/${selectedThread.lead.id}`} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+              <Link
+                to={`/leads/${selectedThread.lead.id}`}
+                state={leadReturnState}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
                 {copy({ en: "Open lead", vi: "Mở ứng viên" })}
               </Link>
             ) : null}
