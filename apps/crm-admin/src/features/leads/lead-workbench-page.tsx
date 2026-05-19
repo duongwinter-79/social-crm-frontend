@@ -484,28 +484,7 @@ export function LeadWorkbenchPage() {
               >
                 <Input label={copy({ en: "Verified weight (kg)", vi: "Cân nặng đã xác minh (kg)" })} value={qualificationForm.weight} onChange={(e) => setQualificationForm((s) => ({ ...s, weight: e.target.value }))} />
               </FieldWithProvenance>
-              <FieldWithProvenance
-                fieldKey="experienceLevel"
-                suggestion={suggestionsByField.experienceLevel}
-                isVerified={isFieldVerified("experienceLevel")}
-                currentValue={qualificationForm.experienceLevel}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, experienceLevel: typeof v === "string" ? v : "" }))}
-              >
-                <Select label={copy({ en: "Experience level", vi: "Mức độ kinh nghiệm" })} value={qualificationForm.experienceLevel} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceLevel: e.target.value }))}>
-                  <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                  <option value="excellent">{copy({ en: "Excellent", vi: "Rất tốt" })}</option>
-                  <option value="good">{copy({ en: "Good", vi: "Tốt" })}</option>
-                  <option value="basic">{copy({ en: "Basic", vi: "Cơ bản" })}</option>
-                  <option value="none">{copy({ en: "None", vi: "Không có" })}</option>
-                  <option value="undisclosed">{copy({ en: "Undisclosed", vi: "Chưa khai báo" })}</option>
-                </Select>
-              </FieldWithProvenance>
               <Input label={copy({ en: "Experience years", vi: "Số năm kinh nghiệm" })} value={qualificationForm.experienceYears} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceYears: e.target.value }))} />
-              <Select label={copy({ en: "Strong skills", vi: "Kỹ năng tốt" })} value={qualificationForm.hasStrongSkills} onChange={(e) => setQualificationForm((s) => ({ ...s, hasStrongSkills: e.target.value }))}>
-                <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
-                <option value="false">{copy({ en: "No", vi: "Không" })}</option>
-              </Select>
               <FieldWithProvenance
                 fieldKey="experienceField"
                 suggestion={suggestionsByField.experienceField}
@@ -525,11 +504,6 @@ export function LeadWorkbenchPage() {
                 <Input label={copy({ en: "Desired industry", vi: "Ngành mong muốn" })} value={qualificationForm.desiredIndustry} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredIndustry: e.target.value }))} />
               </FieldWithProvenance>
               <Input label={copy({ en: "Ready to depart (months)", vi: "Sẵn sàng xuất cảnh (tháng)" })} value={qualificationForm.readyToDepartInMonths} onChange={(e) => setQualificationForm((s) => ({ ...s, readyToDepartInMonths: e.target.value }))} />
-              <Select label={copy({ en: "Understands job nature", vi: "Hiểu tính chất công việc" })} value={qualificationForm.understandsJobNature} onChange={(e) => setQualificationForm((s) => ({ ...s, understandsJobNature: e.target.value }))}>
-                <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
-                <option value="false">{copy({ en: "No", vi: "Không" })}</option>
-              </Select>
               <FieldWithProvenance
                 fieldKey="preferredRegion"
                 suggestion={suggestionsByField.preferredRegion ?? suggestionsByField.preferredRegions}
@@ -549,11 +523,6 @@ export function LeadWorkbenchPage() {
                 <Input label={copy({ en: "Desired salary", vi: "Mức lương mong muốn" })} value={qualificationForm.desiredSalary} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredSalary: e.target.value }))} />
               </FieldWithProvenance>
               <Select label={copy({ en: "Worked abroad before", vi: "Từng đi nước ngoài" })} value={qualificationForm.hasWorkedAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasWorkedAbroad: e.target.value }))}>
-                <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
-                <option value="false">{copy({ en: "No", vi: "Không" })}</option>
-              </Select>
-              <Select label={copy({ en: "Returnee history clean", vi: "Lịch sử lao động nước ngoài tốt" })} value={qualificationForm.hasCleanHistoryAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasCleanHistoryAbroad: e.target.value }))}>
                 <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
                 <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
                 <option value="false">{copy({ en: "No", vi: "Không" })}</option>
@@ -696,10 +665,8 @@ export function LeadWorkbenchPage() {
             <DescriptionList
               items={[
                 { label: copy({ en: "Passport", vi: "Hộ chiếu" }), value: yesNoUnknown(qualificationForm.hasPassport) },
-                { label: copy({ en: "Strong skills", vi: "Kỹ năng tốt" }), value: yesNoUnknown(qualificationForm.hasStrongSkills) },
                 { label: copy({ en: "Worked abroad", vi: "Từng đi nước ngoài" }), value: yesNoUnknown(qualificationForm.hasWorkedAbroad) },
                 { label: copy({ en: "Health fit", vi: "Sức khỏe đạt yêu cầu" }), value: yesNoUnknown(qualificationForm.healthMeetsCriteria) },
-                { label: copy({ en: "Experience level", vi: "Mức độ kinh nghiệm" }), value: qualificationForm.experienceLevel ? formatEnum(qualificationForm.experienceLevel) : copy({ en: "Unknown", vi: "Chưa rõ" }) },
                 { label: copy({ en: "Risk history", vi: "Lịch sử rủi ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chưa rõ" }) }
               ]}
             />
