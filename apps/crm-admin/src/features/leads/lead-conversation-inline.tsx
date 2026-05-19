@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Badge, EmptyState } from "@social-crm/ui";
 import { useThreadMessagesQuery, type MessageRecord } from "@social-crm/api";
+import { MessageImageAttachment } from "@/components/message-image-attachment";
 import { useI18n } from "../../i18n";
 
 /** Minimal thread shape — accepts both ThreadSummary and Lead.threads[i]. */
@@ -21,6 +22,7 @@ function formatDateTime(value?: string | null) {
 
 function MessageBubble(props: { message: MessageRecord; formatEnum: (value: string) => string }) {
     const inbound = props.message.direction === "inbound";
+    const isImage = props.message.type === "image";
 
     return (
         <div className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
@@ -37,44 +39,19 @@ function MessageBubble(props: { message: MessageRecord; formatEnum: (value: stri
                         <Badge tone="success">AI</Badge>
                     ) : null}
                 </div>
-                {props.message.type === "image" && props.message.mediaUrl ? (
-                    <a
-                        href={`/api/interactions/messages/${props.message.id}/media`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Mở ảnh đầy đủ"
-                    >
-                        <img
-                            src={
-                                props.message.thumbnailUrl
-                                    ? `/api/interactions/messages/${props.message.id}/thumbnail`
-                                    : `/api/interactions/messages/${props.message.id}/media`
-                            }
-                            alt="Ảnh Zalo"
-                            className="max-w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
-                            onError={(e) => {
-                                const img = e.currentTarget;
-                                img.style.display = "none";
-                                const fallback = img.parentElement?.nextElementSibling as HTMLElement | null;
-                                if (fallback) fallback.style.display = "block";
-                            }}
-                        />
-                    </a>
+                <MessageImageAttachment message={props.message} alt="Zalo image" openTitle="Open full image" />
+                {!isImage ? (
+                    <div className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                        {props.message.content || "(empty message)"}
+                    </div>
+                ) : !props.message.mediaUrl ? (
+                    <div className="whitespace-pre-wrap text-sm leading-6 text-slate-800">[Image - no URL]</div>
                 ) : null}
-                <div
-                    className="whitespace-pre-wrap text-sm leading-6 text-slate-800"
-                    style={props.message.type === "image" && props.message.mediaUrl ? { display: "none" } : undefined}
-                >
-                    {props.message.type === "image"
-                        ? (props.message.mediaUrl ? "[Không tải được ảnh]" : "[Ảnh — không có URL]")
-                        : (props.message.content || "(empty message)")}
-                </div>
                 <div className="mt-1.5 text-xs text-slate-400">{formatDateTime(props.message.createdAt)}</div>
             </div>
         </div>
     );
 }
-
 /**
  * Inline conversation panel for the lead workbench (P0-2A).
  *
@@ -144,7 +121,7 @@ export function LeadConversationInline(props: { thread: ThreadLike | undefined }
                     </span>
                 </div>
                 <Link
-                    to="/conversations"
+                    to={`/conversations?threadId=${encodeURIComponent(threadId)}`}
                     className="text-indigo-600 hover:text-indigo-500 underline"
                 >
                     {copy({ en: "Open in Conversations →", vi: "Mở trong Conversations →" })}

@@ -419,6 +419,13 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async getMessageMedia(messageId: string) {
+    const response = await this.http.get<Blob>(`/interactions/messages/${messageId}/media`, {
+      responseType: "blob"
+    });
+    return response.data;
+  }
+
   async listOrders() {
     const response = await this.http.get<ApiEnvelope<Order[]> | Order[]>("/orders");
     return unwrapEnvelope(response.data);

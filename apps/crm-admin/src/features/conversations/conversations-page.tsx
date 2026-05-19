@@ -14,9 +14,10 @@ import {
   Toolbar,
   ToolbarActions
 } from "@social-crm/ui";
-import { useThreadMessagesQuery, useThreadsQuery, type MessageRecord, type ThreadSummary } from "@social-crm/api";
+import { useThreadDetailQuery, useThreadMessagesQuery, useThreadsQuery, type MessageRecord, type ThreadSummary } from "@social-crm/api";
 import { createReturnState } from "@/app/navigation-state";
 import { applySearchParamUpdates, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
+import { MessageImageAttachment } from "@/components/message-image-attachment";
 import { useI18n } from "@/i18n";
 
 const PAGE_SIZE = 20;
@@ -114,6 +115,7 @@ function ThreadCard(props: {
 
 function MessageBubble(props: { message: MessageRecord; formatEnum: (value: string) => string }) {
   const inbound = props.message.direction === "inbound";
+  const isImage = props.message.type === "image";
 
   return (
     <div className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
@@ -125,38 +127,14 @@ function MessageBubble(props: { message: MessageRecord; formatEnum: (value: stri
           <Badge tone="neutral">{props.formatEnum(props.message.type)}</Badge>
           {props.message.aiScannedAt ? <Badge tone="success">AI scanned</Badge> : <Badge tone="warning">Pending AI</Badge>}
         </div>
-        {props.message.type === "image" && props.message.mediaUrl ? (
-          <a
-            href={`/api/interactions/messages/${props.message.id}/media`}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Mở ảnh đầy đủ"
-          >
-            <img
-              src={
-                props.message.thumbnailUrl
-                  ? `/api/interactions/messages/${props.message.id}/thumbnail`
-                  : `/api/interactions/messages/${props.message.id}/media`
-              }
-              alt="Ảnh Zalo"
-              className="max-w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
-              onError={(e) => {
-                const img = e.currentTarget;
-                img.style.display = "none";
-                const fallback = img.parentElement?.nextElementSibling as HTMLElement | null;
-                if (fallback) fallback.style.display = "block";
-              }}
-            />
-          </a>
+        <MessageImageAttachment message={props.message} alt="Zalo image" openTitle="Open full image" />
+        {!isImage ? (
+          <div className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
+            {props.message.content || "(empty message)"}
+          </div>
+        ) : !props.message.mediaUrl ? (
+          <div className="whitespace-pre-wrap text-sm leading-6 text-slate-800">[Image - no URL]</div>
         ) : null}
-        <div
-          className="whitespace-pre-wrap text-sm leading-6 text-slate-800"
-          style={props.message.type === "image" && props.message.mediaUrl ? { display: "none" } : undefined}
-        >
-          {props.message.type === "image"
-            ? (props.message.mediaUrl ? "[Không tải được ảnh]" : "[Ảnh — không có URL]")
-            : (props.message.content || "(empty message)")}
-        </div>
         <div className="mt-2 text-xs text-slate-400">{formatDateTime(props.message.createdAt)}</div>
         {props.message.rawPayload ? (
           <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
@@ -170,7 +148,6 @@ function MessageBubble(props: { message: MessageRecord; formatEnum: (value: stri
     </div>
   );
 }
-
 function ExtractedDataPanel(props: {
   title: string;
   empty: string;
@@ -229,19 +206,16 @@ export function ConversationsPage() {
 
   const threads = threadsQuery.data?.data ?? [];
   const total = threadsQuery.data?.total ?? 0;
+  const selectedThreadDetailQuery = useThreadDetailQuery(selectedThreadId || undefined);
   const selectedThread = useMemo(() => {
-    return threads.find((thread) => thread.id === selectedThreadId) ?? threads[0] ?? null;
-  }, [selectedThreadId, threads]);
+    return threads.find((thread) => thread.id === selectedThreadId)
+      ?? selectedThreadDetailQuery.data
+      ?? (!selectedThreadId ? threads[0] ?? null : null);
+  }, [selectedThreadId, selectedThreadDetailQuery.data, threads]);
 
   useEffect(() => {
     if (threadsQuery.isLoading) return;
-    if (!threads.length) {
-      if (selectedThreadId) updateConversationParams({ threadId: null }, { replace: true });
-      return;
-    }
-
-    const selectedThreadIsVisible = selectedThreadId && threads.some((thread) => thread.id === selectedThreadId);
-    if (!selectedThreadIsVisible) {
+    if (!selectedThreadId && threads.length) {
       updateConversationParams({ threadId: threads[0].id }, { replace: true });
     }
   }, [selectedThreadId, threads, threadsQuery.isLoading]);
