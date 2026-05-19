@@ -38,17 +38,28 @@ function MessageBubble(props: { message: MessageRecord; formatEnum: (value: stri
                     ) : null}
                 </div>
                 {props.message.type === "image" && props.message.mediaUrl ? (
-                    <img
-                        src={`/api/interactions/messages/${props.message.id}/media`}
-                        alt="Ảnh Zalo"
-                        className="max-w-full rounded-xl"
-                        onError={(e) => {
-                            const img = e.currentTarget;
-                            img.style.display = "none";
-                            const fallback = img.nextElementSibling as HTMLElement | null;
-                            if (fallback) fallback.style.display = "block";
-                        }}
-                    />
+                    <a
+                        href={`/api/interactions/messages/${props.message.id}/media`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Mở ảnh đầy đủ"
+                    >
+                        <img
+                            src={
+                                props.message.thumbnailUrl
+                                    ? `/api/interactions/messages/${props.message.id}/thumbnail`
+                                    : `/api/interactions/messages/${props.message.id}/media`
+                            }
+                            alt="Ảnh Zalo"
+                            className="max-w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                            onError={(e) => {
+                                const img = e.currentTarget;
+                                img.style.display = "none";
+                                const fallback = img.parentElement?.nextElementSibling as HTMLElement | null;
+                                if (fallback) fallback.style.display = "block";
+                            }}
+                        />
+                    </a>
                 ) : null}
                 <div
                     className="whitespace-pre-wrap text-sm leading-6 text-slate-800"

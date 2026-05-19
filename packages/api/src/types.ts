@@ -186,6 +186,7 @@ export interface MessageRecord {
   type: string;
   content?: string | null;
   mediaUrl?: string | null;
+  thumbnailUrl?: string | null;
   rawPayload?: Record<string, unknown> | null;
   externalId?: string | null;
   aiScannedAt?: string | null;
