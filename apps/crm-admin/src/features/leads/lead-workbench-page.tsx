@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getLeadDisplayName, getLeadFullNameLabel } from "@/lib/lead-display";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Badge,
@@ -212,8 +213,11 @@ export function LeadWorkbenchPage() {
 
       <SectionHeader
         eyebrow={copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" })}
-        title={lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
-        description={`${lead.source.toUpperCase()} · ${lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · ${lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })}`}
+        title={getLeadDisplayName(lead)}
+        description={[
+          getLeadFullNameLabel(lead),
+          `${lead.source.toUpperCase()} · ${lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · ${lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })}`,
+        ].filter(Boolean).join(" · ")}
       />
 
       {phoneMergeConflictId ? (

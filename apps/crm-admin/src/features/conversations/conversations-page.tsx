@@ -69,7 +69,9 @@ type FormatConfidenceFn = ReturnType<typeof useI18n>["formatConfidence"];
 type FormatExtractionSourceSummaryFn = ReturnType<typeof useI18n>["formatExtractionSourceSummary"];
 
 function getLeadName(thread: ThreadSummary | null | undefined, fallback: string) {
-  return thread?.lead?.fullName || thread?.externalId || fallback;
+  const lead = thread?.lead;
+  if (lead) return lead.displayName?.trim() || lead.fullName?.trim() || thread?.externalId || fallback;
+  return thread?.externalId || fallback;
 }
 
 function recordEntries(record?: Record<string, unknown> | null) {

@@ -7,6 +7,7 @@ import {
 } from "./session";
 import type {
   AiExtractionWorkerStatus,
+  ZaloNameEnrichmentWorkerStatus,
   AiQueryResult,
   AiSuggestion,
   LeadOrderSuggestion,
@@ -220,6 +221,22 @@ export class SocialCrmApiClient {
 
   async getDashboardStats() {
     const response = await this.http.get<ApiEnvelope<DashboardStats> | DashboardStats>("/dashboard/stats");
+    return unwrapEnvelope(response.data);
+  }
+
+  // ── Zalo name enrichment worker (admin) ─────────────────────────────
+  async getZaloEnrichmentWorkerStatus(): Promise<ZaloNameEnrichmentWorkerStatus> {
+    const response = await this.http.get<ApiEnvelope<ZaloNameEnrichmentWorkerStatus> | ZaloNameEnrichmentWorkerStatus>(
+      "/webhook/zalo/enrich-names/status"
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async triggerZaloEnrichmentWorker(): Promise<ZaloNameEnrichmentWorkerStatus> {
+    const response = await this.http.post<ApiEnvelope<ZaloNameEnrichmentWorkerStatus> | ZaloNameEnrichmentWorkerStatus>(
+      "/webhook/zalo/enrich-names/trigger",
+      {}
+    );
     return unwrapEnvelope(response.data);
   }
 

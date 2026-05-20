@@ -196,6 +196,9 @@ export interface MessageRecord {
 
 export interface Lead {
   id: string;
+  /** Channel identity name — primary header in UI (Zalo display_name or "Zalo:<id>" fallback). */
+  displayName?: string | null;
+  /** Legal / real full name entered by staff or captured from form submissions. Shown below displayName. */
   fullName?: string | null;
   phone?: string | null;
   source: string;
@@ -341,6 +344,18 @@ export interface ImportNotesLeadGroup {
   leadPhone: string | null;
   importNotes: ImportNotes | null;
   suggestions: ImportNotesSuggestion[];
+}
+
+export interface ZaloNameEnrichmentWorkerStatus {
+  enabled: boolean;
+  running: boolean;
+  batchSize: number;
+  tickMs: number | null;
+  lastRunStartedAt: string | null;
+  lastRunEndedAt: string | null;
+  lastRunUpdated: number;
+  lastRunSkipped: number;
+  lastRunErrors: number;
 }
 
 export interface AiExtractionWorkerStatus {

@@ -22,6 +22,7 @@ import {
   type Order
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { getLeadDisplayName } from "@/lib/lead-display";
 import { CandidatePicker } from "@/components/candidate-picker";
 
 type MatchingMode = "lead_triage" | "candidate_formal";
@@ -90,7 +91,7 @@ export function MatchingPage() {
               <option value="">{copy({ en: "Select a lead", vi: "Chọn ứng viên tiềm năng" })}</option>
               {(leads.data?.data ?? []).map((lead) => (
                 <option key={lead.id} value={lead.id}>
-                  {lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })} - {formatLeadStatus(lead.status)}
+                  {getLeadDisplayName(lead)} - {formatLeadStatus(lead.status)}
                 </option>
               ))}
             </Select>
@@ -198,7 +199,7 @@ function LeadContext(props: { lead?: Lead; order?: Order; formatLeadStatus: (sta
   return (
     <div className="space-y-5">
       <div className="grid gap-3 md:grid-cols-2">
-        <ContextCard label={copy({ en: "Lead", vi: "Ứng viên tiềm năng" })} value={props.lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })} note={props.lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} />
+        <ContextCard label={copy({ en: "Lead", vi: "Ứng viên tiềm năng" })} value={getLeadDisplayName(props.lead)} note={props.lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} />
         <ContextCard label={copy({ en: "Order", vi: "Đơn hàng" })} value={props.order.name} note={props.order.region || copy({ en: "No region", vi: "Chưa có khu vực" })} />
       </div>
       <DescriptionList
@@ -237,7 +238,7 @@ function CandidateContext(props: { candidate?: CandidateRef; order?: Order }) {
       </div>
       <DescriptionList
         items={[
-          { label: copy({ en: "Linked lead", vi: "Ứng viên liên kết" }), value: props.candidate.lead?.fullName || props.candidate.lead?.phone || copy({ en: "No linked lead detail", vi: "Chưa có thông tin ứng viên liên kết" }) },
+          { label: copy({ en: "Linked lead", vi: "Ứng viên liên kết" }), value: (props.candidate.lead ? getLeadDisplayName(props.candidate.lead) : null) || props.candidate.lead?.phone || copy({ en: "No linked lead detail", vi: "Chưa có thông tin ứng viên liên kết" }) },
           { label: copy({ en: "Candidate status", vi: "Trạng thái ứng viên" }), value: <Badge tone={toneForStatus(props.candidate.lifecycleStatus || "")}>{props.candidate.lifecycleStatus || copy({ en: "Unknown", vi: "Chưa rõ" })}</Badge> },
           { label: copy({ en: "Profile gender", vi: "Giới tính hồ sơ" }), value: profileValue(props.candidate.profile, "gender") },
           { label: copy({ en: "Profile height", vi: "Chiều cao hồ sơ" }), value: profileValue(props.candidate.profile, "heightCm") },

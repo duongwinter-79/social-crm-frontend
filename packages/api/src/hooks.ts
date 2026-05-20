@@ -5,6 +5,31 @@ import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload } from ".
 
 export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
 
+// ── Zalo name enrichment worker (admin) ──────────────────────────────
+
+export function useZaloEnrichmentWorkerStatusQuery(opts: { pollWhileRunning?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["zalo", "enrichment-worker", "status"],
+    queryFn: () => apiClient.getZaloEnrichmentWorkerStatus(),
+    refetchInterval: (query) => {
+      if (!opts.pollWhileRunning) return false;
+      const data = query.state.data as { running?: boolean } | undefined;
+      return data?.running ? 2000 : false;
+    }
+  });
+}
+
+export function useTriggerZaloEnrichmentWorkerMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.triggerZaloEnrichmentWorker(),
+    onSuccess: (status) => {
+      queryClient.setQueryData(["zalo", "enrichment-worker", "status"], status);
+    },
+    meta: { successMessage: "Zalo enrichment worker triggered" }
+  });
+}
+
 // ── AI extraction worker (admin) ──────────────────────────────────────
 
 export function useAiExtractionWorkerStatusQuery(opts: { pollWhileRunning?: boolean } = {}) {

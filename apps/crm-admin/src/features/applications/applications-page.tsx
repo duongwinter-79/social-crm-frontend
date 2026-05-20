@@ -23,6 +23,7 @@ import {
   useUpdateApplicationMutation
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { getLeadDisplayName } from "@/lib/lead-display";
 import { CandidatePicker } from "@/components/candidate-picker";
 
 const STATUS_OPTIONS = [
@@ -101,7 +102,7 @@ export function ApplicationsPage() {
     if (!filters.search.trim()) return records;
     const term = filters.search.trim().toLowerCase();
     return records.filter((record) =>
-      [record.id, record.lead?.fullName, record.lead?.phone, record.order?.name, record.candidate?.code]
+      [record.id, record.lead ? getLeadDisplayName(record.lead) : null, record.lead?.fullName, record.lead?.phone, record.order?.name, record.candidate?.code]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term))
     );
@@ -239,7 +240,7 @@ export function ApplicationsPage() {
                       <div>
                         <div className="font-semibold text-slate-900">{record.order?.name ?? copy({ en: "Unknown order", vi: "Chưa rõ đơn hàng" })}</div>
                         <div className="mt-1 text-xs leading-5 text-slate-500">
-                  {record.lead?.fullName ?? copy({ en: "Unknown lead", vi: "Chưa rõ ứng viên tiềm năng" })} - {record.candidate?.code ?? record.candidate_id ?? copy({ en: "No candidate code", vi: "Chưa có mã ứng viên" })}
+                  {record.lead ? getLeadDisplayName(record.lead) : copy({ en: "Unknown lead", vi: "Chưa rõ ứng viên tiềm năng" })} - {record.candidate?.code ?? record.candidate_id ?? copy({ en: "No candidate code", vi: "Chưa có mã ứng viên" })}
                         </div>
                       </div>
                       <Badge tone={toneForApplicationStatus(record.status)}>{formatApplicationStatus(record.status)}</Badge>
@@ -329,7 +330,7 @@ export function ApplicationsPage() {
                 <DescriptionList
                   items={[
                     { label: copy({ en: "Application ID", vi: "ID hồ sơ ứng tuyển" }), value: selected.id },
-                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead?.fullName ?? selected.lead_id },
+                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead ? getLeadDisplayName(selected.lead) : selected.lead_id },
                     { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: selected.candidate?.code ?? selected.candidate_id ?? copy({ en: "Unknown", vi: "Chưa rõ" }) },
                     { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name ?? selected.order_id },
                     { label: copy({ en: "Created", vi: "Ngày tạo" }), value: selected.createdAt ?? copy({ en: "Unknown", vi: "Chưa rõ" }) }

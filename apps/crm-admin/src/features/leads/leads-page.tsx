@@ -5,6 +5,7 @@ import { apiClient, triggerBlobDownload, useLeadsQuery, type Lead } from "@socia
 import { createReturnState, saveRouteScroll, useRestoreRouteScroll } from "@/app/navigation-state";
 import { applySearchParamUpdates, readNumberOption, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { useI18n } from "@/i18n";
+import { getLeadDisplayName, getLeadFullNameLabel } from "@/lib/lead-display";
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
@@ -375,8 +376,8 @@ export function LeadsPage() {
                           <input
                             type="checkbox"
                             aria-label={copy({
-                              en: `Select ${lead.fullName ?? lead.id}`,
-                              vi: `Chọn ${lead.fullName ?? lead.id}`
+                              en: `Select ${getLeadDisplayName(lead)}`,
+                              vi: `Chọn ${getLeadDisplayName(lead)}`
                             })}
                             checked={isSelected}
                             onChange={() => toggleSelectOne(lead.id)}
@@ -386,7 +387,7 @@ export function LeadsPage() {
                         <td className="py-5 pr-4">
                           <div className="flex items-start gap-3">
                             <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-sm font-bold text-indigo-700">
-                              {(lead.fullName ?? "L").slice(0, 1).toUpperCase()}
+                              {getLeadDisplayName(lead).slice(0, 1).toUpperCase()}
                             </div>
                             <div className="min-w-0">
                               <Link
@@ -395,8 +396,11 @@ export function LeadsPage() {
                                 onClick={() => saveRouteScroll(location)}
                                 className="font-semibold text-slate-900 hover:text-indigo-700"
                               >
-                                {lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
+                                {getLeadDisplayName(lead)}
                               </Link>
+                              {getLeadFullNameLabel(lead) && (
+                                <div className="text-xs text-slate-500 truncate">{getLeadFullNameLabel(lead)}</div>
+                              )}
                               <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs leading-5 text-slate-500">
                                 <span>{lead.phone || copy({ en: "No phone", vi: "Chưa có số" })}</span>
                                 {age != null ? (

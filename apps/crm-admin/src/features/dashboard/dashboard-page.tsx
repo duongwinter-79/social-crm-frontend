@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Badge, EmptyState, Panel, SectionHeader } from "@social-crm/ui";
 import { useDashboardStatsQuery, useLeadsQuery } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { getLeadDisplayName } from "@/lib/lead-display";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import "./dashboard-page.css";
 
@@ -192,7 +193,7 @@ export function DashboardPage() {
                 {priorityQueue.map((lead) => (
                   <tr key={lead.id}>
                     <td>
-                      <strong>{lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}</strong>
+                      <strong>{getLeadDisplayName(lead)}</strong>
                       <div className="dashboard-cell-sub">{lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })} · {lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })}</div>
                     </td>
                     <td>

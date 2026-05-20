@@ -24,6 +24,8 @@ import {
   useHealthQuery,
   useRevokeAdminSessionMutation,
   useTriggerAiExtractionWorkerMutation,
+  useZaloEnrichmentWorkerStatusQuery,
+  useTriggerZaloEnrichmentWorkerMutation,
   useUpdateUserMutation,
   useUserDetailQuery,
   useUsersQuery
@@ -75,6 +77,8 @@ export function AdminPage() {
   const auditLogs = useAdminAuditLogsQuery({ limit: 8 });
   const aiWorkerStatus = useAiExtractionWorkerStatusQuery({ pollWhileRunning: true });
   const triggerAiWorker = useTriggerAiExtractionWorkerMutation();
+  const zaloEnrichStatus = useZaloEnrichmentWorkerStatusQuery({ pollWhileRunning: true });
+  const triggerZaloEnrich = useTriggerZaloEnrichmentWorkerMutation();
   const sessions = useAdminSessionsQuery({ limit: 8, includeRevoked: false });
   const revokeSession = useRevokeAdminSessionMutation();
   const createUser = useCreateUserMutation();
@@ -420,6 +424,85 @@ export function AdminPage() {
               label: copy({ en: "Processed last tick", vi: "Đã xử lý lần trước" }),
               value: aiWorkerStatus.data
                 ? `${aiWorkerStatus.data.lastTickThreadsProcessed} threads · ${aiWorkerStatus.data.lastTickImportedLeadsProcessed} ${copy({ en: "imported leads", vi: "Ứng viên nhập" })}`
+                : "—"
+            }
+          ]}
+        />
+      </Panel>
+
+      {/* Zalo name enrichment worker */}
+      <Panel
+        title={copy({ en: "Zalo name enrichment worker", vi: "Worker cập nhật tên Zalo" })}
+        subtitle={copy({
+          en: "Fetches the real display name from Zalo OA API for leads that still show a \"Zalo:<id>\" placeholder. Requires ZALO_OA_ACCESS_TOKEN to be set. One access token is reused for the whole batch.",
+          vi: "Lấy tên hiển thị thực từ Zalo OA API cho ứng viên vẫn hiển thị placeholder \"Zalo:<id>\". Yêu cầu ZALO_OA_ACCESS_TOKEN. Một access token được dùng lại cho toàn bộ batch."
+        })}
+        action={
+          <Button
+            onClick={() => triggerZaloEnrich.mutate()}
+            disabled={
+              triggerZaloEnrich.isPending ||
+              Boolean(zaloEnrichStatus.data?.running)
+            }
+          >
+            {triggerZaloEnrich.isPending
+              ? copy({ en: "Triggering...", vi: "Đang kích hoạt..." })
+              : zaloEnrichStatus.data?.running
+                ? copy({ en: "Running...", vi: "Đang chạy..." })
+                : copy({ en: "Run now", vi: "Chạy ngay" })}
+          </Button>
+        }
+      >
+        {zaloEnrichStatus.data && !zaloEnrichStatus.data.enabled ? (
+          <InfoStrip className="border-amber-300 bg-amber-50 text-amber-900">
+            <span>
+              {copy({
+                en: "Scheduled ticks are disabled (ZALO_NAME_ENRICHMENT_WORKER_ENABLED=false). You can still run manually with the button above.",
+                vi: "Tick tự động đang tắt (ZALO_NAME_ENRICHMENT_WORKER_ENABLED=false). Bạn vẫn có thể chạy thủ công bằng nút bên trên."
+              })}
+            </span>
+          </InfoStrip>
+        ) : null}
+        <DescriptionList
+          className="mt-1"
+          columns={3}
+          items={[
+            {
+              label: copy({ en: "State", vi: "Trạng thái" }),
+              value: zaloEnrichStatus.data?.running ? (
+                <Badge tone="warning">{copy({ en: "Running", vi: "Đang chạy" })}</Badge>
+              ) : zaloEnrichStatus.data?.enabled ? (
+                <Badge tone="success">{copy({ en: "Idle (scheduled)", vi: "Sẵn sàng (lên lịch)" })}</Badge>
+              ) : (
+                <Badge tone="neutral">{copy({ en: "Idle (manual only)", vi: "Sẵn sàng (thủ công)" })}</Badge>
+              )
+            },
+            {
+              label: copy({ en: "Batch size", vi: "Kích thước batch" }),
+              value: String(zaloEnrichStatus.data?.batchSize ?? "—")
+            },
+            {
+              label: copy({ en: "Tick interval", vi: "Chu kỳ tick" }),
+              value: zaloEnrichStatus.data?.tickMs
+                ? formatDurationMs(zaloEnrichStatus.data.tickMs)
+                : copy({ en: "Manual only", vi: "Thủ công" })
+            },
+            {
+              label: copy({ en: "Last run started", vi: "Lần chạy cuối bắt đầu" }),
+              value: zaloEnrichStatus.data?.lastRunStartedAt
+                ? new Date(zaloEnrichStatus.data.lastRunStartedAt).toLocaleString()
+                : copy({ en: "Never since restart", vi: "Chưa chạy kể từ khi khởi động" })
+            },
+            {
+              label: copy({ en: "Last run ended", vi: "Lần chạy cuối kết thúc" }),
+              value: zaloEnrichStatus.data?.lastRunEndedAt
+                ? new Date(zaloEnrichStatus.data.lastRunEndedAt).toLocaleString()
+                : "—"
+            },
+            {
+              label: copy({ en: "Last run result", vi: "Kết quả lần chạy cuối" }),
+              value: zaloEnrichStatus.data?.lastRunStartedAt
+                ? `${zaloEnrichStatus.data.lastRunUpdated} ${copy({ en: "updated", vi: "cập nhật" })} · ${zaloEnrichStatus.data.lastRunSkipped} ${copy({ en: "skipped", vi: "bỏ qua" })} · ${zaloEnrichStatus.data.lastRunErrors} ${copy({ en: "errors", vi: "lỗi" })}`
                 : "—"
             }
           ]}

@@ -13,6 +13,7 @@ import {
   type OrderMutationPayload
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { getLeadDisplayName } from "@/lib/lead-display";
 
 type OrderEditorMode = "create" | "edit";
 
@@ -330,7 +331,7 @@ export function OrdersPage() {
                             <option value="">{copy({ en: "Select a lead", vi: "Chọn ứng viên" })}</option>
                             {leads.map((lead) => (
                               <option key={lead.id} value={lead.id}>
-                                {lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })} - {formatLeadStatus(lead.status)}
+                                {getLeadDisplayName(lead)} - {formatLeadStatus(lead.status)}
                               </option>
                             ))}
                           </Select>
@@ -346,7 +347,7 @@ export function OrdersPage() {
 
                         {selectedLead ? (
                           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                            <div className="font-semibold text-slate-800">{selectedLead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}</div>
+                            <div className="font-semibold text-slate-800">{getLeadDisplayName(selectedLead)}</div>
                             <div className="mt-1">{selectedLead.region || copy({ en: "No region", vi: "Chưa có khu vực" })} · {selectedLead.source} · {copy({ en: "score", vi: "điểm" })} {selectedLead.leadScore ?? "-"}</div>
                           </div>
                         ) : null}

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Input, Select } from "@social-crm/ui";
 import { useCandidatesQuery, type CandidateRef } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { getLeadDisplayName } from "@/lib/lead-display";
 
 type CandidatePickerProps = {
   value: string;
@@ -59,5 +60,8 @@ export function CandidatePicker(props: CandidatePickerProps) {
 }
 
 function candidateLabel(candidate: CandidateRef, noLeadDetailLabel: string) {
-  return `${candidate.code || candidate.id.slice(0, 8)} - ${candidate.lead?.fullName || candidate.lead?.phone || noLeadDetailLabel}`;
+  const leadLabel = candidate.lead
+    ? getLeadDisplayName(candidate.lead) || candidate.lead.phone || noLeadDetailLabel
+    : noLeadDetailLabel;
+  return `${candidate.code || candidate.id.slice(0, 8)} - ${leadLabel}`;
 }

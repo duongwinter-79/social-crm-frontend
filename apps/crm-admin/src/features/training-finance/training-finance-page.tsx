@@ -21,6 +21,7 @@ import {
 } from "@social-crm/api";
 import type { TrainingFinanceRecord } from "@social-crm/api";
 import { useI18n } from "../../i18n";
+import { getLeadDisplayName } from "@/lib/lead-display";
 
 const PAGE_SIZE = 25;
 
@@ -171,7 +172,7 @@ export function TrainingFinancePage() {
                           <div className="font-semibold text-slate-900">
                             {record.orderType || record.order?.name || copy({ en: "Training-finance record", vi: "Bản ghi đào tạo - tài chính" })}
                           </div>
-                          <div className="mt-1 text-xs text-slate-500">{record.lead?.fullName || record.lead_id}</div>
+                          <div className="mt-1 text-xs text-slate-500">{record.lead ? getLeadDisplayName(record.lead) : record.lead_id}</div>
                         </div>
                         <Badge tone={toneForMilestone(record)}>{formatTrainingMilestone(milestoneLabel(record))}</Badge>
                       </div>
@@ -261,7 +262,7 @@ export function TrainingFinancePage() {
                 <DescriptionList
                   items={[
                     { label: copy({ en: "Record ID", vi: "Record ID" }), value: selected.id },
-                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead?.fullName || selected.lead_id },
+                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead ? getLeadDisplayName(selected.lead) : selected.lead_id },
                     { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name || selected.order_id || copy({ en: "No order", vi: "Không có đơn hàng" }) },
                     { label: copy({ en: "Updated", vi: "Cập nhật" }), value: selected.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
                   ]}
