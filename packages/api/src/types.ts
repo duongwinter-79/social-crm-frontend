@@ -356,6 +356,12 @@ export interface ZaloNameEnrichmentWorkerStatus {
   lastRunUpdated: number;
   lastRunSkipped: number;
   lastRunErrors: number;
+  lastRunBatches: number;
+  /** Live counters — updated after each batch while running === true. */
+  currentUpdated: number;
+  currentSkipped: number;
+  currentErrors: number;
+  currentBatches: number;
 }
 
 export interface AiExtractionWorkerStatus {

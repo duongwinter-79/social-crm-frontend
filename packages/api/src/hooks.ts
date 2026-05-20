@@ -202,7 +202,8 @@ export function useLeadsQuery(params: {
 }) {
   return useQuery({
     queryKey: ["leads", params],
-    queryFn: () => apiClient.listLeads(params)
+    queryFn: () => apiClient.listLeads(params),
+    refetchInterval: 60000
   });
 }
 
@@ -253,7 +254,8 @@ export function useLeadOrderSuggestionsQuery(leadId?: string, limit = 5) {
 export function useThreadsQuery(params: { offset: number; limit: number; channel?: string; leadId?: string; analyzeStatus?: string; search?: string }) {
   return useQuery({
     queryKey: ["threads", params],
-    queryFn: () => apiClient.listThreads(params)
+    queryFn: () => apiClient.listThreads(params),
+    refetchInterval: 60000
   });
 }
 

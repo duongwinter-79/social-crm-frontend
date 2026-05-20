@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -79,6 +79,21 @@ export function AdminPage() {
   const triggerAiWorker = useTriggerAiExtractionWorkerMutation();
   const zaloEnrichStatus = useZaloEnrichmentWorkerStatusQuery({ pollWhileRunning: true });
   const triggerZaloEnrich = useTriggerZaloEnrichmentWorkerMutation();
+
+  // Toast notification: detect running → idle transition and show result
+  const [enrichToast, setEnrichToast] = useState<{ updated: number; skipped: number; errors: number } | null>(null);
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    const running = Boolean(zaloEnrichStatus.data?.running);
+    if (wasRunning.current && !running && zaloEnrichStatus.data?.lastRunEndedAt) {
+      setEnrichToast({
+        updated: zaloEnrichStatus.data.lastRunUpdated,
+        skipped: zaloEnrichStatus.data.lastRunSkipped,
+        errors: zaloEnrichStatus.data.lastRunErrors,
+      });
+    }
+    wasRunning.current = running;
+  }, [zaloEnrichStatus.data?.running, zaloEnrichStatus.data?.lastRunEndedAt]);
   const sessions = useAdminSessionsQuery({ limit: 8, includeRevoked: false });
   const revokeSession = useRevokeAdminSessionMutation();
   const createUser = useCreateUserMutation();
@@ -434,16 +449,13 @@ export function AdminPage() {
       <Panel
         title={copy({ en: "Zalo name enrichment worker", vi: "Worker cập nhật tên Zalo" })}
         subtitle={copy({
-          en: "Fetches the real display name from Zalo OA API for leads that still show a \"Zalo:<id>\" placeholder. Requires ZALO_OA_ACCESS_TOKEN to be set. One access token is reused for the whole batch.",
-          vi: "Lấy tên hiển thị thực từ Zalo OA API cho ứng viên vẫn hiển thị placeholder \"Zalo:<id>\". Yêu cầu ZALO_OA_ACCESS_TOKEN. Một access token được dùng lại cho toàn bộ batch."
+          en: "Fetches the real display name from Zalo OA API for all leads that still show a placeholder. Streams through all records automatically — no need to click multiple times.",
+          vi: "Lấy tên hiển thị thực từ Zalo OA API cho tất cả ứng viên vẫn hiển thị placeholder. Tự động xử lý toàn bộ — không cần bấm nhiều lần."
         })}
         action={
           <Button
-            onClick={() => triggerZaloEnrich.mutate()}
-            disabled={
-              triggerZaloEnrich.isPending ||
-              Boolean(zaloEnrichStatus.data?.running)
-            }
+            onClick={() => { setEnrichToast(null); triggerZaloEnrich.mutate(); }}
+            disabled={triggerZaloEnrich.isPending || Boolean(zaloEnrichStatus.data?.running)}
           >
             {triggerZaloEnrich.isPending
               ? copy({ en: "Triggering...", vi: "Đang kích hoạt..." })
@@ -453,16 +465,48 @@ export function AdminPage() {
           </Button>
         }
       >
+        {/* Completion toast */}
+        {enrichToast && (
+          <InfoStrip className="border-green-300 bg-green-50 text-green-900 mb-3">
+            <div className="flex items-center justify-between gap-4 w-full">
+              <span>
+                ✅ {copy({ en: "Enrichment complete", vi: "Hoàn tất cập nhật" })} — {" "}
+                <strong>{enrichToast.updated}</strong> {copy({ en: "updated", vi: "cập nhật" })} · {" "}
+                <strong>{enrichToast.skipped}</strong> {copy({ en: "skipped", vi: "bỏ qua" })}
+                {enrichToast.errors > 0 && (
+                  <> · <strong className="text-red-700">{enrichToast.errors} {copy({ en: "errors", vi: "lỗi" })}</strong></>
+                )}
+              </span>
+              <button onClick={() => setEnrichToast(null)} className="text-green-700 hover:text-green-900 text-lg leading-none">×</button>
+            </div>
+          </InfoStrip>
+        )}
+
+        {/* Live progress while running */}
+        {zaloEnrichStatus.data?.running && (
+          <InfoStrip className="border-blue-300 bg-blue-50 text-blue-900 mb-3">
+            <span>
+              ⏳ {copy({ en: "Running", vi: "Đang chạy" })}… {" "}
+              {copy({ en: "batch", vi: "batch" })} {zaloEnrichStatus.data.currentBatches} · {" "}
+              <strong>{zaloEnrichStatus.data.currentUpdated}</strong> {copy({ en: "updated so far", vi: "đã cập nhật" })}
+              {zaloEnrichStatus.data.currentErrors > 0 && (
+                <> · <span className="text-red-700">{zaloEnrichStatus.data.currentErrors} {copy({ en: "errors", vi: "lỗi" })}</span></>
+              )}
+            </span>
+          </InfoStrip>
+        )}
+
         {zaloEnrichStatus.data && !zaloEnrichStatus.data.enabled ? (
           <InfoStrip className="border-amber-300 bg-amber-50 text-amber-900">
             <span>
               {copy({
                 en: "Scheduled ticks are disabled (ZALO_NAME_ENRICHMENT_WORKER_ENABLED=false). You can still run manually with the button above.",
-                vi: "Tick tự động đang tắt (ZALO_NAME_ENRICHMENT_WORKER_ENABLED=false). Bạn vẫn có thể chạy thủ công bằng nút bên trên."
+                vi: "Tick tự động đang tắt. Bạn vẫn có thể chạy thủ công bằng nút bên trên."
               })}
             </span>
           </InfoStrip>
         ) : null}
+
         <DescriptionList
           className="mt-1"
           columns={3}
@@ -502,7 +546,7 @@ export function AdminPage() {
             {
               label: copy({ en: "Last run result", vi: "Kết quả lần chạy cuối" }),
               value: zaloEnrichStatus.data?.lastRunStartedAt
-                ? `${zaloEnrichStatus.data.lastRunUpdated} ${copy({ en: "updated", vi: "cập nhật" })} · ${zaloEnrichStatus.data.lastRunSkipped} ${copy({ en: "skipped", vi: "bỏ qua" })} · ${zaloEnrichStatus.data.lastRunErrors} ${copy({ en: "errors", vi: "lỗi" })}`
+                ? `${zaloEnrichStatus.data.lastRunUpdated} ${copy({ en: "updated", vi: "cập nhật" })} · ${zaloEnrichStatus.data.lastRunSkipped} ${copy({ en: "skipped", vi: "bỏ qua" })} · ${zaloEnrichStatus.data.lastRunErrors} ${copy({ en: "errors", vi: "lỗi" })} · ${zaloEnrichStatus.data.lastRunBatches} ${copy({ en: "batches", vi: "batch" })}`
                 : "—"
             }
           ]}

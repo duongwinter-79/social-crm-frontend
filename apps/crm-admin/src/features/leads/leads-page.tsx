@@ -6,6 +6,7 @@ import { createReturnState, saveRouteScroll, useRestoreRouteScroll } from "@/app
 import { applySearchParamUpdates, readNumberOption, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { useI18n } from "@/i18n";
 import { getLeadDisplayName, getLeadFullNameLabel } from "@/lib/lead-display";
+import { RefreshButton } from "@/components/refresh-button";
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
@@ -317,6 +318,12 @@ export function LeadsPage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <RefreshButton
+                  label={copy({ en: "Refresh lead list", vi: "Tải lại danh sách ứng viên" })}
+                  refreshingLabel={copy({ en: "Refreshing lead list", vi: "Đang tải lại danh sách ứng viên" })}
+                  isRefreshing={query.isFetching}
+                  onRefresh={() => void query.refetch()}
+                />
                 {query.isFetching ? <Badge tone="warning">{copy({ en: "Refreshing", vi: "Đang tải lại" })}</Badge> : null}
                 <Badge tone="neutral">{copy({ en: `${stats.worked} active in pipeline`, vi: `${stats.worked} đang hoạt động trong pipeline` })}</Badge>
               </div>

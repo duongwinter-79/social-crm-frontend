@@ -18,6 +18,7 @@ import { useThreadDetailQuery, useThreadMessagesQuery, useThreadsQuery, type Mes
 import { createReturnState, saveRouteScroll, useRestoreRouteScroll, type NavigationReturnState } from "@/app/navigation-state";
 import { applySearchParamUpdates, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { MessageImageAttachment } from "@/components/message-image-attachment";
+import { RefreshButton } from "@/components/refresh-button";
 import { useI18n } from "@/i18n";
 
 const PAGE_SIZE = 20;
@@ -70,7 +71,7 @@ type FormatExtractionSourceSummaryFn = ReturnType<typeof useI18n>["formatExtract
 
 function getLeadName(thread: ThreadSummary | null | undefined, fallback: string) {
   const lead = thread?.lead;
-  if (lead) return lead.displayName?.trim() || lead.fullName?.trim() || thread?.externalId || fallback;
+  if (lead) return lead.displayName?.trim() || thread?.externalId || fallback;
   return thread?.externalId || fallback;
 }
 
@@ -523,6 +524,19 @@ export function ConversationsPage() {
             en: "Latest active conversations from interaction storage.",
             vi: "Các hội thoại gần đây đã lưu trong CRM."
           })}
+          action={
+            <div className="flex items-center gap-2">
+              {threadsQuery.isFetching ? (
+                <Badge tone="warning">{copy({ en: "Refreshing", vi: "Đang tải lại" })}</Badge>
+              ) : null}
+              <RefreshButton
+                label={copy({ en: "Refresh conversations", vi: "Tải lại hội thoại" })}
+                refreshingLabel={copy({ en: "Refreshing conversations", vi: "Đang tải lại hội thoại" })}
+                isRefreshing={threadsQuery.isFetching}
+                onRefresh={() => void threadsQuery.refetch()}
+              />
+            </div>
+          }
           className="xl:sticky xl:top-6 xl:flex xl:max-h-[calc(100vh-3rem)] xl:flex-col"
         >
           <div className="min-h-0 space-y-3 xl:flex-1 xl:overflow-y-auto xl:pr-1">

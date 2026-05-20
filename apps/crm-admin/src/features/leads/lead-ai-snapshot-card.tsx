@@ -449,6 +449,18 @@ function ConflictsPill({
     );
 }
 
+function ChevronDownIcon(props: { open: boolean }) {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className={`h-4 w-4 transition-transform ${props.open ? "rotate-180" : ""}`}
+        >
+            <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+        </svg>
+    );
+}
+
 function FieldRow({
     row,
     verified,
@@ -824,49 +836,50 @@ export function LeadAiSnapshotCard(props: Props) {
             </div>
 
             {rows.length > 0 ? (
-                <div className="mt-6 space-y-5 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                <details className="group mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-4 py-3 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-indigo-100 [&::-webkit-details-marker]:hidden">
                         <div>
                             <div className="text-sm font-semibold text-slate-900">
                                 {copy({ en: "Extracted attributes", vi: "Thuộc tính đã trích xuất" })}
                             </div>
-                            <div className="mt-1 text-xs leading-5 text-slate-500">
-                                {copy({
-                                    en: "Review AI values against staff-verified values before using them for scoring or matching.",
-                                    vi: "Kiểm tra dữ liệu AI với dữ liệu đã xác minh trước khi dùng để tính điểm hoặc ghép đơn."
-                                })}
-                            </div>
                         </div>
-                        <Badge tone="neutral">
-                            {copy({ en: `${rows.length} fields`, vi: `${rows.length} trường` })}
-                        </Badge>
-                    </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                            <Badge tone="neutral">
+                                {copy({ en: `${rows.length} fields`, vi: `${rows.length} trường` })}
+                            </Badge>
+                            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-transform group-open:rotate-180">
+                                <ChevronDownIcon open={false} />
+                            </span>
+                        </div>
+                    </summary>
 
-                    {sectionedRows.map((section) => (
-                        <div key={section.id}>
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                                <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                    {copy(section.label)}
+                    <div className="space-y-5 border-t border-slate-200 bg-slate-50/80 p-4">
+                        {sectionedRows.map((section) => (
+                            <div key={section.id}>
+                                <div className="mb-2 flex flex-wrap items-center gap-2">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                        {copy(section.label)}
+                                    </div>
+                                    <Badge tone="neutral">{section.rows.length}</Badge>
                                 </div>
-                                <Badge tone="neutral">{section.rows.length}</Badge>
+                                <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                                    {section.rows.map((row) => (
+                                        <FieldRow
+                                            key={row.fieldName}
+                                            row={row}
+                                            verified={verified}
+                                            copy={copy}
+                                            formatFieldLabel={formatFieldLabel}
+                                            formatFieldValue={formatFieldValue}
+                                            formatConfidence={formatConfidence}
+                                            formatExtractionSource={formatExtractionSource}
+                                        />
+                                    ))}
+                                </div>
                             </div>
-                            <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                                {section.rows.map((row) => (
-                                    <FieldRow
-                                        key={row.fieldName}
-                                        row={row}
-                                        verified={verified}
-                                        copy={copy}
-                                        formatFieldLabel={formatFieldLabel}
-                                        formatFieldValue={formatFieldValue}
-                                        formatConfidence={formatConfidence}
-                                        formatExtractionSource={formatExtractionSource}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                </details>
             ) : null}
 
             <details className="mt-5 rounded-2xl border border-slate-200 bg-white/80 px-4 py-3">
