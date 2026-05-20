@@ -32,7 +32,7 @@ import {
 } from "@social-crm/api";
 import type { CandidateSuggestion, LeadOrderSuggestion, Order } from "@social-crm/api";
 import { useI18n } from "../../i18n";
-import { resolveReturnState } from "@/app/navigation-state";
+import { type NavigationReturnState, resolveReturnState } from "@/app/navigation-state";
 import {
   FieldWithProvenance,
   findPhoneMergeCandidate,
@@ -48,6 +48,51 @@ function toneForStatus(status: string) {
   return "accent" as const;
 }
 
+function ArrowLeftIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path d="M15 18 9 12l6-6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+      <path d="M10 12h10" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function resolveReturnLabel(
+  returnState: Required<NavigationReturnState>,
+  copy: (value: { en: string; vi: string }) => string
+) {
+  if (returnState.from.startsWith("/conversations")) {
+    return copy({ en: "Conversations", vi: "Hội thoại" });
+  }
+  if (returnState.from.startsWith("/leads")) {
+    return copy({ en: "Leads", vi: "Danh sách ứng viên" });
+  }
+  return returnState.fromLabel;
+}
+
+function ReturnNavigation(props: {
+  label: string;
+  onBack: () => void;
+  copy: (value: { en: string; vi: string }) => string;
+}) {
+  return (
+    <div className="sticky top-3 z-20 flex w-fit">
+      <button
+        type="button"
+        onClick={props.onBack}
+        className="group inline-flex max-w-[min(100vw-2rem,360px)] items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-left text-sm font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 transition group-hover:bg-indigo-100 group-hover:text-indigo-700">
+          <ArrowLeftIcon />
+        </span>
+        <span className="truncate">
+          {props.copy({ en: `Back to ${props.label}`, vi: `Quay lại` })}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function LeadWorkbenchPage() {
   const { copy, formatLeadStatus, formatEnum, yesNoUnknown } = useI18n();
   const { leadId = "" } = useParams();
@@ -55,13 +100,9 @@ export function LeadWorkbenchPage() {
   const navigate = useNavigate();
   const returnState = resolveReturnState(location.state, {
     from: "/leads",
-    fromLabel: copy({ en: "Leads", vi: "Leads" })
+    fromLabel: copy({ en: "Leads", vi: "Danh sách ứng viên" })
   });
-  const backAction = (
-    <Button variant="secondary" size="sm" onClick={() => navigate(returnState.from)}>
-      {copy({ en: `Back to ${returnState.fromLabel}`, vi: `Back to ${returnState.fromLabel}` })}
-    </Button>
-  );
+  const returnLabel = resolveReturnLabel(returnState, copy);
   const leadQuery = useLeadDetailQuery(leadId);
   const candidateQuery = useCandidateByLeadQuery(leadId);
   const transitionsQuery = useLeadTransitionsQuery(leadId);
@@ -163,8 +204,13 @@ export function LeadWorkbenchPage() {
 
   return (
     <div className="space-y-6">
+      <ReturnNavigation
+        label={returnLabel}
+        onBack={() => navigate(returnState.from)}
+        copy={copy}
+      />
+
       <SectionHeader
-        action={backAction}
         eyebrow={copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" })}
         title={lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
         description={`${lead.source.toUpperCase()} · ${lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · ${lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })}`}

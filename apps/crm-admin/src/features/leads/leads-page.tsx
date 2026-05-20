@@ -2,7 +2,7 @@ import { startTransition, useDeferredValue, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Badge, Button, DataTable, Input, PaginationFooter, SectionHeader, Select, Toolbar, ToolbarActions } from "@social-crm/ui";
 import { apiClient, triggerBlobDownload, useLeadsQuery, type Lead } from "@social-crm/api";
-import { createReturnState } from "@/app/navigation-state";
+import { createReturnState, saveRouteScroll, useRestoreRouteScroll } from "@/app/navigation-state";
 import { applySearchParamUpdates, readNumberOption, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { useI18n } from "@/i18n";
 
@@ -99,7 +99,7 @@ export function LeadsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const deferredSearch = useDeferredValue(search);
-  const leadReturnState = createReturnState(location, copy({ en: "Leads", vi: "Leads" }));
+  const leadReturnState = createReturnState(location, copy({ en: "Leads", vi: "Danh sách ứng viên" }));
 
   const updateLeadParams = (
     updates: Record<string, SearchParamValue>,
@@ -123,6 +123,7 @@ export function LeadsPage() {
 
   const leads = query.data?.data ?? [];
   const total = query.data?.total ?? 0;
+  useRestoreRouteScroll(location, !query.isLoading);
   const currentStart = total === 0 ? 0 : page * pageSize + 1;
   const currentEnd = Math.min((page + 1) * pageSize, total);
 
@@ -391,6 +392,7 @@ export function LeadsPage() {
                               <Link
                                 to={`/leads/${lead.id}`}
                                 state={leadReturnState}
+                                onClick={() => saveRouteScroll(location)}
                                 className="font-semibold text-slate-900 hover:text-indigo-700"
                               >
                                 {lead.fullName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
@@ -475,6 +477,7 @@ export function LeadsPage() {
                           <Link
                             to={`/leads/${lead.id}`}
                             state={leadReturnState}
+                            onClick={() => saveRouteScroll(location)}
                             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
                           >
                             {copy({ en: "Details", vi: "Chi tiết" })}

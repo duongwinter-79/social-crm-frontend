@@ -184,6 +184,9 @@ const fieldLabels: Record<string, Copy> = {
   hasClearRegionPreference: { en: "Clear region preference", vi: "Định hướng khu vực rõ" },
   jobNeeds: { en: "Job needs", vi: "Nhu cầu việc làm" },
   leadSource: { en: "Acquisition source", vi: "Nguồn tiếp nhận" },
+  interests: { en: "Interests", vi: "Nhu cầu quan tâm" },
+  confidence: { en: "Confidence", vi: "Độ tin cậy" },
+  extractedAt: { en: "Extracted at", vi: "Thời điểm trích xuất" },
   source: { en: "Channel", vi: "Kênh" }
 };
 
