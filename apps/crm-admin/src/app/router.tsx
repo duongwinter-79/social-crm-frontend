@@ -14,7 +14,6 @@ const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-pag
 const MatchingPage = lazy(() => import("@/features/matching/matching-page").then((m) => ({ default: m.MatchingPage })));
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
 const ApplicationsPage = lazy(() => import("@/features/applications/applications-page").then((m) => ({ default: m.ApplicationsPage })));
-const DocumentsPage = lazy(() => import("@/features/documents/documents-page").then((m) => ({ default: m.DocumentsPage })));
 const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
@@ -50,8 +49,7 @@ const navItems: NavItem[] = [
   { to: "/pipeline", icon: "pipeline", label: { en: "Pipeline", vi: "Tiến trình hồ sơ" }, hint: { en: "Cross-stage flow", vi: "Luồng xử lý xuất cảnh" } },
   { to: "/matching", icon: "matching", label: { en: "Matching", vi: "Ghép đơn" }, hint: { en: "Rules and fit", vi: "Quy tắc xét phù hợp" } },
   { to: "/orders", icon: "orders", label: { en: "Orders", vi: "Đơn hàng" }, hint: { en: "Demand catalog", vi: "Danh mục nhu cầu" } },
-  { to: "/applications", icon: "applications", label: { en: "Applications", vi: "Hồ sơ ứng tuyển" }, hint: { en: "Placement progress", vi: "Tiến độ sắp xếp" } },
-  { to: "/documents", icon: "documents", label: { en: "Documents", vi: "Hồ sơ giấy tờ" }, hint: { en: "Candidate files", vi: "Giấy tờ ứng viên" } },
+  { to: "/applications", icon: "applications", label: { en: "Applications", vi: "Hồ sơ ứng tuyển" }, hint: { en: "Worker files & forms", vi: "Form lao động & hồ sơ" } },
   { to: "/training-finance", icon: "training", label: { en: "Training & Finance", vi: "Đào tạo & tài chính" }, hint: { en: "Deposits and visa", vi: "Đặt cọc và visa" } },
   { to: "/import", icon: "import", label: { en: "Import", vi: "Nhập dữ liệu" }, hint: { en: "Bulk import from XLSX", vi: "Nhập hàng loạt từ XLSX" } },
   { to: "/extract", icon: "extract", label: { en: "Extract notes", vi: "Trích xuất ghi chú" }, hint: { en: "Operator-gated AI extraction", vi: "AI trích xuất, nhân sự duyệt" } },
@@ -351,7 +349,7 @@ export function AppRouter() {
         <Route path="/matching" element={<LazyRoute><MatchingPage /></LazyRoute>} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
         <Route path="/applications" element={<LazyRoute><ApplicationsPage /></LazyRoute>} />
-        <Route path="/documents" element={<LazyRoute><DocumentsPage /></LazyRoute>} />
+        <Route path="/documents" element={<Navigate to="/applications" replace />} />
         <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />

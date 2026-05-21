@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
-  DescriptionList,
   EmptyState,
   FieldGroup,
   InfoCard,
-  InfoStrip,
   Input,
   PaginationFooter,
   Panel,
@@ -16,373 +15,369 @@ import {
   ToolbarActions
 } from "@social-crm/ui";
 import {
-  useApplicationDetailQuery,
-  useApplicationsQuery,
-  useCreateApplicationMutation,
-  useOrdersQuery,
-  useUpdateApplicationMutation
+  apiClient,
+  triggerBlobDownload,
+  useCandidateByLeadQuery,
+  useFormStandardRegisterQuery,
+  useUploadFormStandardDocumentMutation
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
-import { getLeadDisplayName } from "@/lib/lead-display";
-import { CandidatePicker } from "@/components/candidate-picker";
+import type { FormStandardRegisterRow } from "@social-crm/api";
 
-const STATUS_OPTIONS = [
-  "",
-  "matching",
-  "referred",
-  "interview_scheduled",
-  "interview_passed",
-  "interview_failed",
-  "signing",
-  "rejected",
-  "withdrawn"
-] as const;
-
+const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
 const PAGE_SIZE = 25;
 
-type ApplicationFormState = {
-  candidateId: string;
-  orderId: string;
-  status: string;
-  interviewDate: string;
-  interviewResult: string;
-  rejectReason: string;
-};
+function toneForDocStatus(status: string) {
+  if (status === "verified") return "success" as const;
+  if (status === "rejected" || status === "expired") return "danger" as const;
+  if (status === "submitted") return "warning" as const;
+  return "neutral" as const;
+}
 
-const emptyCreateForm: ApplicationFormState = {
-  candidateId: "",
-  orderId: "",
-  status: "matching",
-  interviewDate: "",
-  interviewResult: "",
-  rejectReason: ""
-};
-
-function toneForApplicationStatus(status: string) {
-  if (["interview_failed", "rejected", "withdrawn"].includes(status)) return "danger" as const;
-  if (["interview_passed", "signing"].includes(status)) return "success" as const;
-  if (["referred", "interview_scheduled"].includes(status)) return "warning" as const;
-  return "accent" as const;
+function leadLabel(row: FormStandardRegisterRow) {
+  return row.lead.fullName || row.lead.displayName || row.lead.phone || row.lead.id;
 }
 
 export function ApplicationsPage() {
-  const { copy, formatApplicationStatus } = useI18n();
-  const [filters, setFilters] = useState({
-    leadId: "",
-    candidateId: "",
-    orderId: "",
-    status: "",
-    search: ""
-  });
-  const [page, setPage] = useState(0);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [createForm, setCreateForm] = useState<ApplicationFormState>(emptyCreateForm);
-  const [detailForm, setDetailForm] = useState({
-    status: "",
-    interviewDate: "",
-    interviewResult: "",
-    rejectReason: ""
-  });
-  const [createError, setCreateError] = useState("");
-  const [detailError, setDetailError] = useState("");
+  const { copy, formatDocumentStatus, formatApplicationStatus } = useI18n();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const applicationQuery = useApplicationsQuery({
+  const [filters, setFilters] = useState(() => ({
+    status: "",
+    search: searchParams.get("search") ?? ""
+  }));
+  const [page, setPage] = useState(0);
+  const [selectedLeadId, setSelectedLeadId] = useState<string>(searchParams.get("leadId") ?? "");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [fileActionError, setFileActionError] = useState("");
+
+  const registerQuery = useFormStandardRegisterQuery({
     offset: page * PAGE_SIZE,
     limit: PAGE_SIZE,
-    leadId: filters.leadId || undefined,
-    candidateId: filters.candidateId || undefined,
-    orderId: filters.orderId || undefined,
-    status: filters.status || undefined
+    status: filters.status || undefined,
+    search: filters.search || undefined
   });
-  const ordersQuery = useOrdersQuery();
-  const createApplication = useCreateApplicationMutation();
-  const updateApplication = useUpdateApplicationMutation();
-  const records = applicationQuery.data?.data ?? [];
-  const filteredRecords = useMemo(() => {
-    if (!filters.search.trim()) return records;
-    const term = filters.search.trim().toLowerCase();
-    return records.filter((record) =>
-      [record.id, record.lead ? getLeadDisplayName(record.lead) : null, record.lead?.fullName, record.lead?.phone, record.order?.name, record.candidate?.code]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term))
-    );
-  }, [records, filters.search]);
 
-  const selectedIdResolved = selectedId || filteredRecords[0]?.id || "";
-  const detailQuery = useApplicationDetailQuery(selectedIdResolved);
-  const selected = detailQuery.data;
+  const candidateByLeadQuery = useCandidateByLeadQuery(selectedLeadId || undefined);
+  const resolvedCandidateId = candidateByLeadQuery.data?.id;
+  const uploadFormStandard = useUploadFormStandardDocumentMutation();
 
-  useEffect(() => {
-    setPage(0);
-  }, [filters.leadId, filters.candidateId, filters.orderId, filters.status, filters.search]);
+  const rows = registerQuery.data?.data ?? [];
+  const selectedRow = rows.find((r) => r.lead.id === selectedLeadId) ?? null;
 
-  useEffect(() => {
-    if (!selected) return;
-    setDetailForm({
-      status: selected.status ?? "",
-      interviewDate: selected.interviewDate ? selected.interviewDate.slice(0, 10) : "",
-      interviewResult: selected.interviewResult ?? "",
-      rejectReason: selected.rejectReason ?? ""
-    });
-    setDetailError("");
-  }, [selected]);
-
-  function submitCreate() {
-    const error = validateApplicationForm(createForm, copy);
-    if (error) {
-      setCreateError(error);
-      return;
-    }
-
-    setCreateError("");
-    createApplication.mutate(
-      {
-        candidateId: createForm.candidateId,
-        orderId: createForm.orderId,
-        status: createForm.status || undefined,
-        interviewDate: createForm.interviewDate || undefined,
-        interviewResult: createForm.interviewResult.trim() || undefined,
-        rejectReason: createForm.rejectReason.trim() || undefined
-      },
-      {
-        onSuccess: (application) => {
-          setSelectedId(application.id);
-          setCreateForm(emptyCreateForm);
-        }
+  async function openFile(documentId: string, mode: "file" | "download") {
+    setFileActionError("");
+    try {
+      const { blob, filename } = await apiClient.getDocumentFile(documentId, mode);
+      if (mode === "download") {
+        triggerBlobDownload(blob, filename);
+        return;
       }
-    );
-  }
-
-  function submitDetailUpdate() {
-    if (!selected) return;
-    const error = validateApplicationForm(
-      {
-        candidateId: selected.candidate_id || "selected",
-        orderId: selected.order_id || "selected",
-        status: detailForm.status,
-        interviewDate: detailForm.interviewDate,
-        interviewResult: detailForm.interviewResult,
-        rejectReason: detailForm.rejectReason
-      },
-      copy
-    );
-    if (error) {
-      setDetailError(error);
-      return;
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch {
+      setFileActionError(
+        copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." })
+      );
     }
-
-    setDetailError("");
-    updateApplication.mutate({
-      id: selected.id,
-      patch: {
-        status: detailForm.status || undefined,
-        interviewDate: detailForm.interviewDate || null,
-        interviewResult: detailForm.interviewResult || null,
-        rejectReason: detailForm.rejectReason || null
-      }
-    });
   }
 
   return (
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Applications", vi: "Hồ sơ ứng tuyển" })}
-        title={copy({ en: "Placement progress workspace", vi: "Theo dõi tiến trình đi đơn" })}
+        title={copy({ en: "Worker files", vi: "Danh sách hồ sơ lao động" })}
         description={copy({
-          en: "Create and track candidate-to-order applications with interview state, rejection context, and downstream placement readiness.",
-          vi: "Tạo và theo dõi hồ sơ ứng viên theo đơn hàng, bao gồm trạng thái phỏng vấn, lý do từ chối và mức sẵn sàng cho các bước sau."
+          en: "View standard worker forms, matched orders, and upload files for each candidate.",
+          vi: "Xem form lao động chuẩn, đơn hàng đã ghép và tải file cho từng ứng viên."
         })}
       />
 
-      <InfoStrip>
-        <div className="flex flex-wrap items-center gap-3">
-        <span>{copy({ en: "The backend applications module is live for list, detail, create, and lifecycle updates.", vi: "Mô-đun hồ sơ ứng tuyển đã hỗ trợ danh sách, chi tiết, tạo mới và cập nhật tiến trình." })}</span>
-          <Badge tone="success">{copy({ en: "Creation uses candidate and order selectors", vi: "Tạo hồ sơ bằng bộ chọn ứng viên và đơn hàng" })}</Badge>
-        </div>
-      </InfoStrip>
-
       <Toolbar compact className="border-slate-200/90">
-        <FieldGroup columns={4} className="xl:grid-cols-5">
-          <Input label={copy({ en: "Lead ID", vi: "Mã ứng viên" })} value={filters.leadId} onChange={(e) => setFilters((s) => ({ ...s, leadId: e.target.value }))} />
-          <Input label={copy({ en: "Candidate ID", vi: "Mã hồ sơ" })} value={filters.candidateId} onChange={(e) => setFilters((s) => ({ ...s, candidateId: e.target.value }))} />
-          <Input label={copy({ en: "Order ID", vi: "ID đơn hàng" })} value={filters.orderId} onChange={(e) => setFilters((s) => ({ ...s, orderId: e.target.value }))} />
-          <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={filters.status} onChange={(e) => setFilters((s) => ({ ...s, status: e.target.value }))}>
+        <FieldGroup columns={3}>
+          <Select
+            label={copy({ en: "Status", vi: "Trạng thái" })}
+            value={filters.status}
+            onChange={(e) => { setFilters((s) => ({ ...s, status: e.target.value })); setPage(0); }}
+          >
             <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
-            {STATUS_OPTIONS.filter(Boolean).map((status) => (
-              <option key={status} value={status}>{formatApplicationStatus(status)}</option>
+            {DOC_STATUSES.filter(Boolean).map((value) => (
+              <option key={value} value={value}>{formatDocumentStatus(value)}</option>
             ))}
           </Select>
-          <Input label={copy({ en: "Search", vi: "Tìm kiếm" })} value={filters.search} onChange={(e) => setFilters((s) => ({ ...s, search: e.target.value }))} />
+          <Input
+            label={copy({ en: "Search name / phone / code", vi: "Tìm tên / SĐT / mã hồ sơ" })}
+            value={filters.search}
+            onChange={(e) => { setFilters((s) => ({ ...s, search: e.target.value })); setPage(0); }}
+          />
         </FieldGroup>
         <ToolbarActions>
-          <Badge tone="neutral">{copy({ en: `${filteredRecords.length} visible applications`, vi: `${filteredRecords.length} hồ sơ đang hiển thị` })}</Badge>
-        <Badge tone="neutral">{copy({ en: `${applicationQuery.data?.total ?? 0} total from backend`, vi: `${applicationQuery.data?.total ?? 0} hồ sơ trong hệ thống` })}</Badge>
+          <Badge tone="neutral">
+            {copy({ en: `${registerQuery.data?.total ?? 0} records`, vi: `${registerQuery.data?.total ?? 0} hồ sơ` })}
+          </Badge>
         </ToolbarActions>
       </Toolbar>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_390px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Panel
-          title={copy({ en: "Application queue", vi: "Danh sách hồ sơ ứng tuyển" })}
-        subtitle={copy({ en: "Each record is a real candidate-to-order application from the backend workflow.", vi: "Mỗi dòng là một hồ sơ ứng viên theo đơn hàng trong luồng xử lý của hệ thống." })}
+          title={copy({ en: "Standard form register", vi: "Danh sách form chuẩn" })}
+          subtitle={copy({
+            en: "Each row shows the worker form upload status and the latest matched order.",
+            vi: "Mỗi dòng hiển thị trạng thái form lao động và đơn hàng ghép gần nhất."
+          })}
         >
-          {filteredRecords.length ? (
-            <div className="max-h-[calc(100vh-30rem)] min-h-[320px] space-y-3 overflow-auto pr-1">
-              {filteredRecords.map((record) => {
-                const active = record.id === selectedIdResolved;
-                return (
-                  <button
-                    key={record.id}
-                    type="button"
-                    onClick={() => setSelectedId(record.id)}
-                    className={`w-full rounded-2xl border px-4 py-4 text-left transition ${active ? "border-indigo-500 bg-indigo-50/60" : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-slate-900">{record.order?.name ?? copy({ en: "Unknown order", vi: "Chưa rõ đơn hàng" })}</div>
-                        <div className="mt-1 text-xs leading-5 text-slate-500">
-                  {record.lead ? getLeadDisplayName(record.lead) : copy({ en: "Unknown lead", vi: "Chưa rõ ứng viên tiềm năng" })} - {record.candidate?.code ?? record.candidate_id ?? copy({ en: "No candidate code", vi: "Chưa có mã ứng viên" })}
-                        </div>
-                      </div>
-                      <Badge tone={toneForApplicationStatus(record.status)}>{formatApplicationStatus(record.status)}</Badge>
-                    </div>
-                    <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <InfoCard label={copy({ en: "Lead", vi: "Ứng viên" })} value={record.lead?.phone ?? record.lead_id} />
-                      <InfoCard label={copy({ en: "Interview", vi: "Phỏng vấn" })} value={record.interviewDate ? record.interviewDate.slice(0, 10) : copy({ en: "Not set", vi: "Chưa đặt" })} />
-                      <InfoCard label={copy({ en: "Updated", vi: "Cập nhật" })} value={record.updatedAt ? record.updatedAt.slice(0, 10) : copy({ en: "Unknown", vi: "Chưa rõ" })} />
-                    </div>
-                  </button>
-                );
-              })}
+          {rows.length ? (
+            <div className="max-h-[calc(100vh-26rem)] overflow-auto">
+              <table className="w-full min-w-[700px] text-left text-sm">
+                <thead className="sticky top-0 bg-white text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-3 py-3">{copy({ en: "Candidate", vi: "Ứng viên" })}</th>
+                    <th className="px-3 py-3">{copy({ en: "Phone", vi: "Số điện thoại" })}</th>
+                    <th className="px-3 py-3">{copy({ en: "Matched order", vi: "Đơn đang ghép" })}</th>
+                    <th className="px-3 py-3">{copy({ en: "Form", vi: "Form" })}</th>
+                    <th className="px-3 py-3">{copy({ en: "Actions", vi: "Thao tác" })}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const active = row.lead.id === selectedLeadId;
+                    return (
+                      <tr
+                        key={row.documentId}
+                        className={`cursor-pointer border-t border-slate-100 align-top transition-colors ${active ? "bg-indigo-50/60" : "hover:bg-slate-50"}`}
+                        onClick={() => setSelectedLeadId(row.lead.id)}
+                      >
+                        <td className="px-3 py-3">
+                          <button
+                            type="button"
+                            className="font-medium text-indigo-700 hover:text-indigo-500"
+                            onClick={() => { navigate(`/leads/${row.lead.id}`); }}
+                          >
+                            {leadLabel(row)}
+                          </button>
+                          <div className="mt-1 text-xs text-slate-500">
+                            {row.candidate?.code ?? copy({ en: "No candidate code", vi: "Chưa có mã hồ sơ" })}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-slate-700">
+                          {row.lead.phone ?? <span className="text-slate-400">{copy({ en: "Missing", vi: "Thiếu" })}</span>}
+                        </td>
+                        <td className="px-3 py-3">
+                          {row.order ? (
+                            <>
+                              <div className="font-medium text-slate-900">{row.order.name}</div>
+                              <div className="mt-0.5 text-xs text-slate-500">{[row.order.region, row.order.industry].filter(Boolean).join(" · ")}</div>
+                            </>
+                          ) : (
+                            <span className="text-slate-400">{copy({ en: "No order yet", vi: "Chưa ghép đơn" })}</span>
+                          )}
+                          {row.application ? (
+                            <div className="mt-1">
+                              <Badge tone="warning">{formatApplicationStatus(row.application.status)}</Badge>
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-3">
+                          <Badge tone={toneForDocStatus(row.documentStatus)}>{formatDocumentStatus(row.documentStatus)}</Badge>
+                          <div className="mt-1">
+                            {row.hasFile
+                              ? <Badge tone="success">{copy({ en: "File uploaded", vi: "Có file" })}</Badge>
+                              : <Badge tone="warning">{copy({ en: "No file", vi: "Chưa có file" })}</Badge>}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={!row.hasFile}
+                              onClick={() => { void openFile(row.documentId, "file"); }}
+                            >
+                              {copy({ en: "Open", vi: "Mở" })}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={!row.hasFile}
+                              onClick={() => { void openFile(row.documentId, "download"); }}
+                            >
+                              {copy({ en: "Download", vi: "Tải" })}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           ) : (
-            <EmptyState title={copy({ en: "No applications found", vi: "Không tìm thấy hồ sơ ứng tuyển" })} description={copy({ en: "Adjust filters or create an application from the candidate/order panel.", vi: "Điều chỉnh bộ lọc hoặc tạo hồ sơ từ khung ứng viên/đơn hàng." })} />
+            <EmptyState
+              title={copy({ en: "No records found", vi: "Không tìm thấy hồ sơ" })}
+              description={copy({
+                en: "Standard forms appear here once uploaded. Use the upload panel on the right to add one.",
+                vi: "Form chuẩn sẽ hiển thị sau khi được tải lên. Sử dụng khung bên phải để tải form."
+              })}
+            />
           )}
           <PaginationFooter
             page={page}
             pageSize={PAGE_SIZE}
-            total={applicationQuery.data?.total ?? 0}
-            isFetching={applicationQuery.isFetching}
-            itemLabel={copy({ en: "applications", vi: "hồ sơ" })}
+            total={registerQuery.data?.total ?? 0}
+            isFetching={registerQuery.isFetching}
+            itemLabel={copy({ en: "records", vi: "hồ sơ" })}
             pageLabel={copy({ en: "Page", vi: "Trang" })}
             previousLabel={copy({ en: "Previous", vi: "Trước" })}
             nextLabel={copy({ en: "Next", vi: "Sau" })}
-            onPrevious={() => setPage((current) => Math.max(0, current - 1))}
-            onNext={() => setPage((current) => current + 1)}
+            onPrevious={() => setPage((p) => Math.max(0, p - 1))}
+            onNext={() => setPage((p) => p + 1)}
             className="mt-4 border-slate-100 px-0 pb-0 pt-4"
           />
         </Panel>
 
         <div className="space-y-6">
           <Panel
-            title={copy({ en: "Create placement record", vi: "Tạo bản ghi ghép đơn" })}
-            subtitle={copy({ en: "Create a real candidate-to-order placement record without manual UUID entry.", vi: "Tạo bản ghi ứng viên theo đơn hàng mà không cần nhập UUID thủ công." })}
+            title={copy({ en: "Upload standard form", vi: "Tải form chuẩn" })}
+            subtitle={copy({
+              en: "Select a row to load context, then pick a file and upload. The candidate automatically advances to matching.",
+              vi: "Chọn một dòng để tải thông tin, sau đó chọn file và tải lên. Hệ thống tự chuyển ứng viên sang bước ghép đơn."
+            })}
           >
-            <div className="space-y-4">
-              <CandidatePicker
-                label={copy({ en: "Candidate", vi: "Ứng viên" })}
-                searchLabel={copy({ en: "Candidate search", vi: "Tìm ứng viên" })}
-                placeholder={copy({ en: "Code, lead name, or phone", vi: "Mã, tên ứng viên hoặc số điện thoại" })}
-                emptyLabel={copy({ en: "Select candidate", vi: "Chọn ứng viên" })}
-                noLeadDetailLabel={copy({ en: "No lead detail", vi: "Chưa có thông tin ứng viên" })}
-                value={createForm.candidateId}
-                onChange={(candidateId) => setCreateForm((s) => ({ ...s, candidateId }))}
-              />
-              <FieldGroup>
-                <Select label={copy({ en: "Order", vi: "Đơn hàng" })} value={createForm.orderId} onChange={(e) => setCreateForm((s) => ({ ...s, orderId: e.target.value }))}>
-                  <option value="">{copy({ en: "Select order", vi: "Chọn đơn hàng" })}</option>
-                  {(ordersQuery.data ?? []).map((order) => (
-                    <option key={order.id} value={order.id}>
-                      {order.name} - {order.region || copy({ en: "No region", vi: "Chưa có khu vực" })}
-                    </option>
-                  ))}
-                </Select>
-                <Select label={copy({ en: "Initial status", vi: "Trạng thái ban đầu" })} value={createForm.status} onChange={(e) => setCreateForm((s) => ({ ...s, status: e.target.value }))}>
-                  {STATUS_OPTIONS.filter(Boolean).map((status) => (
-                    <option key={status} value={status}>{formatApplicationStatus(status)}</option>
-                  ))}
-                </Select>
-                <Input label={copy({ en: "Interview date", vi: "Ngày phỏng vấn" })} type="date" value={createForm.interviewDate} onChange={(e) => setCreateForm((s) => ({ ...s, interviewDate: e.target.value }))} />
-                <Input label={copy({ en: "Interview result", vi: "Kết quả phỏng vấn" })} maxLength={255} value={createForm.interviewResult} onChange={(e) => setCreateForm((s) => ({ ...s, interviewResult: e.target.value }))} />
-                <Input label={copy({ en: "Reject reason", vi: "Lý do từ chối" })} maxLength={255} value={createForm.rejectReason} onChange={(e) => setCreateForm((s) => ({ ...s, rejectReason: e.target.value }))} />
-              </FieldGroup>
-              {createError || createApplication.error ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  {createError || copy({ en: "Application creation failed. Check selected entities and status-required fields.", vi: "Tạo hồ sơ ứng tuyển thất bại. Kiểm tra ứng viên, đơn hàng và các trường bắt buộc theo trạng thái." })}
-                </div>
-              ) : null}
-              <ToolbarActions>
-                <Button onClick={submitCreate} disabled={createApplication.isPending || ordersQuery.isLoading}>
-                  {createApplication.isPending ? copy({ en: "Creating placement...", vi: "Đang tạo bản ghi..." }) : copy({ en: "Create placement", vi: "Tạo bản ghi ghép đơn" })}
-                </Button>
-                <Button variant="secondary" onClick={() => setCreateForm(emptyCreateForm)} disabled={createApplication.isPending}>
-                  {copy({ en: "Reset", vi: "Đặt lại" })}
-                </Button>
-              </ToolbarActions>
-            </div>
-          </Panel>
-
-          <Panel
-            title={copy({ en: "Application detail", vi: "Chi tiết hồ sơ ứng tuyển" })}
-        subtitle={copy({ en: "Update live backend status, interview metadata, and rejection context.", vi: "Cập nhật trạng thái xử lý, thông tin phỏng vấn và lý do từ chối." })}
-          >
-            {selected ? (
+            {selectedRow ? (
               <div className="space-y-4">
-                <DescriptionList
-                  items={[
-                    { label: copy({ en: "Application ID", vi: "ID hồ sơ ứng tuyển" }), value: selected.id },
-                    { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead ? getLeadDisplayName(selected.lead) : selected.lead_id },
-                    { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: selected.candidate?.code ?? selected.candidate_id ?? copy({ en: "Unknown", vi: "Chưa rõ" }) },
-                    { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name ?? selected.order_id },
-                    { label: copy({ en: "Created", vi: "Ngày tạo" }), value: selected.createdAt ?? copy({ en: "Unknown", vi: "Chưa rõ" }) }
-                  ]}
-                />
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                  <div className="font-medium text-slate-900">{leadLabel(selectedRow)}</div>
+                  <div className="mt-1 text-slate-500">
+                    {selectedRow.lead.phone ?? copy({ en: "No phone", vi: "Chưa có SĐT" })}
+                    {selectedRow.candidate?.code ? ` · ${selectedRow.candidate.code}` : ""}
+                  </div>
+                  {selectedRow.order ? (
+                    <div className="mt-1 text-slate-500">{selectedRow.order.name}</div>
+                  ) : null}
+                </div>
 
-                <FieldGroup>
-                  <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={detailForm.status} onChange={(e) => setDetailForm((s) => ({ ...s, status: e.target.value }))}>
-                    {STATUS_OPTIONS.filter(Boolean).map((status) => (
-                      <option key={status} value={status}>{formatApplicationStatus(status)}</option>
-                    ))}
-                  </Select>
-                  <Input label={copy({ en: "Interview date", vi: "Ngày phỏng vấn" })} type="date" value={detailForm.interviewDate} onChange={(e) => setDetailForm((s) => ({ ...s, interviewDate: e.target.value }))} />
-                  <Input label={copy({ en: "Interview result", vi: "Kết quả phỏng vấn" })} maxLength={255} value={detailForm.interviewResult} onChange={(e) => setDetailForm((s) => ({ ...s, interviewResult: e.target.value }))} />
-                  <Input label={copy({ en: "Reject reason", vi: "Lý do từ chối" })} maxLength={255} value={detailForm.rejectReason} onChange={(e) => setDetailForm((s) => ({ ...s, rejectReason: e.target.value }))} />
-                </FieldGroup>
-
-                {detailError || updateApplication.error ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {detailError || copy({ en: "Application update failed. Check status-required fields.", vi: "Cập nhật hồ sơ thất bại. Kiểm tra các trường bắt buộc theo trạng thái." })}
+                {selectedRow.hasFile ? (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      {copy({ en: "Current file", vi: "File hiện tại" })}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => void openFile(selectedRow.documentId, "file")}>
+                        {copy({ en: "Open file", vi: "Mở file" })}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => void openFile(selectedRow.documentId, "download")}>
+                        {copy({ en: "Download", vi: "Tải xuống" })}
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
 
-                <Button onClick={submitDetailUpdate} disabled={updateApplication.isPending}>
-                  {updateApplication.isPending ? copy({ en: "Saving application...", vi: "Đang lưu hồ sơ..." }) : copy({ en: "Save application update", vi: "Lưu cập nhật hồ sơ" })}
-                </Button>
+                {fileActionError ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{fileActionError}</div>
+                ) : null}
+
+                <div className="border-t border-slate-100 pt-4">
+                  <label className="block text-sm font-medium text-slate-700">
+                    {copy({ en: selectedRow.hasFile ? "Replace file" : "Upload file", vi: selectedRow.hasFile ? "Thay thế file" : "Tải file lên" })}
+                    <input
+                      type="file"
+                      accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                      className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                    />
+                  </label>
+                  {uploadFile ? (
+                    <div className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+                      {uploadFile.name} · {(uploadFile.size / 1024).toFixed(0)} KB
+                    </div>
+                  ) : null}
+                  <div className="mt-3">
+                    <Button
+                      onClick={() => {
+                        if (!uploadFile) return;
+                        uploadFormStandard.mutate(
+                          { leadId: selectedRow.lead.id, candidateId: resolvedCandidateId, status: "verified", file: uploadFile },
+                          {
+                            onSuccess: () => {
+                              setUploadFile(null);
+                              registerQuery.refetch();
+                            }
+                          }
+                        );
+                      }}
+                      disabled={uploadFormStandard.isPending || !uploadFile}
+                    >
+                      {uploadFormStandard.isPending
+                        ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
+                        : copy({ en: "Upload form", vi: "Tải form" })}
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
-        <EmptyState title={copy({ en: "No application selected", vi: "Chưa chọn hồ sơ ứng tuyển" })} description={copy({ en: "Select a queue record to inspect and update live backend application state.", vi: "Chọn một dòng trong danh sách để xem và cập nhật trạng thái xử lý." })} />
+              <EmptyState
+                title={copy({ en: "No candidate selected", vi: "Chưa chọn ứng viên" })}
+                description={copy({
+                  en: "Click a row in the table to select a candidate, then upload their standard form here.",
+                  vi: "Nhấn vào một dòng trong bảng để chọn ứng viên, sau đó tải form chuẩn lên tại đây."
+                })}
+              />
             )}
           </Panel>
+
+          {selectedLeadId && !selectedRow ? (
+            <Panel
+              title={copy({ en: "Upload for new candidate", vi: "Tải form cho ứng viên mới" })}
+              subtitle={copy({
+                en: "This lead has no standard form yet. Upload one to create their record.",
+                vi: "Ứng viên này chưa có form chuẩn. Tải lên để tạo bản ghi."
+              })}
+            >
+              <div className="space-y-4">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  {copy({ en: `Lead ID: ${selectedLeadId}`, vi: `Mã ứng viên: ${selectedLeadId}` })}
+                  {resolvedCandidateId ? ` · ${resolvedCandidateId}` : ""}
+                </div>
+                <label className="block text-sm font-medium text-slate-700">
+                  {copy({ en: "Form file", vi: "File form" })}
+                  <input
+                    type="file"
+                    accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                  />
+                </label>
+                {uploadFile ? (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+                    {uploadFile.name} · {(uploadFile.size / 1024).toFixed(0)} KB
+                  </div>
+                ) : null}
+                <Button
+                  onClick={() => {
+                    if (!uploadFile) return;
+                    uploadFormStandard.mutate(
+                      { leadId: selectedLeadId, candidateId: resolvedCandidateId, status: "verified", file: uploadFile },
+                      {
+                        onSuccess: () => {
+                          setUploadFile(null);
+                          registerQuery.refetch();
+                        }
+                      }
+                    );
+                  }}
+                  disabled={uploadFormStandard.isPending || !uploadFile}
+                >
+                  {uploadFormStandard.isPending
+                    ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
+                    : copy({ en: "Upload form", vi: "Tải form" })}
+                </Button>
+              </div>
+            </Panel>
+          ) : null}
         </div>
       </div>
     </div>
   );
-}
-
-function validateApplicationForm(form: {
-  candidateId: string;
-  orderId: string;
-  status: string;
-  interviewDate: string;
-  interviewResult?: string;
-  rejectReason: string;
-}, copy: (value: { en: string; vi: string }) => string) {
-  if (!form.candidateId) return copy({ en: "Select a candidate before creating an application.", vi: "Chọn ứng viên trước khi tạo hồ sơ ứng tuyển." });
-  if (!form.orderId) return copy({ en: "Select an order before creating an application.", vi: "Chọn đơn hàng trước khi tạo hồ sơ ứng tuyển." });
-  if (form.status === "interview_scheduled" && !form.interviewDate) {
-    return copy({ en: "Interview date is required when status is interview scheduled.", vi: "Cần nhập ngày phỏng vấn khi trạng thái là đã lên lịch phỏng vấn." });
-  }
-  if (["interview_failed", "rejected", "withdrawn"].includes(form.status) && !form.rejectReason.trim()) {
-    return copy({ en: "Reject reason is required when status is interview failed, rejected, or withdrawn.", vi: "Cần nhập lý do từ chối khi trạng thái là phỏng vấn trượt, từ chối hoặc rút hồ sơ." });
-  }
-  return "";
 }

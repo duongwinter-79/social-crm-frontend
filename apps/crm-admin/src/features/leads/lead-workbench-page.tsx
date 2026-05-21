@@ -420,25 +420,6 @@ export function LeadWorkbenchPage() {
         </div>
       </InfoStrip>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
-        <div className="text-sm text-indigo-900">
-          {copy({
-            en: "Standard worker form is required before the lead can advance to matching.",
-            vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
-          })}
-        </div>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            const params = new URLSearchParams({ leadId: lead.id, docType: "form_standard" });
-            if (candidate?.id) params.set("candidateId", candidate.id);
-            navigate(`/documents?${params.toString()}`);
-          }}
-        >
-          {copy({ en: "Upload standard form →", vi: "Tải form chuẩn →" })}
-        </Button>
-      </div>
-
       <LeadAiSnapshotCard
         lead={lead}
         suggestions={suggestionsQuery.data ?? []}
@@ -684,6 +665,25 @@ export function LeadWorkbenchPage() {
               </div>
             )}
           </Panel>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
+            <div className="text-sm text-indigo-900">
+              {copy({
+                en: "Standard worker form is required before the lead can advance to matching.",
+                vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
+              })}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const params = new URLSearchParams({ leadId: lead.id, docType: "form_standard" });
+                if (candidate?.id) params.set("candidateId", candidate.id);
+                navigate(`/applications?${params.toString()}`);
+              }}
+            >
+              {copy({ en: "Upload standard form →", vi: "Tải form chuẩn →" })}
+            </Button>
+          </div>
 
           <Panel title={copy({ en: "Formal suggested orders", vi: "Đơn hàng đề xuất chính thức" })} subtitle={copy({ en: "Shown only after this lead has a linked candidate record.", vi: "Chỉ hiển thị sau khi ứng viên tiềm năng đã có hồ sơ ứng viên liên kết." })}>
             {!hasCandidate ? (

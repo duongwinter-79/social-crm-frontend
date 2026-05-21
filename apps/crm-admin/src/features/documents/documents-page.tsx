@@ -366,15 +366,20 @@ export function DocumentsPage() {
                   {uploadFile.name} · {(uploadFile.size / 1024).toFixed(0)} KB
                 </div>
               ) : null}
+              {!filters.leadId && uploadFile ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  {copy({ en: "Enter a Lead ID above before uploading.", vi: "Nhập Mã ứng viên phía trên trước khi tải lên." })}
+                </div>
+              ) : null}
               <Button
                 onClick={() => {
-                  if (!uploadFile) return;
+                  if (!uploadFile || !filters.leadId) return;
                   uploadFormStandard.mutate(
                     { leadId: filters.leadId, candidateId: resolvedCandidateId, status: "verified", file: uploadFile },
                     { onSuccess: () => setUploadFile(null) }
                   );
                 }}
-                disabled={!filters.leadId || uploadFormStandard.isPending || !uploadFile}
+                disabled={uploadFormStandard.isPending || !uploadFile}
               >
                 {uploadFormStandard.isPending
                   ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
