@@ -28,6 +28,7 @@ import type {
   CandidateSuggestion,
   DashboardStats,
   DocumentChecklistSummary,
+  FormStandardRegisterResponse,
   DocumentListResponse,
   DocumentRecord,
   HealthStatus,
@@ -578,14 +579,40 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async getFormStandardRegister(params: { offset: number; limit: number; status?: string; search?: string }) {
+    const response = await this.http.get<ApiEnvelope<FormStandardRegisterResponse> | FormStandardRegisterResponse>("/documents/form-standard/register", { params });
+    return unwrapEnvelope(response.data);
+  }
+
   async createDocument(payload: { leadId: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) {
     const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async uploadFormStandardDocument(payload: { leadId: string; candidateId?: string; status?: string; file: File }) {
+    const formData = new FormData();
+    formData.append("leadId", payload.leadId);
+    if (payload.candidateId) formData.append("candidateId", payload.candidateId);
+    if (payload.status) formData.append("status", payload.status);
+    formData.append("file", payload.file);
+
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents/form-standard/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
     return unwrapEnvelope(response.data);
   }
 
   async updateDocument(id: string, patch: Record<string, unknown>) {
     const response = await this.http.patch<ApiEnvelope<DocumentRecord> | DocumentRecord>(`/documents/${id}`, patch);
     return unwrapEnvelope(response.data);
+  }
+
+  async getDocumentFile(id: string, mode: "file" | "download" = "file") {
+    const response = await this.http.get<Blob>(`/documents/${id}/${mode}`, {
+      responseType: "blob"
+    });
+    const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `document-${id}`;
+    return { blob: response.data, filename };
   }
 
   async listTrainingFinance(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {

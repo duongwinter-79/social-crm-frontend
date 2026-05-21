@@ -351,6 +351,13 @@ export function useCandidateDocumentChecklistQuery(candidateId?: string) {
   });
 }
 
+export function useFormStandardRegisterQuery(params: { offset: number; limit: number; status?: string; search?: string }) {
+  return useQuery({
+    queryKey: ["documents", "form-standard-register", params],
+    queryFn: () => apiClient.getFormStandardRegister(params)
+  });
+}
+
 export function useTrainingFinanceQuery(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {
   return useQuery({
     queryKey: ["training-finance", params],
@@ -634,6 +641,28 @@ export function useCreateDocumentMutation() {
   });
 }
 
+export function useUploadFormStandardDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { leadId: string; candidateId?: string; status?: string; file: File }) =>
+      apiClient.uploadFormStandardDocument(payload),
+    onSuccess: (document) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      if (document.lead_id) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
+        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "transitions"] });
+        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "order-suggestions"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
+      if (document.candidate_id) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
+        queryClient.invalidateQueries({ queryKey: ["matching", "suggest", document.candidate_id] });
+      }
+    },
+    meta: { successMessage: "Standard form uploaded" }
+  });
+}
+
 export function useUpdateDocumentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -643,6 +672,7 @@ export function useUpdateDocumentMutation() {
       if (document.lead_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
       }
+      queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
       if (document.candidate_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
       }

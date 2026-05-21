@@ -78,6 +78,7 @@ const enumLabels: Record<string, Copy> = {
   verified: { en: "Verified", vi: "Đã xác minh" },
   expired: { en: "Expired", vi: "Hết hạn" },
   passport: { en: "Passport", vi: "Hộ chiếu" },
+  form_standard: { en: "Standard worker form", vi: "Form chuẩn lao động" },
   criminal_record: { en: "Criminal record", vi: "Lý lịch tư pháp" },
   health_check: { en: "Health check", vi: "Khám sức khỏe" },
   diploma: { en: "Diploma", vi: "Bằng cấp" },

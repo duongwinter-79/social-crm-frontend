@@ -274,8 +274,8 @@ export function ApplicationsPage() {
 
         <div className="space-y-6">
           <Panel
-            title={copy({ en: "Create application", vi: "Tạo hồ sơ ứng tuyển" })}
-            subtitle={copy({ en: "Create a real candidate-to-order application without manual UUID entry.", vi: "Tạo hồ sơ ứng viên theo đơn hàng mà không cần nhập UUID thủ công." })}
+            title={copy({ en: "Create placement record", vi: "Tạo bản ghi ghép đơn" })}
+            subtitle={copy({ en: "Create a real candidate-to-order placement record without manual UUID entry.", vi: "Tạo bản ghi ứng viên theo đơn hàng mà không cần nhập UUID thủ công." })}
           >
             <div className="space-y-4">
               <CandidatePicker
@@ -312,7 +312,7 @@ export function ApplicationsPage() {
               ) : null}
               <ToolbarActions>
                 <Button onClick={submitCreate} disabled={createApplication.isPending || ordersQuery.isLoading}>
-                  {createApplication.isPending ? copy({ en: "Creating application...", vi: "Đang tạo hồ sơ..." }) : copy({ en: "Create application", vi: "Tạo hồ sơ ứng tuyển" })}
+                  {createApplication.isPending ? copy({ en: "Creating placement...", vi: "Đang tạo bản ghi..." }) : copy({ en: "Create placement", vi: "Tạo bản ghi ghép đơn" })}
                 </Button>
                 <Button variant="secondary" onClick={() => setCreateForm(emptyCreateForm)} disabled={createApplication.isPending}>
                   {copy({ en: "Reset", vi: "Đặt lại" })}

@@ -420,6 +420,25 @@ export function LeadWorkbenchPage() {
         </div>
       </InfoStrip>
 
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
+        <div className="text-sm text-indigo-900">
+          {copy({
+            en: "Standard worker form is required before the lead can advance to matching.",
+            vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
+          })}
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            const params = new URLSearchParams({ leadId: lead.id, docType: "form_standard" });
+            if (candidate?.id) params.set("candidateId", candidate.id);
+            navigate(`/documents?${params.toString()}`);
+          }}
+        >
+          {copy({ en: "Upload standard form →", vi: "Tải form chuẩn →" })}
+        </Button>
+      </div>
+
       <LeadAiSnapshotCard
         lead={lead}
         suggestions={suggestionsQuery.data ?? []}
@@ -705,7 +724,7 @@ export function LeadWorkbenchPage() {
                     <div className="mt-3 text-xs leading-5 text-slate-500">{order.description || order.requirements || copy({ en: "No additional order detail available.", vi: "Không có thông tin bổ sung cho đơn hàng." })}</div>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                       <Button size="sm" onClick={() => { if (!candidate?.id) return; createApplication.mutate({ candidateId: candidate.id, orderId: order.id }); }} disabled={createApplication.isPending}>
-                        {createApplication.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create application", vi: "Tạo hồ sơ ứng tuyển" })}
+                        {createApplication.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create placement", vi: "Tạo bản ghi ghép đơn" })}
                       </Button>
                       <span className="text-xs text-slate-500">
                         {copy({ en: "Uses the linked candidate record from the recruitment API.", vi: "Sử dụng hồ sơ ứng viên đã liên kết trong hệ thống tuyển dụng." })}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -17,17 +18,20 @@ import {
   ToolbarActions
 } from "@social-crm/ui";
 import {
+  apiClient,
+  triggerBlobDownload,
   useCandidateByLeadQuery,
   useCandidateDocumentChecklistQuery,
-  useCreateDocumentMutation,
   useDocumentsQuery,
+  useFormStandardRegisterQuery,
   useLeadDocumentChecklistQuery,
+  useUploadFormStandardDocumentMutation,
   useUpdateDocumentMutation
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
-import type { DocumentChecklistSummary, DocumentRecord } from "@social-crm/api";
+import type { DocumentChecklistSummary, DocumentRecord, FormStandardRegisterRow } from "@social-crm/api";
 
-const DOC_TYPES = ["", "passport", "criminal_record", "health_check", "diploma", "work_permit", "other"] as const;
+const DOC_TYPES = ["", "form_standard", "passport", "criminal_record", "health_check", "diploma", "work_permit", "other"] as const;
 const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
 const PAGE_SIZE = 25;
 
@@ -38,25 +42,24 @@ function toneForDocStatus(status: string) {
   return "neutral" as const;
 }
 
+function formRegisterLeadLabel(row: FormStandardRegisterRow) {
+  return row.lead.fullName || row.lead.displayName || row.lead.phone || row.lead.id;
+}
+
 export function DocumentsPage() {
   const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
-  const [filters, setFilters] = useState({
-    leadId: "",
-    candidateId: "",
-    docType: "",
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState(() => ({
+    leadId: searchParams.get("leadId") ?? "",
+    candidateId: searchParams.get("candidateId") ?? "",
+    docType: searchParams.get("docType") ?? "",
     status: "",
     search: ""
-  });
+  }));
   const [page, setPage] = useState(0);
+  const [registerPage, setRegisterPage] = useState(0);
   const [selectedId, setSelectedId] = useState("");
-  const [createForm, setCreateForm] = useState({
-    docType: "passport",
-    status: "pending",
-    fileUrl: "",
-    storageBucket: "",
-    issueDate: "",
-    expiryDate: ""
-  });
   const [editForm, setEditForm] = useState({
     status: "",
     fileUrl: "",
@@ -64,6 +67,8 @@ export function DocumentsPage() {
     issueDate: "",
     expiryDate: ""
   });
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [fileActionError, setFileActionError] = useState("");
 
   const candidateByLeadQuery = useCandidateByLeadQuery(filters.leadId || undefined);
   const resolvedCandidateId = filters.candidateId || candidateByLeadQuery.data?.id || undefined;
@@ -75,9 +80,15 @@ export function DocumentsPage() {
     docType: filters.docType || undefined,
     status: filters.status || undefined
   });
+  const formStandardRegisterQuery = useFormStandardRegisterQuery({
+    offset: registerPage * PAGE_SIZE,
+    limit: PAGE_SIZE,
+    status: filters.status || undefined,
+    search: filters.search || undefined
+  });
   const leadChecklistQuery = useLeadDocumentChecklistQuery(filters.leadId || undefined);
   const candidateChecklistQuery = useCandidateDocumentChecklistQuery(resolvedCandidateId);
-  const createDocument = useCreateDocumentMutation();
+  const uploadFormStandard = useUploadFormStandardDocumentMutation();
   const updateDocument = useUpdateDocumentMutation();
 
   const records = documentsQuery.data?.data ?? [];
@@ -96,7 +107,24 @@ export function DocumentsPage() {
 
   useEffect(() => {
     setPage(0);
+    setRegisterPage(0);
   }, [filters.leadId, filters.candidateId, filters.docType, filters.status, filters.search]);
+
+  async function openDocumentFile(documentId: string, mode: "file" | "download") {
+    setFileActionError("");
+    try {
+      const { blob, filename } = await apiClient.getDocumentFile(documentId, mode);
+      if (mode === "download") {
+        triggerBlobDownload(blob, filename);
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch {
+      setFileActionError(copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." }));
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -108,7 +136,7 @@ export function DocumentsPage() {
 
       <InfoStrip>
         <div className="flex flex-wrap items-center gap-3">
-          <span>{copy({ en: "Document records are live backend entities. File handling is metadata-first for now.", vi: "Bản ghi giấy tờ là dữ liệu thật từ API. Hiện tại hệ thống lưu thông tin mô tả file trước." })}</span>
+          <span>{copy({ en: "Standard forms can be uploaded, opened, downloaded, and used by the matching gate.", vi: "Form chuẩn có thể tải lên, mở xem, tải xuống và dùng để mở bước ghép đơn." })}</span>
           <Badge tone={resolvedCandidateId ? "success" : "warning"}>
             {resolvedCandidateId ? `${copy({ en: "Candidate", vi: "Ứng viên" })} ${resolvedCandidateId}` : copy({ en: "Lead-only checklist mode", vi: "Chế độ kiểm tra theo ứng viên tiềm năng" })}
           </Badge>
@@ -138,6 +166,87 @@ export function DocumentsPage() {
           <Badge tone="neutral">{copy({ en: `${checklist?.missingDocTypes?.length ?? 0} missing required docs`, vi: `Thiếu ${checklist?.missingDocTypes?.length ?? 0} giấy tờ bắt buộc` })}</Badge>
         </ToolbarActions>
       </Toolbar>
+
+      <Panel
+        title={copy({ en: "Standard form register", vi: "Danh sách form chuẩn" })}
+        subtitle={copy({ en: "Each row shows the uploaded worker form and the latest placement/order context for that lead or candidate.", vi: "Mỗi dòng hiển thị form lao động đã tải lên và đơn hàng/bản ghi ghép đơn mới nhất của ứng viên." })}
+      >
+        {formStandardRegisterQuery.data?.data.length ? (
+          <div className="max-h-[420px] overflow-auto">
+            <table className="w-full min-w-[980px] text-left text-sm">
+              <thead className="sticky top-0 bg-white text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-3 py-3">{copy({ en: "Form", vi: "Form" })}</th>
+                  <th className="px-3 py-3">{copy({ en: "Lead / candidate", vi: "Ứng viên / hồ sơ" })}</th>
+                  <th className="px-3 py-3">{copy({ en: "Phone", vi: "Số điện thoại" })}</th>
+                  <th className="px-3 py-3">{copy({ en: "Matched order", vi: "Đơn đang ghép" })}</th>
+                  <th className="px-3 py-3">{copy({ en: "Placement", vi: "Ghép đơn" })}</th>
+                  <th className="px-3 py-3">{copy({ en: "Actions", vi: "Thao tác" })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formStandardRegisterQuery.data.data.map((row) => (
+                  <tr key={row.documentId} className="border-t border-slate-100 align-top">
+                    <td className="px-3 py-3">
+                      <div className="font-medium text-slate-900">{formatDocumentType("form_standard")}</div>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        <Badge tone={toneForDocStatus(row.documentStatus)}>{formatDocumentStatus(row.documentStatus)}</Badge>
+                        {row.hasFile ? <Badge tone="success">{copy({ en: "File", vi: "Có file" })}</Badge> : <Badge tone="warning">{copy({ en: "No file", vi: "Chưa có file" })}</Badge>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <button type="button" className="font-medium text-indigo-700 hover:text-indigo-500" onClick={() => navigate(`/leads/${row.lead.id}`)}>
+                        {formRegisterLeadLabel(row)}
+                      </button>
+                      <div className="mt-1 text-xs text-slate-500">{row.candidate?.code ?? row.candidate?.id ?? copy({ en: "No candidate record", vi: "Chưa có hồ sơ ứng viên" })}</div>
+                    </td>
+                    <td className="px-3 py-3 text-slate-700">{row.lead.phone ?? copy({ en: "Missing", vi: "Thiếu" })}</td>
+                    <td className="px-3 py-3">
+                      <div className="font-medium text-slate-900">{row.order?.name ?? copy({ en: "No order yet", vi: "Chưa ghép đơn" })}</div>
+                      {row.order ? <div className="mt-1 text-xs text-slate-500">{[row.order.region, row.order.industry].filter(Boolean).join(" · ")}</div> : null}
+                    </td>
+                    <td className="px-3 py-3">
+                      {row.application ? (
+                        <Badge tone="warning">{row.application.status}</Badge>
+                      ) : (
+                        <Badge tone="neutral">{copy({ en: "No placement", vi: "Chưa có bản ghi" })}</Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="secondary" disabled={!row.hasFile} onClick={() => void openDocumentFile(row.documentId, "file")}>
+                          {copy({ en: "Open", vi: "Mở" })}
+                        </Button>
+                        <Button size="sm" variant="secondary" disabled={!row.hasFile} onClick={() => void openDocumentFile(row.documentId, "download")}>
+                          {copy({ en: "Download", vi: "Tải" })}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            title={copy({ en: "No standard forms found", vi: "Chưa có form chuẩn" })}
+            description={copy({ en: "Upload a standard worker form to see it here with matching and order context.", vi: "Tải form lao động chuẩn để xem cùng trạng thái ghép đơn và đơn hàng tại đây." })}
+          />
+        )}
+        <PaginationFooter
+          page={registerPage}
+          pageSize={PAGE_SIZE}
+          total={formStandardRegisterQuery.data?.total ?? 0}
+          isFetching={formStandardRegisterQuery.isFetching}
+          itemLabel={copy({ en: "standard forms", vi: "form chuẩn" })}
+          pageLabel={copy({ en: "Page", vi: "Trang" })}
+          previousLabel={copy({ en: "Previous", vi: "Trước" })}
+          nextLabel={copy({ en: "Next", vi: "Sau" })}
+          onPrevious={() => setRegisterPage((current) => Math.max(0, current - 1))}
+          onNext={() => setRegisterPage((current) => current + 1)}
+          className="mt-4 border-slate-100 px-0 pb-0 pt-4"
+        />
+      </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_360px]">
         <div className="space-y-6">
@@ -233,48 +342,43 @@ export function DocumentsPage() {
 
         <div className="space-y-6">
           <Panel
-            title={copy({ en: "Create document record", vi: "Tạo bản ghi giấy tờ" })}
-            subtitle={copy({ en: "This records document metadata and readiness status. Binary file upload can be added later without changing the workflow model.", vi: "Phần này ghi nhận thông tin giấy tờ và trạng thái sẵn sàng. Tải file có thể bổ sung sau mà không cần đổi luồng xử lý." })}
+            title={copy({ en: "Upload standard form", vi: "Tải form chuẩn" })}
+            subtitle={copy({ en: "Upload the official worker form (.doc, .docx, .pdf). Once saved, the lead advances to matching automatically if currently qualified.", vi: "Tải file form lao động chuẩn (.doc, .docx, .pdf). Sau khi lưu, hệ thống tự chuyển ứng viên sang bước ghép đơn nếu đang ở trạng thái Đủ điều kiện." })}
           >
             <div className="space-y-4">
               <DescriptionList
                 items={[
-                  { label: copy({ en: "Lead scope", vi: "Phạm vi ứng viên tiềm năng" }), value: filters.leadId || copy({ en: "Required", vi: "Bắt buộc" }) },
-                  { label: copy({ en: "Candidate scope", vi: "Phạm vi hồ sơ ứng viên" }), value: resolvedCandidateId ?? copy({ en: "Optional / unresolved", vi: "Tùy chọn / chưa xác định" }) }
+                  { label: copy({ en: "Lead", vi: "Ứng viên" }), value: filters.leadId || copy({ en: "Required — enter Lead ID above", vi: "Bắt buộc — nhập Mã ứng viên phía trên" }) },
+                  { label: copy({ en: "Candidate", vi: "Hồ sơ" }), value: resolvedCandidateId ?? copy({ en: "Not linked yet", vi: "Chưa liên kết" }) }
                 ]}
               />
-              <FieldGroup>
-                <Select label={copy({ en: "Doc type", vi: "Loại giấy tờ" })} value={createForm.docType} onChange={(e) => setCreateForm((s) => ({ ...s, docType: e.target.value }))}>
-                  {DOC_TYPES.filter(Boolean).map((value) => (
-                    <option key={value} value={value}>{formatDocumentType(value)}</option>
-                  ))}
-                </Select>
-                <Select label={copy({ en: "Initial status", vi: "Trạng thái ban đầu" })} value={createForm.status} onChange={(e) => setCreateForm((s) => ({ ...s, status: e.target.value }))}>
-                  {DOC_STATUSES.filter(Boolean).map((value) => (
-                    <option key={value} value={value}>{formatDocumentStatus(value)}</option>
-                  ))}
-                </Select>
-                <Input label={copy({ en: "File URL", vi: "URL file" })} value={createForm.fileUrl} onChange={(e) => setCreateForm((s) => ({ ...s, fileUrl: e.target.value }))} />
-                <Input label={copy({ en: "Storage bucket", vi: "Bucket lưu trữ" })} value={createForm.storageBucket} onChange={(e) => setCreateForm((s) => ({ ...s, storageBucket: e.target.value }))} />
-                <Input label={copy({ en: "Issue date", vi: "Ngày cấp" })} type="date" value={createForm.issueDate} onChange={(e) => setCreateForm((s) => ({ ...s, issueDate: e.target.value }))} />
-                <Input label={copy({ en: "Expiry date", vi: "Ngày hết hạn" })} type="date" value={createForm.expiryDate} onChange={(e) => setCreateForm((s) => ({ ...s, expiryDate: e.target.value }))} />
-              </FieldGroup>
+              <label className="block text-sm font-medium text-slate-700">
+                {copy({ en: "Form file", vi: "File form" })}
+                <input
+                  type="file"
+                  accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                  onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
+                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                />
+              </label>
+              {uploadFile ? (
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+                  {uploadFile.name} · {(uploadFile.size / 1024).toFixed(0)} KB
+                </div>
+              ) : null}
               <Button
-                onClick={() =>
-                  createDocument.mutate({
-                    leadId: filters.leadId,
-                    candidateId: resolvedCandidateId,
-                    docType: createForm.docType,
-                    status: createForm.status,
-                    fileUrl: createForm.fileUrl || undefined,
-                    storageBucket: createForm.storageBucket || undefined,
-                    issueDate: createForm.issueDate || undefined,
-                    expiryDate: createForm.expiryDate || undefined
-                  })
-                }
-                disabled={!filters.leadId || createDocument.isPending}
+                onClick={() => {
+                  if (!uploadFile) return;
+                  uploadFormStandard.mutate(
+                    { leadId: filters.leadId, candidateId: resolvedCandidateId, status: "verified", file: uploadFile },
+                    { onSuccess: () => setUploadFile(null) }
+                  );
+                }}
+                disabled={!filters.leadId || uploadFormStandard.isPending || !uploadFile}
               >
-                {createDocument.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create document", vi: "Tạo giấy tờ" })}
+                {uploadFormStandard.isPending
+                  ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
+                  : copy({ en: "Upload standard form", vi: "Tải form chuẩn" })}
               </Button>
             </div>
           </Panel>
@@ -293,6 +397,18 @@ export function DocumentsPage() {
                     { label: copy({ en: "Candidate", vi: "Hồ sơ ứng viên" }), value: selected.candidate_id ?? copy({ en: "No candidate scope", vi: "Không có phạm vi hồ sơ ứng viên" }) }
                   ]}
                 />
+                {selected.fileUrl ? (
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "file")}>
+                      {copy({ en: "Open file", vi: "Mở file" })}
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "download")}>
+                      {copy({ en: "Download", vi: "Tải xuống" })}
+                    </Button>
+                    <span className="min-w-0 flex-1 truncate text-xs text-slate-500">{selected.fileUrl}</span>
+                  </div>
+                ) : null}
+                {fileActionError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{fileActionError}</div> : null}
                 <FieldGroup>
                   <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={editForm.status} onChange={(e) => setEditForm((s) => ({ ...s, status: e.target.value }))}>
                     {DOC_STATUSES.filter(Boolean).map((value) => (

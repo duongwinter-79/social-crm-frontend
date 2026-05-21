@@ -568,6 +568,42 @@ export interface DocumentListResponse {
   total: number;
 }
 
+export interface FormStandardRegisterRow {
+  documentId: string;
+  documentStatus: string;
+  fileUrl?: string | null;
+  hasFile: boolean;
+  updatedAt?: string;
+  lead: {
+    id: string;
+    displayName?: string | null;
+    fullName?: string | null;
+    phone?: string | null;
+    status?: string | null;
+  };
+  candidate?: {
+    id: string;
+    code?: string | null;
+    lifecycleStatus?: string | null;
+  } | null;
+  application?: {
+    id: string;
+    status: string;
+    updatedAt?: string;
+  } | null;
+  order?: {
+    id: string;
+    name: string;
+    region?: string | null;
+    industry?: string | null;
+  } | null;
+}
+
+export interface FormStandardRegisterResponse {
+  data: FormStandardRegisterRow[];
+  total: number;
+}
+
 export interface DocumentChecklistSummary {
   requiredDocTypes: string[];
   presentDocTypes: string[];
