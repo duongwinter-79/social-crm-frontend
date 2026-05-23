@@ -663,6 +663,29 @@ export function useUploadFormStandardDocumentMutation() {
   });
 }
 
+export function useLeadsSearchQuery(search: string) {
+  return useQuery({
+    queryKey: ["leads", "search", search],
+    queryFn: () => apiClient.listLeads({ offset: 0, limit: 40, search: search || undefined }),
+    enabled: search.length >= 1,
+    staleTime: 10_000,
+  });
+}
+
+export function useUnlinkFormStandardMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (leadId: string) => apiClient.unlinkFormStandardDocument(leadId),
+    onSuccess: (_void, leadId) => {
+      queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId, "transitions"] });
+    },
+    meta: { successMessage: "Hồ sơ đã được huỷ liên kết" }
+  });
+}
+
 export function useUpdateDocumentMutation() {
   const queryClient = useQueryClient();
   return useMutation({

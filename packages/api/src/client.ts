@@ -602,6 +602,10 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async unlinkFormStandardDocument(leadId: string): Promise<void> {
+    await this.http.delete(`/documents/form-standard/${leadId}`);
+  }
+
   async updateDocument(id: string, patch: Record<string, unknown>) {
     const response = await this.http.patch<ApiEnvelope<DocumentRecord> | DocumentRecord>(`/documents/${id}`, patch);
     return unwrapEnvelope(response.data);

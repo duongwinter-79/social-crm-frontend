@@ -14,6 +14,7 @@ const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-pag
 const MatchingPage = lazy(() => import("@/features/matching/matching-page").then((m) => ({ default: m.MatchingPage })));
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
 const ApplicationsPage = lazy(() => import("@/features/applications/applications-page").then((m) => ({ default: m.ApplicationsPage })));
+const FormEditorPage = lazy(() => import("@/features/applications/form-editor-page").then((m) => ({ default: m.FormEditorPage })));
 const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
@@ -113,6 +114,7 @@ function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: {
 
 function titleForPath(pathname: string, copy: (value: { en: string; vi: string }) => string) {
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
+  if (pathname.match(/^\/applications\/[^/]+\/edit$/)) return copy({ en: "Form editor", vi: "Chỉnh sửa hồ sơ ứng tuyển" });
   return navItems.find((item) => pathname === item.to)?.label
     ? copy(navItems.find((item) => pathname === item.to)!.label)
     : copy({ en: "Workspace", vi: "Khu vực làm việc" });
@@ -349,6 +351,7 @@ export function AppRouter() {
         <Route path="/matching" element={<LazyRoute><MatchingPage /></LazyRoute>} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
         <Route path="/applications" element={<LazyRoute><ApplicationsPage /></LazyRoute>} />
+        <Route path="/applications/:leadId/edit" element={<LazyRoute><FormEditorPage /></LazyRoute>} />
         <Route path="/documents" element={<Navigate to="/applications" replace />} />
         <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />

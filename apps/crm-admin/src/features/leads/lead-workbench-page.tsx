@@ -681,7 +681,7 @@ export function LeadWorkbenchPage() {
                 navigate(`/applications?${params.toString()}`);
               }}
             >
-              {copy({ en: "Upload standard form →", vi: "Tải form chuẩn →" })}
+              {copy({ en: "Upload application file →", vi: "Tải hồ sơ ứng tuyển →" })}
             </Button>
           </div>
 

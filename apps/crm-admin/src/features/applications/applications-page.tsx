@@ -5,10 +5,8 @@ import {
   Button,
   EmptyState,
   FieldGroup,
-  InfoCard,
-  Input,
-  PaginationFooter,
   Panel,
+  PaginationFooter,
   SectionHeader,
   Select,
   Toolbar,
@@ -19,13 +17,72 @@ import {
   triggerBlobDownload,
   useCandidateByLeadQuery,
   useFormStandardRegisterQuery,
+  useUnlinkFormStandardMutation,
   useUploadFormStandardDocumentMutation
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import type { FormStandardRegisterRow } from "@social-crm/api";
+import { LeadPicker } from "@/components/lead-picker";
 
 const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
 const PAGE_SIZE = 25;
+
+/** Derive the lower-cased file extension from a storage key like
+ *  "form-standard/doc-id/1700000000-uuid-name.docx" */
+function fileExtension(fileUrl?: string | null): string {
+  if (!fileUrl) return "";
+  const lastDot = fileUrl.lastIndexOf(".");
+  return lastDot >= 0 ? fileUrl.slice(lastDot).toLowerCase() : "";
+}
+
+function FileActions({
+  documentId,
+  fileUrl,
+  openFile,
+  copy,
+}: {
+  documentId: string;
+  fileUrl?: string | null;
+  openFile: (id: string, mode: "file" | "download") => void | Promise<void>;
+  copy: (t: { en: string; vi: string }) => string;
+}) {
+  const ext = fileExtension(fileUrl);
+  const isWord = ext === ".docx" || ext === ".doc";
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {/* View — opens inline (PDF renders in browser; .docx triggers browser download) */}
+        <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "file")}>
+          {copy({ en: "View", vi: "Xem" })}
+        </Button>
+
+        {/* Edit — for Word: download to edit locally; for PDF: open inline */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => openFile(documentId, isWord ? "download" : "file")}
+        >
+          {copy({ en: "Edit", vi: "Chỉnh sửa" })}
+        </Button>
+
+        {/* Download — always saves to disk */}
+        <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "download")}>
+          {copy({ en: "Download", vi: "Tải xuống" })}
+        </Button>
+      </div>
+
+      {isWord ? (
+        <p className="text-xs text-slate-400">
+          {copy({
+            en: "Word document — Edit downloads the file. Open in Word, save your changes, then re-upload above.",
+            vi: "File Word — Chỉnh sửa sẽ tải file xuống. Mở trong Word, lưu thay đổi, sau đó tải lại ở trên."
+          })}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function toneForDocStatus(status: string) {
   if (status === "verified") return "success" as const;
@@ -51,6 +108,7 @@ export function ApplicationsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string>(searchParams.get("leadId") ?? "");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [fileActionError, setFileActionError] = useState("");
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
 
   const registerQuery = useFormStandardRegisterQuery({
     offset: page * PAGE_SIZE,
@@ -62,6 +120,7 @@ export function ApplicationsPage() {
   const candidateByLeadQuery = useCandidateByLeadQuery(selectedLeadId || undefined);
   const resolvedCandidateId = candidateByLeadQuery.data?.id;
   const uploadFormStandard = useUploadFormStandardDocumentMutation();
+  const unlinkFormStandard = useUnlinkFormStandardMutation();
 
   const rows = registerQuery.data?.data ?? [];
   const selectedRow = rows.find((r) => r.lead.id === selectedLeadId) ?? null;
@@ -84,14 +143,24 @@ export function ApplicationsPage() {
     }
   }
 
+  function handleUnlink() {
+    if (!selectedLeadId) return;
+    unlinkFormStandard.mutate(selectedLeadId, {
+      onSuccess: () => {
+        setConfirmUnlink(false);
+        setUploadFile(null);
+      }
+    });
+  }
+
   return (
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Applications", vi: "Hồ sơ ứng tuyển" })}
-        title={copy({ en: "Worker files", vi: "Danh sách hồ sơ lao động" })}
+        title={copy({ en: "Hồ sơ ứng tuyển", vi: "Hồ sơ ứng tuyển" })}
         description={copy({
-          en: "View standard worker forms, matched orders, and upload files for each candidate.",
-          vi: "Xem form lao động chuẩn, đơn hàng đã ghép và tải file cho từng ứng viên."
+          en: "Manage worker application files, matched orders, and upload documents for each candidate.",
+          vi: "Quản lý hồ sơ ứng tuyển, đơn hàng đã ghép và tải file cho từng ứng viên."
         })}
       />
 
@@ -107,10 +176,21 @@ export function ApplicationsPage() {
               <option key={value} value={value}>{formatDocumentStatus(value)}</option>
             ))}
           </Select>
-          <Input
-            label={copy({ en: "Search name / phone / code", vi: "Tìm tên / SĐT / mã hồ sơ" })}
-            value={filters.search}
-            onChange={(e) => { setFilters((s) => ({ ...s, search: e.target.value })); setPage(0); }}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              {copy({ en: "Search name / phone", vi: "Tìm tên / SĐT" })}
+            </label>
+            <input
+              type="text"
+              value={filters.search}
+              onChange={(e) => { setFilters((s) => ({ ...s, search: e.target.value })); setPage(0); }}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </div>
+          <LeadPicker
+            label={copy({ en: "Jump to candidate", vi: "Chọn ứng viên" })}
+            value={selectedLeadId}
+            onChange={(id) => { setSelectedLeadId(id); setConfirmUnlink(false); setUploadFile(null); }}
           />
         </FieldGroup>
         <ToolbarActions>
@@ -122,22 +202,21 @@ export function ApplicationsPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Panel
-          title={copy({ en: "Standard form register", vi: "Danh sách form chuẩn" })}
+          title={copy({ en: "Application file register", vi: "Danh sách hồ sơ ứng tuyển" })}
           subtitle={copy({
-            en: "Each row shows the worker form upload status and the latest matched order.",
-            vi: "Mỗi dòng hiển thị trạng thái form lao động và đơn hàng ghép gần nhất."
+            en: "Each row shows the application file upload status and the latest matched order.",
+            vi: "Mỗi dòng hiển thị trạng thái hồ sơ ứng tuyển và đơn hàng ghép gần nhất."
           })}
         >
           {rows.length ? (
             <div className="max-h-[calc(100vh-26rem)] overflow-auto">
-              <table className="w-full min-w-[700px] text-left text-sm">
+              <table className="w-full min-w-[600px] text-left text-sm">
                 <thead className="sticky top-0 bg-white text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-3 py-3">{copy({ en: "Candidate", vi: "Ứng viên" })}</th>
                     <th className="px-3 py-3">{copy({ en: "Phone", vi: "Số điện thoại" })}</th>
                     <th className="px-3 py-3">{copy({ en: "Matched order", vi: "Đơn đang ghép" })}</th>
-                    <th className="px-3 py-3">{copy({ en: "Form", vi: "Form" })}</th>
-                    <th className="px-3 py-3">{copy({ en: "Actions", vi: "Thao tác" })}</th>
+                    <th className="px-3 py-3">{copy({ en: "File status", vi: "Trạng thái hồ sơ" })}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -147,13 +226,13 @@ export function ApplicationsPage() {
                       <tr
                         key={row.documentId}
                         className={`cursor-pointer border-t border-slate-100 align-top transition-colors ${active ? "bg-indigo-50/60" : "hover:bg-slate-50"}`}
-                        onClick={() => setSelectedLeadId(row.lead.id)}
+                        onClick={() => { setSelectedLeadId(row.lead.id); setConfirmUnlink(false); setUploadFile(null); }}
                       >
                         <td className="px-3 py-3">
                           <button
                             type="button"
                             className="font-medium text-indigo-700 hover:text-indigo-500"
-                            onClick={() => { navigate(`/leads/${row.lead.id}`); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/leads/${row.lead.id}`); }}
                           >
                             {leadLabel(row)}
                           </button>
@@ -187,26 +266,6 @@ export function ApplicationsPage() {
                               : <Badge tone="warning">{copy({ en: "No file", vi: "Chưa có file" })}</Badge>}
                           </div>
                         </td>
-                        <td className="px-3 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={!row.hasFile}
-                              onClick={() => { void openFile(row.documentId, "file"); }}
-                            >
-                              {copy({ en: "Open", vi: "Mở" })}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={!row.hasFile}
-                              onClick={() => { void openFile(row.documentId, "download"); }}
-                            >
-                              {copy({ en: "Download", vi: "Tải" })}
-                            </Button>
-                          </div>
-                        </td>
                       </tr>
                     );
                   })}
@@ -217,8 +276,8 @@ export function ApplicationsPage() {
             <EmptyState
               title={copy({ en: "No records found", vi: "Không tìm thấy hồ sơ" })}
               description={copy({
-                en: "Standard forms appear here once uploaded. Use the upload panel on the right to add one.",
-                vi: "Form chuẩn sẽ hiển thị sau khi được tải lên. Sử dụng khung bên phải để tải form."
+                en: "Application files appear here once uploaded. Select a candidate on the right to upload.",
+                vi: "Hồ sơ ứng tuyển sẽ hiển thị sau khi được tải lên. Chọn ứng viên bên phải để tải lên."
               })}
             />
           )}
@@ -237,16 +296,18 @@ export function ApplicationsPage() {
           />
         </Panel>
 
+        {/* Right panel */}
         <div className="space-y-6">
           <Panel
-            title={copy({ en: "Upload standard form", vi: "Tải form chuẩn" })}
+            title={copy({ en: "Application file", vi: "Hồ sơ ứng tuyển" })}
             subtitle={copy({
-              en: "Select a row to load context, then pick a file and upload. The candidate automatically advances to matching.",
-              vi: "Chọn một dòng để tải thông tin, sau đó chọn file và tải lên. Hệ thống tự chuyển ứng viên sang bước ghép đơn."
+              en: "Select a row or search for a candidate to manage their application file.",
+              vi: "Chọn một dòng hoặc tìm ứng viên để quản lý hồ sơ ứng tuyển."
             })}
           >
             {selectedRow ? (
               <div className="space-y-4">
+                {/* Candidate summary */}
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
                   <div className="font-medium text-slate-900">{leadLabel(selectedRow)}</div>
                   <div className="mt-1 text-slate-500">
@@ -258,19 +319,34 @@ export function ApplicationsPage() {
                   ) : null}
                 </div>
 
+                {/* Edit profile fields */}
+                <div className="border-t border-slate-100 pt-3">
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate(`/applications/${selectedRow.lead.id}/edit`)}
+                  >
+                    {copy({ en: "Edit application fields →", vi: "Chỉnh sửa thông tin hồ sơ →" })}
+                  </Button>
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    {copy({
+                      en: "Opens the form editor to view and confirm all profile fields.",
+                      vi: "Mở màn hình chỉnh sửa để xem và xác nhận tất cả các trường hồ sơ."
+                    })}
+                  </p>
+                </div>
+
+                {/* Current file actions */}
                 {selectedRow.hasFile ? (
                   <div className="space-y-2">
                     <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
                       {copy({ en: "Current file", vi: "File hiện tại" })}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => void openFile(selectedRow.documentId, "file")}>
-                        {copy({ en: "Open file", vi: "Mở file" })}
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => void openFile(selectedRow.documentId, "download")}>
-                        {copy({ en: "Download", vi: "Tải xuống" })}
-                      </Button>
-                    </div>
+                    <FileActions
+                      documentId={selectedRow.documentId}
+                      fileUrl={selectedRow.fileUrl}
+                      openFile={openFile}
+                      copy={copy}
+                    />
                   </div>
                 ) : null}
 
@@ -278,6 +354,7 @@ export function ApplicationsPage() {
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{fileActionError}</div>
                 ) : null}
 
+                {/* Upload / Replace */}
                 <div className="border-t border-slate-100 pt-4">
                   <label className="block text-sm font-medium text-slate-700">
                     {copy({ en: selectedRow.hasFile ? "Replace file" : "Upload file", vi: selectedRow.hasFile ? "Thay thế file" : "Tải file lên" })}
@@ -311,28 +388,73 @@ export function ApplicationsPage() {
                     >
                       {uploadFormStandard.isPending
                         ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
-                        : copy({ en: "Upload form", vi: "Tải form" })}
+                        : copy({ en: "Upload application file", vi: "Tải hồ sơ ứng tuyển" })}
                     </Button>
                   </div>
                 </div>
+
+                {/* Unlink */}
+                {selectedRow.hasFile ? (
+                  <div className="border-t border-slate-100 pt-4">
+                    {confirmUnlink ? (
+                      <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-3">
+                        <p className="text-sm text-rose-800">
+                          {copy({
+                            en: "This will permanently delete the uploaded file and remove the application record. This cannot be undone.",
+                            vi: "Thao tác này sẽ xoá vĩnh viễn file đã tải lên và huỷ hồ sơ ứng tuyển. Không thể hoàn tác."
+                          })}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={handleUnlink}
+                            disabled={unlinkFormStandard.isPending}
+                          >
+                            {unlinkFormStandard.isPending
+                              ? copy({ en: "Removing…", vi: "Đang xoá…" })
+                              : copy({ en: "Yes, remove", vi: "Xác nhận xoá" })}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setConfirmUnlink(false)}
+                            disabled={unlinkFormStandard.isPending}
+                          >
+                            {copy({ en: "Cancel", vi: "Huỷ" })}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => setConfirmUnlink(true)}
+                      >
+                        {copy({ en: "Remove application file", vi: "Xoá hồ sơ ứng tuyển" })}
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ) : (
               <EmptyState
                 title={copy({ en: "No candidate selected", vi: "Chưa chọn ứng viên" })}
                 description={copy({
-                  en: "Click a row in the table to select a candidate, then upload their standard form here.",
-                  vi: "Nhấn vào một dòng trong bảng để chọn ứng viên, sau đó tải form chuẩn lên tại đây."
+                  en: "Click a row in the table or search for a candidate above to manage their application file.",
+                  vi: "Nhấn vào một dòng trong bảng hoặc tìm kiếm ứng viên ở trên để quản lý hồ sơ ứng tuyển."
                 })}
               />
             )}
           </Panel>
 
+          {/* Fallback: lead pre-selected via URL but has no record yet */}
           {selectedLeadId && !selectedRow ? (
             <Panel
-              title={copy({ en: "Upload for new candidate", vi: "Tải form cho ứng viên mới" })}
+              title={copy({ en: "Upload for new candidate", vi: "Tải hồ sơ cho ứng viên mới" })}
               subtitle={copy({
-                en: "This lead has no standard form yet. Upload one to create their record.",
-                vi: "Ứng viên này chưa có form chuẩn. Tải lên để tạo bản ghi."
+                en: "This candidate has no application file yet. Upload one to create their record.",
+                vi: "Ứng viên này chưa có hồ sơ ứng tuyển. Tải lên để tạo bản ghi."
               })}
             >
               <div className="space-y-4">
@@ -341,7 +463,7 @@ export function ApplicationsPage() {
                   {resolvedCandidateId ? ` · ${resolvedCandidateId}` : ""}
                 </div>
                 <label className="block text-sm font-medium text-slate-700">
-                  {copy({ en: "Form file", vi: "File form" })}
+                  {copy({ en: "Application file", vi: "Hồ sơ ứng tuyển" })}
                   <input
                     type="file"
                     accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
@@ -371,7 +493,7 @@ export function ApplicationsPage() {
                 >
                   {uploadFormStandard.isPending
                     ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
-                    : copy({ en: "Upload form", vi: "Tải form" })}
+                    : copy({ en: "Upload application file", vi: "Tải hồ sơ ứng tuyển" })}
                 </Button>
               </div>
             </Panel>

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-05-23
+
+### Applications screen — hồ sơ ứng tuyển overhaul
+
+- Renamed all display text from "standard form / form chuẩn" to "hồ sơ ứng tuyển" across the Applications page, lead workbench, and form editor.
+- Replaced the free-text UUID lead input with a `LeadPicker` dropdown component (`src/components/lead-picker.tsx`). Shows `displayName · phone` and a short ID prefix; supports live search via `useLeadsSearchQuery`.
+- Replaced the upload-only panel with a unified form register table (`getFormStandardRegister`) that shows all leads with an uploaded hồ sơ ứng tuyển — columns: Ứng viên, SĐT, Đơn đang ghép, Trạng thái hồ sơ.
+- Added inline file actions per row: **View** (opens file in new tab), **Edit** (Word files trigger download; PDF files open inline), **Download** (direct download). Removed duplicate Open/Download buttons from the old Actions column.
+- Added unlink flow with confirmation dialog: clicking "Xoá hồ sơ ứng tuyển" reveals a rose-tinted confirm/cancel block before calling `useUnlinkFormStandardMutation`.
+- Right panel now shows an "Edit application fields →" primary button linking to the new form editor page.
+
+### Form field editor (`/applications/:leadId/edit`)
+
+- New route and page (`src/features/applications/form-editor-page.tsx`) for in-CRM editing of extracted form fields without download/re-upload.
+- Pre-fills all fields from `mergedData` (verified values take priority over AI-extracted values).
+- Provenance badges shown per field: green "Đã xác nhận" when the field is in `verifiedKeys`, indigo "AI đề xuất" when an AI suggestion exists.
+- Fields covered: fullName, phone, gender, birthYear, height (cm), weight (kg), experienceField, experienceDetails, desiredIndustry, preferredRegion, desiredSalary, note.
+- On save: name/phone written via `useUpdateLeadMutation`; all qualification fields written to `verifiedProfileData` + `verifiedKeys` via `useUpdateLeadQualificationMutation`. Returns to `/applications` on success.
+- Route title registered in router as "Chỉnh sửa hồ sơ ứng tuyển" (lazy-loaded).
+
 ## 2026-05-13
 
 ### CSV export from leads and orders pages
