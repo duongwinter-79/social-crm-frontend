@@ -722,7 +722,7 @@ export function useCloseEditSessionMutation() {
   return useMutation({
     mutationFn: ({ documentId, sessionId }: { documentId: string; sessionId: string }) =>
       apiClient.closeEditSession(documentId, sessionId),
-    meta: { successMessage: { en: "Edit session closed", vi: "Đã đóng phiên chỉnh sửa" } },
+    meta: { successMessage: { en: "Changes saved and edit session closed", vi: "Đã lưu thay đổi và đóng phiên chỉnh sửa" } },
   });
 }
 

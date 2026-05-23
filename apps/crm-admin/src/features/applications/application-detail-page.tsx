@@ -151,7 +151,6 @@ export function ApplicationDetailPage() {
 
   const ext = fileExtension(selectedRow?.fileUrl);
   const isWord = ext === ".docx" || ext === ".doc";
-  const isPdf = ext === ".pdf";
 
   return (
     <div className="space-y-6">
@@ -221,16 +220,16 @@ export function ApplicationDetailPage() {
                   </div>
                 </div>
 
-                {/* Edit profile fields */}
+                {/* Match form data to profile */}
                 <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
                   <Button
                     variant="secondary"
-                    onClick={() => navigate(`/applications/${selectedRow.lead.id}/edit`)}
+                    onClick={() => navigate(`/applications/match/${selectedRow.documentId}`)}
                   >
-                    {copy({ en: "Edit application fields →", vi: "Chỉnh sửa thông tin hồ sơ →" })}
+                    {copy({ en: "Match to lead profile →", vi: "Đối chiếu với hồ sơ ứng viên →" })}
                   </Button>
                   <span className="text-xs text-slate-400">
-                    {copy({ en: "View and confirm all profile fields.", vi: "Xem và xác nhận tất cả các trường hồ sơ." })}
+                    {copy({ en: "Review extracted form data and apply selected fields.", vi: "Xem dữ liệu trích xuất và cập nhật các trường đã chọn." })}
                   </span>
                 </div>
 
@@ -269,24 +268,12 @@ export function ApplicationDetailPage() {
                             : copy({ en: "Edit in Google Docs", vi: "Chỉnh sửa trong Google Docs" })}
                         </Button>
                       ) : null}
-                      {isPdf ? (
-                        <Button variant="secondary" size="sm" disabled>
-                          {copy({ en: "PDF – view only", vi: "PDF – chỉ xem" })}
-                        </Button>
-                      ) : null}
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => openFile(selectedRow.documentId, "download")}
                       >
                         {copy({ en: "Download", vi: "Tải xuống" })}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => navigate(`/applications/match/${selectedRow.documentId}`)}
-                      >
-                        {copy({ en: "Match to lead profile", vi: "Đối chiếu với hồ sơ ứng viên" })}
                       </Button>
                     </div>
                   </div>
