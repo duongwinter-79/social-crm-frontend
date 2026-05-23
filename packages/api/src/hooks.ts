@@ -672,6 +672,36 @@ export function useLeadsSearchQuery(search: string) {
   });
 }
 
+// ── Google Drive edit session ────────────────────────────────────────────────
+
+export function useOpenEditSessionMutation() {
+  return useMutation({
+    mutationFn: (documentId: string) => apiClient.openEditSession(documentId),
+  });
+}
+
+export function useEditSessionStatusQuery(
+  documentId: string | null,
+  sessionId: string | null,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["documents", "edit-session", documentId, sessionId],
+    queryFn: () => apiClient.pollEditSession(documentId!, sessionId!),
+    enabled: enabled && !!documentId && !!sessionId,
+    refetchInterval: 30_000,
+    staleTime: 0,
+  });
+}
+
+export function useCloseEditSessionMutation() {
+  return useMutation({
+    mutationFn: ({ documentId, sessionId }: { documentId: string; sessionId: string }) =>
+      apiClient.closeEditSession(documentId, sessionId),
+    meta: { successMessage: { en: "Edit session closed", vi: "Đã đóng phiên chỉnh sửa" } },
+  });
+}
+
 export function useUnlinkFormStandardMutation() {
   const queryClient = useQueryClient();
   return useMutation({

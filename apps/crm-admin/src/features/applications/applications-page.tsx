@@ -17,11 +17,13 @@ import {
   useCandidateByLeadQuery,
   useFormStandardRegisterQuery,
   useUnlinkFormStandardMutation,
-  useUploadFormStandardDocumentMutation
+  useUploadFormStandardDocumentMutation,
+  useOpenEditSessionMutation
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import type { FormStandardRegisterRow } from "@social-crm/api";
 import { LeadPicker } from "@/components/lead-picker";
+import { EditSessionBanner } from "@/components/edit-session-banner";
 
 const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
 const PAGE_SIZE = 25;
@@ -38,47 +40,44 @@ function FileActions({
   documentId,
   fileUrl,
   openFile,
+  onGoogleEdit,
+  editSessionActive,
+  openEditPending,
   copy,
 }: {
   documentId: string;
   fileUrl?: string | null;
   openFile: (id: string, mode: "preview" | "download") => void | Promise<void>;
+  onGoogleEdit: (id: string) => void;
+  editSessionActive: boolean;
+  openEditPending: boolean;
   copy: (t: { en: string; vi: string }) => string;
 }) {
   const ext = fileExtension(fileUrl);
   const isWord = ext === ".docx" || ext === ".doc";
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {/* View — opens in new tab */}
-        <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "preview")}>
-          {copy({ en: "View", vi: "Xem" })}
-        </Button>
+    <div className="flex flex-wrap gap-2">
+      <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "preview")}>
+        {copy({ en: "View", vi: "Xem" })}
+      </Button>
 
-        {/* Edit — for Word: download to edit locally; for PDF: open in new tab */}
+      {isWord ? (
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => openFile(documentId, isWord ? "download" : "preview")}
+          disabled={openEditPending || editSessionActive}
+          onClick={() => onGoogleEdit(documentId)}
         >
-          {copy({ en: "Edit", vi: "Chỉnh sửa" })}
+          {openEditPending
+            ? copy({ en: "Opening…", vi: "Đang mở…" })
+            : copy({ en: "Edit in Google Docs", vi: "Chỉnh sửa trong Google Docs" })}
         </Button>
-
-        {/* Download — always saves to disk */}
-        <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "download")}>
-          {copy({ en: "Download", vi: "Tải xuống" })}
-        </Button>
-      </div>
-
-      {isWord ? (
-        <p className="text-xs text-slate-400">
-          {copy({
-            en: "Word document — Edit downloads the file. Open in Word, save your changes, then re-upload above.",
-            vi: "File Word — Chỉnh sửa sẽ tải file xuống. Mở trong Word, lưu thay đổi, sau đó tải lại ở trên."
-          })}
-        </p>
       ) : null}
+
+      <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "download")}>
+        {copy({ en: "Download", vi: "Tải xuống" })}
+      </Button>
     </div>
   );
 }
@@ -108,6 +107,15 @@ export function ApplicationsPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [fileActionError, setFileActionError] = useState("");
   const [confirmUnlink, setConfirmUnlink] = useState(false);
+  const [editSession, setEditSession] = useState<{
+    documentId: string; sessionId: string; editUrl: string;
+  } | null>(() => {
+    try {
+      const raw = localStorage.getItem("crm-app-edit-session");
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  });
+  const openEditSession = useOpenEditSessionMutation();
 
   const registerQuery = useFormStandardRegisterQuery({
     offset: page * PAGE_SIZE,
@@ -150,6 +158,27 @@ export function ApplicationsPage() {
         copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." })
       );
     }
+  }
+
+  function openGoogleEdit(documentId: string) {
+    openEditSession.mutate(documentId, {
+      onSuccess: ({ sessionId, editUrl, filename }) => {
+        const session = { documentId, sessionId, editUrl };
+        setEditSession(session);
+        localStorage.setItem("crm-app-edit-session", JSON.stringify(session));
+        window.open(editUrl, "_blank", "noopener,noreferrer");
+      },
+      onError: () => {
+        setFileActionError(
+          copy({ en: "Could not open Google Docs. Check Drive configuration.", vi: "Không mở được Google Docs. Kiểm tra cấu hình Drive." })
+        );
+      },
+    });
+  }
+
+  function clearEditSession() {
+    setEditSession(null);
+    localStorage.removeItem("crm-app-edit-session");
   }
 
   function handleUnlink() {
@@ -347,6 +376,11 @@ export function ApplicationsPage() {
                 {/* Current file actions */}
                 {selectedRow.hasFile ? (
                   <div className="space-y-2">
+                    <EditSessionBanner
+                      session={editSession?.documentId === selectedRow.documentId ? editSession : null}
+                      onExpired={clearEditSession}
+                      onClosed={clearEditSession}
+                    />
                     <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
                       {copy({ en: "Current file", vi: "File hiện tại" })}
                     </div>
@@ -354,6 +388,9 @@ export function ApplicationsPage() {
                       documentId={selectedRow.documentId}
                       fileUrl={selectedRow.fileUrl}
                       openFile={openFile}
+                      onGoogleEdit={openGoogleEdit}
+                      editSessionActive={editSession?.documentId === selectedRow.documentId}
+                      openEditPending={openEditSession.isPending}
                       copy={copy}
                     />
                   </div>

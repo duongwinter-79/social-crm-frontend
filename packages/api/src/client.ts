@@ -649,6 +649,27 @@ export class SocialCrmApiClient {
     return { blob: response.data, filename };
   }
 
+  // ── Google Drive edit session ────────────────────────────────────────────────
+
+  async openEditSession(documentId: string): Promise<{ sessionId: string; editUrl: string; filename: string }> {
+    const res = await this.http.post<{ sessionId: string; editUrl: string; filename: string }>(
+      `/documents/${documentId}/edit-session`,
+    );
+    return res.data;
+  }
+
+  async pollEditSession(
+    documentId: string,
+    sessionId: string,
+  ): Promise<{ status: "active" | "expired"; lastSyncedAt: string | null; editUrl: string }> {
+    const res = await this.http.get(`/documents/${documentId}/edit-session/${sessionId}/status`);
+    return res.data;
+  }
+
+  async closeEditSession(documentId: string, sessionId: string): Promise<void> {
+    await this.http.delete(`/documents/${documentId}/edit-session/${sessionId}`);
+  }
+
   async listTrainingFinance(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {
     const response = await this.http.get<ApiEnvelope<TrainingFinanceListResponse> | TrainingFinanceListResponse>("/training-finance", { params });
     return unwrapEnvelope(response.data);
