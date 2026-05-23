@@ -43,6 +43,14 @@ function apiErrorMessage(err: unknown): string | null {
   return typeof message === "string" && message.trim() ? message : null;
 }
 
+function isWordFilename(filename: string): boolean {
+  return /\.(doc|docx)$/i.test(filename);
+}
+
+function googleViewerUrl(url: string): string {
+  return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
+}
+
 export function ApplicationDetailPage() {
   const { copy, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
@@ -108,7 +116,7 @@ export function ApplicationDetailPage() {
         }
         return;
       }
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(!isObjectUrl && isWordFilename(filename) ? googleViewerUrl(url) : url, "_blank", "noopener,noreferrer");
       if (isObjectUrl) window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;

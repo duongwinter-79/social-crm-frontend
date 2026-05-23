@@ -61,6 +61,14 @@ function apiErrorMessage(err: unknown): string | null {
   return typeof message === "string" && message.trim() ? message : null;
 }
 
+function isWordFilename(filename: string): boolean {
+  return /\.(doc|docx)$/i.test(filename);
+}
+
+function googleViewerUrl(url: string): string {
+  return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
+}
+
 export function DocumentsPage() {
   const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
@@ -175,11 +183,12 @@ export function DocumentsPage() {
 
       // Preview — load into inline viewer
       revokeViewer();
+      const previewUrl = !isObjectUrl && isWordFilename(filename) ? googleViewerUrl(url) : url;
       if (isObjectUrl) viewerUrlRef.current = url;
-      setViewerUrl(url);
+      setViewerUrl(previewUrl);
       // Infer MIME from filename extension
       const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-      setViewerMime(ext === "pdf" ? "application/pdf" : ext.match(/^jpe?g|png|gif|webp$/) ? `image/${ext}` : "application/pdf");
+      setViewerMime(ext.match(/^jpe?g|png|gif|webp$/) && previewUrl === url ? `image/${ext}` : "application/pdf");
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       const detail = status ? ` (HTTP ${status})` : "";
