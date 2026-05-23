@@ -175,8 +175,11 @@ export function DocumentsPage() {
       // Infer MIME from filename extension
       const ext = filename.split(".").pop()?.toLowerCase() ?? "";
       setViewerMime(ext === "pdf" ? "application/pdf" : ext.match(/^jpe?g|png|gif|webp$/) ? `image/${ext}` : "application/pdf");
-    } catch {
-      setFileActionError(copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." }));
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const detail = status ? ` (HTTP ${status})` : "";
+      console.error("[openDocumentFile] error:", err);
+      setFileActionError(copy({ en: `Could not open this file${detail}. Check whether it was uploaded through the CRM.`, vi: `Không mở được file này${detail}. Kiểm tra file đã được tải lên qua CRM chưa.` }));
     }
   }
 

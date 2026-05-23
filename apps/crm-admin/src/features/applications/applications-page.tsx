@@ -153,9 +153,12 @@ export function ApplicationsPage() {
       // Preview — open in new tab
       window.open(url, "_blank", "noopener,noreferrer");
       if (isObjectUrl) window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
-    } catch {
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const detail = status ? ` (HTTP ${status})` : "";
+      console.error("[openFile] error:", err);
       setFileActionError(
-        copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." })
+        copy({ en: `Could not open this file${detail}. Check whether it was uploaded through the CRM.`, vi: `Không mở được file này${detail}. Kiểm tra file đã được tải lên qua CRM chưa.` })
       );
     }
   }

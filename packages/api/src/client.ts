@@ -630,9 +630,12 @@ export class SocialCrmApiClient {
    */
   async getDocumentUrl(id: string, download = false): Promise<{ url: string; filename: string; isObjectUrl: boolean }> {
     const qs = download ? "?download=true" : "";
-    const result = await this.http.get<{ url: string | null; filename?: string }>(`/documents/${id}/download-url${qs}`);
-    if (result.data.url) {
-      return { url: result.data.url, filename: result.data.filename ?? `document-${id}`, isObjectUrl: false };
+    const result = await this.http.get<
+      ApiEnvelope<{ url: string | null; filename?: string }> | { url: string | null; filename?: string }
+    >(`/documents/${id}/download-url${qs}`);
+    const resolved = unwrapEnvelope(result.data);
+    if (resolved.url) {
+      return { url: resolved.url, filename: resolved.filename ?? `document-${id}`, isObjectUrl: false };
     }
     // Local disk fallback — stream through backend and create an object URL
     const endpoint = download ? "download" : "file";
@@ -655,7 +658,7 @@ export class SocialCrmApiClient {
     const res = await this.http.post<{ sessionId: string; editUrl: string; filename: string }>(
       `/documents/${documentId}/edit-session`,
     );
-    return res.data;
+    return unwrapEnvelope(res.data);
   }
 
   async pollEditSession(
@@ -663,7 +666,7 @@ export class SocialCrmApiClient {
     sessionId: string,
   ): Promise<{ status: "active" | "expired"; lastSyncedAt: string | null; editUrl: string }> {
     const res = await this.http.get(`/documents/${documentId}/edit-session/${sessionId}/status`);
-    return res.data;
+    return unwrapEnvelope(res.data);
   }
 
   async closeEditSession(documentId: string, sessionId: string): Promise<void> {
