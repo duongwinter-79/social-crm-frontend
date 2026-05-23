@@ -19,7 +19,6 @@ import {
 } from "@social-crm/ui";
 import {
   apiClient,
-  triggerBlobDownload,
   useCandidateByLeadQuery,
   useCandidateDocumentChecklistQuery,
   useDocumentsQuery,
@@ -125,7 +124,7 @@ export function DocumentsPage() {
     setRegisterPage(0);
   }, [filters.leadId, filters.candidateId, filters.docType, filters.status, filters.search]);
 
-  // Revoke previous viewer blob URL to avoid memory leak
+  // Revoke previous viewer blob URL to avoid memory leak (only for local-disk object URLs)
   function revokeViewer() {
     if (viewerUrlRef.current) {
       window.URL.revokeObjectURL(viewerUrlRef.current);
@@ -134,19 +133,34 @@ export function DocumentsPage() {
     setViewerUrl(null);
   }
 
-  async function openDocumentFile(documentId: string, mode: "file" | "download") {
+  async function openDocumentFile(documentId: string, mode: "preview" | "download") {
     setFileActionError("");
     try {
-      const { blob, filename } = await apiClient.getDocumentFile(documentId, mode);
+      const { url, filename, isObjectUrl } = await apiClient.getDocumentUrl(documentId, mode === "download");
+
       if (mode === "download") {
-        triggerBlobDownload(blob, filename);
+        // For presigned URLs, open in a new tab so the browser triggers download
+        // (Content-Disposition: attachment is set on R2 side via presigned URL).
+        // For object URLs, use the existing blob-download helper.
+        if (isObjectUrl) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          a.click();
+          window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
         return;
       }
+
+      // Preview — load into inline viewer
       revokeViewer();
-      const url = window.URL.createObjectURL(blob);
-      viewerUrlRef.current = url;
+      if (isObjectUrl) viewerUrlRef.current = url;
       setViewerUrl(url);
-      setViewerMime(blob.type || "application/pdf");
+      // Infer MIME from filename extension
+      const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+      setViewerMime(ext === "pdf" ? "application/pdf" : ext.match(/^jpe?g|png|gif|webp$/) ? `image/${ext}` : "application/pdf");
     } catch {
       setFileActionError(copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." }));
     }
@@ -250,7 +264,7 @@ export function DocumentsPage() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="secondary" disabled={!row.hasFile} onClick={() => void openDocumentFile(row.documentId, "file")}>
+                        <Button size="sm" variant="secondary" disabled={!row.hasFile} onClick={() => void openDocumentFile(row.documentId, "preview")}>
                           {copy({ en: "Open", vi: "Mở" })}
                         </Button>
                         <Button size="sm" variant="secondary" disabled={!row.hasFile} onClick={() => void openDocumentFile(row.documentId, "download")}>
@@ -459,7 +473,7 @@ export function DocumentsPage() {
                 {selected.fileUrl ? (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "file")}>
+                      <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "preview")}>
                         {copy({ en: "Preview", vi: "Xem trước" })}
                       </Button>
                       <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "download")}>

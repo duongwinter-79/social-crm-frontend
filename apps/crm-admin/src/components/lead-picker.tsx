@@ -1,5 +1,30 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useLeadsSearchQuery } from "@social-crm/api";
+
+/**
+ * Splits `text` on occurrences of `query` (case-insensitive) and returns a
+ * React node array where every matching segment is wrapped in a highlighted
+ * <mark> span. Non-matching segments are returned as plain strings.
+ *
+ * Returns the original string as-is when query is empty.
+ */
+function highlightText(text: string, query: string): ReactNode {
+  if (!query) return text;
+  // Escape regex special characters so user input can't break the split.
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase() ? (
+      <mark key={i} className="rounded-sm bg-yellow-100 px-0.5 text-slate-900 not-italic">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  );
+}
 
 interface LeadPickerProps {
   value: string; // leadId
@@ -86,8 +111,14 @@ export function LeadPicker({ value, onChange, label, placeholder }: LeadPickerPr
                   onClick={() => handleSelect(lead)}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="font-medium text-slate-900">{name}</span>
-                    {phone ? <span className="ml-2 text-slate-500">{phone}</span> : null}
+                    <span className="font-medium text-slate-900">
+                      {highlightText(name, inputValue)}
+                    </span>
+                    {phone ? (
+                      <span className="ml-2 text-slate-500">
+                        {highlightText(phone, inputValue)}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="shrink-0 font-mono text-xs text-slate-400">{idPrefix}…</span>
                 </button>

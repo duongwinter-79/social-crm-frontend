@@ -616,6 +616,31 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  /**
+   * Resolve a document to a usable URL.
+   *
+   * For R2 documents the backend returns a short-lived presigned URL. The
+   * caller opens or embeds that URL directly — the browser navigates to it
+   * natively, which avoids the CORS issue that arises when axios follows a
+   * cross-origin redirect to R2.
+   *
+   * For local-disk documents the backend returns { url: null }; in that case
+   * this method falls back to fetching the file as a blob through the streaming
+   * endpoint and building a local object URL.
+   */
+  async getDocumentUrl(id: string, download = false): Promise<{ url: string; filename: string; isObjectUrl: boolean }> {
+    const qs = download ? "?download=true" : "";
+    const result = await this.http.get<{ url: string | null; filename?: string }>(`/documents/${id}/download-url${qs}`);
+    if (result.data.url) {
+      return { url: result.data.url, filename: result.data.filename ?? `document-${id}`, isObjectUrl: false };
+    }
+    // Local disk fallback — stream through backend and create an object URL
+    const endpoint = download ? "download" : "file";
+    const response = await this.http.get<Blob>(`/documents/${id}/${endpoint}`, { responseType: "blob" });
+    const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `document-${id}`;
+    return { url: window.URL.createObjectURL(response.data), filename, isObjectUrl: true };
+  }
+
   async getDocumentFile(id: string, mode: "file" | "download" = "file") {
     const response = await this.http.get<Blob>(`/documents/${id}/${mode}`, {
       responseType: "blob"

@@ -14,7 +14,6 @@ import {
 } from "@social-crm/ui";
 import {
   apiClient,
-  triggerBlobDownload,
   useCandidateByLeadQuery,
   useFormStandardRegisterQuery,
   useUnlinkFormStandardMutation,
@@ -43,7 +42,7 @@ function FileActions({
 }: {
   documentId: string;
   fileUrl?: string | null;
-  openFile: (id: string, mode: "file" | "download") => void | Promise<void>;
+  openFile: (id: string, mode: "preview" | "download") => void | Promise<void>;
   copy: (t: { en: string; vi: string }) => string;
 }) {
   const ext = fileExtension(fileUrl);
@@ -52,16 +51,16 @@ function FileActions({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        {/* View — opens inline (PDF renders in browser; .docx triggers browser download) */}
-        <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "file")}>
+        {/* View — opens in new tab */}
+        <Button variant="secondary" size="sm" onClick={() => openFile(documentId, "preview")}>
           {copy({ en: "View", vi: "Xem" })}
         </Button>
 
-        {/* Edit — for Word: download to edit locally; for PDF: open inline */}
+        {/* Edit — for Word: download to edit locally; for PDF: open in new tab */}
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => openFile(documentId, isWord ? "download" : "file")}
+          onClick={() => openFile(documentId, isWord ? "download" : "preview")}
         >
           {copy({ en: "Edit", vi: "Chỉnh sửa" })}
         </Button>
@@ -125,17 +124,27 @@ export function ApplicationsPage() {
   const rows = registerQuery.data?.data ?? [];
   const selectedRow = rows.find((r) => r.lead.id === selectedLeadId) ?? null;
 
-  async function openFile(documentId: string, mode: "file" | "download") {
+  async function openFile(documentId: string, mode: "preview" | "download") {
     setFileActionError("");
     try {
-      const { blob, filename } = await apiClient.getDocumentFile(documentId, mode);
+      const { url, filename, isObjectUrl } = await apiClient.getDocumentUrl(documentId, mode === "download");
+
       if (mode === "download") {
-        triggerBlobDownload(blob, filename);
+        if (isObjectUrl) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          a.click();
+          window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
         return;
       }
-      const url = window.URL.createObjectURL(blob);
+
+      // Preview — open in new tab
       window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+      if (isObjectUrl) window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
     } catch {
       setFileActionError(
         copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." })
