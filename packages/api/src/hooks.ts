@@ -26,7 +26,7 @@ export function useTriggerZaloEnrichmentWorkerMutation() {
     onSuccess: (status) => {
       queryClient.setQueryData(["zalo", "enrichment-worker", "status"], status);
     },
-    meta: { successMessage: "Zalo enrichment worker triggered" }
+    meta: { successMessage: { en: "Zalo enrichment worker triggered", vi: "Đã kích hoạt worker làm giàu tên Zalo" } }
   });
 }
 
@@ -51,7 +51,7 @@ export function useTriggerAiExtractionWorkerMutation() {
     onSuccess: (status) => {
       queryClient.setQueryData(["ai-extraction", "worker", "status"], status);
     },
-    meta: { successMessage: "AI worker triggered" }
+    meta: { successMessage: { en: "AI worker triggered", vi: "Đã kích hoạt worker AI" } }
   });
 }
 
@@ -103,7 +103,7 @@ export function usePreviewLeadsImportMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["imports", "batches"] });
     },
-    meta: { successMessage: "Preview ready" }
+    meta: { successMessage: { en: "Preview ready", vi: "Xem trước sẵn sàng" } }
   });
 }
 
@@ -115,7 +115,7 @@ export function useApplyImportBatchMutation() {
       queryClient.invalidateQueries({ queryKey: ["imports", "batches"] });
       queryClient.invalidateQueries({ queryKey: ["imports", "batch", id] });
     },
-    meta: { successMessage: "Import started" }
+    meta: { successMessage: { en: "Import started", vi: "Đã bắt đầu nhập dữ liệu" } }
   });
 }
 
@@ -145,7 +145,7 @@ export function useTriggerImportNotesExtractionMutation() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ["imports", "batch", id, "notes-suggestions"] });
     },
-    meta: { successMessage: "Notes extraction started" }
+    meta: { successMessage: { en: "Notes extraction started", vi: "Đã bắt đầu trích xuất ghi chú" } }
   });
 }
 
@@ -160,7 +160,7 @@ export function useApplyImportNotesSuggestionsMutation() {
       queryClient.invalidateQueries({ queryKey: ["imports", "batch", args.id, "notes-suggestions"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
-    meta: { successMessage: "Suggestions applied" }
+    meta: { successMessage: { en: "Suggestions applied", vi: "Đã áp dụng gợi ý AI" } }
   });
 }
 
@@ -172,7 +172,7 @@ export function useCancelImportBatchMutation() {
       queryClient.invalidateQueries({ queryKey: ["imports", "batches"] });
       queryClient.invalidateQueries({ queryKey: ["imports", "batch", id] });
     },
-    meta: { successMessage: "Import cancelled" }
+    meta: { successMessage: { en: "Import cancelled", vi: "Đã huỷ nhập dữ liệu" } }
   });
 }
 
@@ -433,7 +433,7 @@ export function useUpdateLeadMutation() {
       queryClient.setQueryData(["lead", lead.id], lead);
       queryClient.invalidateQueries({ queryKey: ["lead", lead.id, "transitions"] });
     },
-    meta: { successMessage: "Lead updated" }
+    meta: { successMessage: { en: "Lead updated", vi: "Đã cập nhật ứng viên" } }
   });
 }
 
@@ -446,7 +446,7 @@ export function useRestoreLeadMutation() {
       queryClient.setQueryData(["lead", lead.id], lead);
       queryClient.invalidateQueries({ queryKey: ["lead", lead.id, "transitions"] });
     },
-    meta: { successMessage: "Lead restored" }
+    meta: { successMessage: { en: "Lead restored", vi: "Đã khôi phục ứng viên" } }
   });
 }
 
@@ -460,7 +460,7 @@ export function useUpdateLeadQualificationMutation(leadId: string) {
       queryClient.invalidateQueries({ queryKey: ["lead", leadId, "qualification"] });
       queryClient.invalidateQueries({ queryKey: ["lead", leadId, "ai-suggestions"] });
     },
-    meta: { successMessage: "Qualification saved" }
+    meta: { successMessage: { en: "Qualification saved", vi: "Đã lưu thông tin đánh giá" } }
   });
 }
 
@@ -549,7 +549,7 @@ export function useProcessThreadExtractionMutation() {
       clearPoll();
       setBackgroundStatus("failed");
     },
-    meta: { successMessage: "AI extraction started" }
+    meta: { successMessage: { en: "AI extraction started", vi: "Đã bắt đầu trích xuất AI" } }
   });
 
   return {
@@ -582,7 +582,7 @@ export function useCreateOrderMutation() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.setQueryData(["order", order.id], order);
     },
-    meta: { successMessage: "Order created" }
+    meta: { successMessage: { en: "Order created", vi: "Đã tạo đơn hàng" } }
   });
 }
 
@@ -594,7 +594,7 @@ export function useUpdateOrderMutation() {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.setQueryData(["order", order.id], order);
     },
-    meta: { successMessage: "Order updated" }
+    meta: { successMessage: { en: "Order updated", vi: "Đã cập nhật đơn hàng" } }
   });
 }
 
@@ -606,7 +606,7 @@ export function useUpdateApplicationMutation() {
       queryClient.setQueryData(["application", application.id], application);
       queryClient.invalidateQueries({ queryKey: ["applications"] });
     },
-    meta: { successMessage: "Application updated" }
+    meta: { successMessage: { en: "Application updated", vi: "Đã cập nhật hồ sơ ứng tuyển" } }
   });
 }
 
@@ -619,7 +619,7 @@ export function useCreateApplicationMutation() {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.setQueryData(["application", application.id], application);
     },
-    meta: { successMessage: "Application created" }
+    meta: { successMessage: { en: "Application created", vi: "Đã tạo hồ sơ ứng tuyển" } }
   });
 }
 
@@ -637,7 +637,7 @@ export function useCreateDocumentMutation() {
         queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
       }
     },
-    meta: { successMessage: "Document added" }
+    meta: { successMessage: { en: "Document added", vi: "Đã thêm giấy tờ" } }
   });
 }
 
@@ -659,7 +659,7 @@ export function useUploadFormStandardDocumentMutation() {
         queryClient.invalidateQueries({ queryKey: ["matching", "suggest", document.candidate_id] });
       }
     },
-    meta: { successMessage: "Standard form uploaded" }
+    meta: { successMessage: { en: "Standard form uploaded", vi: "Đã tải lên form chuẩn lao động" } }
   });
 }
 
@@ -682,7 +682,7 @@ export function useUnlinkFormStandardMutation() {
       queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", leadId] });
       queryClient.invalidateQueries({ queryKey: ["lead", leadId, "transitions"] });
     },
-    meta: { successMessage: "Hồ sơ đã được huỷ liên kết" }
+    meta: { successMessage: { en: "Document unlinked", vi: "Hồ sơ đã được huỷ liên kết" } }
   });
 }
 
@@ -700,7 +700,26 @@ export function useUpdateDocumentMutation() {
         queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
       }
     },
-    meta: { successMessage: "Document updated" }
+    meta: { successMessage: { en: "Document updated", vi: "Đã cập nhật giấy tờ" } }
+  });
+}
+
+export function useVerifyDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action, rejectionReason }: { id: string; action: "approve" | "reject"; rejectionReason?: string }) =>
+      apiClient.verifyDocument(id, { action, rejectionReason }),
+    onSuccess: (document) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      if (document.lead_id) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
+      if (document.candidate_id) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
+      }
+    },
+    meta: { successMessage: { en: "Document verified", vi: "Đã xác minh giấy tờ" } }
   });
 }
 
@@ -713,7 +732,7 @@ export function useCreateTrainingFinanceMutation() {
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });
       queryClient.invalidateQueries({ queryKey: ["training-finance", "lead", record.lead_id] });
     },
-    meta: { successMessage: "Training/finance record created" }
+    meta: { successMessage: { en: "Training/finance record created", vi: "Đã tạo hồ sơ đào tạo/tài chính" } }
   });
 }
 
@@ -725,7 +744,7 @@ export function useUpdateTrainingFinanceMutation() {
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });
       queryClient.invalidateQueries({ queryKey: ["training-finance", "lead", record.lead_id] });
     },
-    meta: { successMessage: "Training/finance record updated" }
+    meta: { successMessage: { en: "Training/finance record updated", vi: "Đã cập nhật hồ sơ đào tạo/tài chính" } }
   });
 }
 
@@ -736,7 +755,7 @@ export function useCreateUserMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    meta: { successMessage: "User created" }
+    meta: { successMessage: { en: "User created", vi: "Đã tạo người dùng" } }
   });
 }
 
@@ -749,7 +768,7 @@ export function useUpdateUserMutation() {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.setQueryData(["users", user.id], user);
     },
-    meta: { successMessage: "User updated" }
+    meta: { successMessage: { en: "User updated", vi: "Đã cập nhật người dùng" } }
   });
 }
 
@@ -762,7 +781,7 @@ export function useRevokeAdminSessionMutation() {
       queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "system-status"] });
     },
-    meta: { successMessage: "Session revoked" }
+    meta: { successMessage: { en: "Session revoked", vi: "Đã thu hồi phiên đăng nhập" } }
   });
 }
 

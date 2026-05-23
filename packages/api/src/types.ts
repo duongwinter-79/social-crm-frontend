@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "staff";
+export type UserRole = "admin" | "recruiter" | "document_staff" | "finance_staff" | "user" | "staff";
 
 export interface ApiEnvelope<T> {
   data: T;

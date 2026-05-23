@@ -611,6 +611,11 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async verifyDocument(id: string, body: { action: "approve" | "reject"; rejectionReason?: string }) {
+    const response = await this.http.patch<ApiEnvelope<DocumentRecord> | DocumentRecord>(`/documents/${id}/verify`, body);
+    return unwrapEnvelope(response.data);
+  }
+
   async getDocumentFile(id: string, mode: "file" | "download" = "file") {
     const response = await this.http.get<Blob>(`/documents/${id}/${mode}`, {
       responseType: "blob"

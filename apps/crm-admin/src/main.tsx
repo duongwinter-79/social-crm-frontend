@@ -9,12 +9,25 @@ import "./styles/index.css";
 
 /**
  * Mutations opt into success toasts by passing
- *   meta: { successMessage: 'Lead saved' }
- * (or successMessage as a function of the mutation result for dynamic copy).
+ *   meta: { successMessage: { en: 'Lead saved', vi: 'Đã lưu hồ sơ' } }
+ * (or a plain string / function for cases that don't need translation).
  *
- * This avoids the spammy alternative of toasting every mutation by default.
+ * The language is read from localStorage at toast time using the same key
+ * as I18nProvider — no React context needed here.
  */
-type SuccessMessageInput = string | ((data: unknown) => string | null | undefined);
+type SuccessMessageInput =
+  | string
+  | { en: string; vi: string }
+  | ((data: unknown) => string | null | undefined);
+
+function resolveSuccessMessage(raw: SuccessMessageInput, data: unknown): string | null | undefined {
+  if (typeof raw === "function") return raw(data);
+  if (typeof raw === "object") {
+    const lang = typeof window !== "undefined" ? window.localStorage.getItem("crm-admin-lang") : null;
+    return lang === "vi" ? raw.vi : raw.en;
+  }
+  return raw;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,10 +51,7 @@ const queryClient = new QueryClient({
     onSuccess: (data, _variables, _context, mutation) => {
       const meta = mutation.meta as { successMessage?: SuccessMessageInput } | undefined;
       const raw = meta?.successMessage;
-      const message =
-        typeof raw === "function"
-          ? raw(data)
-          : raw;
+      const message = raw !== undefined ? resolveSuccessMessage(raw, data) : undefined;
       if (message) {
         emitRequestNotification({ message, tone: "success" });
       }

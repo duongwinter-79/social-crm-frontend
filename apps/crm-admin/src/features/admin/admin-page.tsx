@@ -32,7 +32,7 @@ import {
 } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 
-const ROLE_OPTIONS = ["", "admin", "staff"] as const;
+const ROLE_OPTIONS = ["", "admin", "recruiter", "document_staff", "finance_staff", "user"] as const;
 const PAGE_SIZE = 25;
 
 function toneForRole(role: string) {
@@ -55,13 +55,13 @@ export function AdminPage() {
   const [createForm, setCreateForm] = useState({
     username: "",
     password: "",
-    role: "staff",
+    role: "recruiter",
     isActive: "true"
   });
   const [editForm, setEditForm] = useState({
     username: "",
     password: "",
-    role: "staff",
+    role: "recruiter",
     isActive: "true"
   });
 
@@ -260,8 +260,11 @@ export function AdminPage() {
               <Input label={copy({ en: "Reset password (optional)", vi: "Đặt lại mật khẩu (tùy chọn)" })} type="password" value={editForm.password} onChange={(e) => setEditForm((s) => ({ ...s, password: e.target.value }))} />
               <FieldGroup columns={2}>
                 <Select label={copy({ en: "Role", vi: "Vai trò" })} value={editForm.role} onChange={(e) => setEditForm((s) => ({ ...s, role: e.target.value }))}>
-                  <option value="staff">{copy({ en: "Staff", vi: "Nhân viên" })}</option>
-                  <option value="admin">{copy({ en: "Admin", vi: "Quản trị" })}</option>
+                  <option value="recruiter">{formatEnum("recruiter")}</option>
+                  <option value="document_staff">{formatEnum("document_staff")}</option>
+                  <option value="finance_staff">{formatEnum("finance_staff")}</option>
+                  <option value="admin">{formatEnum("admin")}</option>
+                  <option value="user">{formatEnum("user")}</option>
                 </Select>
                 <Select label={copy({ en: "Active", vi: "Hoạt động" })} value={editForm.isActive} onChange={(e) => setEditForm((s) => ({ ...s, isActive: e.target.value }))}>
                   <option value="true">{copy({ en: "Active", vi: "Hoạt động" })}</option>
@@ -308,8 +311,11 @@ export function AdminPage() {
             <Input label={copy({ en: "Initial password", vi: "Mật khẩu ban đầu" })} type="password" value={createForm.password} onChange={(e) => setCreateForm((s) => ({ ...s, password: e.target.value }))} />
             <FieldGroup columns={2}>
               <Select label={copy({ en: "Role", vi: "Vai trò" })} value={createForm.role} onChange={(e) => setCreateForm((s) => ({ ...s, role: e.target.value }))}>
-                <option value="staff">{copy({ en: "Staff", vi: "Nhân viên" })}</option>
-                <option value="admin">{copy({ en: "Admin", vi: "Quản trị" })}</option>
+                <option value="recruiter">{formatEnum("recruiter")}</option>
+                <option value="document_staff">{formatEnum("document_staff")}</option>
+                <option value="finance_staff">{formatEnum("finance_staff")}</option>
+                <option value="admin">{formatEnum("admin")}</option>
+                <option value="user">{formatEnum("user")}</option>
               </Select>
               <Select label={copy({ en: "Active", vi: "Hoạt động" })} value={createForm.isActive} onChange={(e) => setCreateForm((s) => ({ ...s, isActive: e.target.value }))}>
                 <option value="true">{copy({ en: "Active", vi: "Hoạt động" })}</option>
@@ -327,7 +333,7 @@ export function AdminPage() {
                   },
                   {
                     onSuccess: () => {
-                      setCreateForm({ username: "", password: "", role: "staff", isActive: "true" });
+                      setCreateForm({ username: "", password: "", role: "recruiter", isActive: "true" });
                     }
                   }
                 )

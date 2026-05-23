@@ -38,7 +38,7 @@ export function LoginPage() {
     setError(null);
 
     try {
-      await apiClient.login(username, password);
+      await apiClient.login(username.trim().toLowerCase(), password);
       navigate("/dashboard");
     } catch (err: unknown) {
       const message = getRequestErrorMessage(err, copy({ en: "Login failed", vi: "Đăng nhập thất bại" }));

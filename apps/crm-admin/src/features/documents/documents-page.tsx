@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge,
@@ -26,10 +26,19 @@ import {
   useFormStandardRegisterQuery,
   useLeadDocumentChecklistQuery,
   useUploadFormStandardDocumentMutation,
-  useUpdateDocumentMutation
+  useUpdateDocumentMutation,
+  useVerifyDocumentMutation,
+  useSessionStore
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import type { DocumentChecklistSummary, DocumentRecord, FormStandardRegisterRow } from "@social-crm/api";
+
+/** Roles that can approve/reject documents. Mirrors ROLE_PERMISSIONS on the backend. */
+const VERIFY_ROLES = new Set(["admin", "document_staff"]);
+
+function hasVerifyPermission(roles: string[]): boolean {
+  return roles.some((r) => VERIFY_ROLES.has(r));
+}
 
 const DOC_TYPES = ["", "form_standard", "passport", "criminal_record", "health_check", "diploma", "work_permit", "other"] as const;
 const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
@@ -62,13 +71,16 @@ export function DocumentsPage() {
   const [selectedId, setSelectedId] = useState("");
   const [editForm, setEditForm] = useState({
     status: "",
-    fileUrl: "",
-    storageBucket: "",
     issueDate: "",
     expiryDate: ""
   });
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [fileActionError, setFileActionError] = useState("");
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerMime, setViewerMime] = useState<string>("application/pdf");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const viewerUrlRef = useRef<string | null>(null);
 
   const candidateByLeadQuery = useCandidateByLeadQuery(filters.leadId || undefined);
   const resolvedCandidateId = filters.candidateId || candidateByLeadQuery.data?.id || undefined;
@@ -90,6 +102,9 @@ export function DocumentsPage() {
   const candidateChecklistQuery = useCandidateDocumentChecklistQuery(resolvedCandidateId);
   const uploadFormStandard = useUploadFormStandardDocumentMutation();
   const updateDocument = useUpdateDocumentMutation();
+  const verifyDocument = useVerifyDocumentMutation();
+  const currentUser = useSessionStore((s) => s.user);
+  const canVerify = hasVerifyPermission(currentUser?.roles ?? []);
 
   const records = documentsQuery.data?.data ?? [];
   const filteredRecords = useMemo(() => {
@@ -110,6 +125,15 @@ export function DocumentsPage() {
     setRegisterPage(0);
   }, [filters.leadId, filters.candidateId, filters.docType, filters.status, filters.search]);
 
+  // Revoke previous viewer blob URL to avoid memory leak
+  function revokeViewer() {
+    if (viewerUrlRef.current) {
+      window.URL.revokeObjectURL(viewerUrlRef.current);
+      viewerUrlRef.current = null;
+    }
+    setViewerUrl(null);
+  }
+
   async function openDocumentFile(documentId: string, mode: "file" | "download") {
     setFileActionError("");
     try {
@@ -118,13 +142,25 @@ export function DocumentsPage() {
         triggerBlobDownload(blob, filename);
         return;
       }
+      revokeViewer();
       const url = window.URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+      viewerUrlRef.current = url;
+      setViewerUrl(url);
+      setViewerMime(blob.type || "application/pdf");
     } catch {
       setFileActionError(copy({ en: "Could not open this file. Check whether it was uploaded through the CRM.", vi: "Không mở được file này. Kiểm tra file đã được tải lên qua CRM chưa." }));
     }
   }
+
+  // Drag-and-drop handlers for the upload dropzone
+  const onDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); setIsDragOver(true); }, []);
+  const onDragLeave = useCallback(() => setIsDragOver(false), []);
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) setUploadFile(file);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -297,8 +333,6 @@ export function DocumentsPage() {
                         setSelectedId(record.id);
                         setEditForm({
                           status: record.status,
-                          fileUrl: record.fileUrl ?? "",
-                          storageBucket: record.storageBucket ?? "",
                           issueDate: record.issueDate ?? "",
                           expiryDate: record.expiryDate ?? ""
                         });
@@ -352,20 +386,40 @@ export function DocumentsPage() {
                   { label: copy({ en: "Candidate", vi: "Hồ sơ" }), value: resolvedCandidateId ?? copy({ en: "Not linked yet", vi: "Chưa liên kết" }) }
                 ]}
               />
-              <label className="block text-sm font-medium text-slate-700">
-                {copy({ en: "Form file", vi: "File form" })}
-                <input
-                  type="file"
-                  accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
-                  onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)}
-                  className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
-                />
-              </label>
-              {uploadFile ? (
-                <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
-                  {uploadFile.name} · {(uploadFile.size / 1024).toFixed(0)} KB
+              {/* Drag-and-drop dropzone */}
+              <div
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition-colors ${isDragOver ? "border-indigo-400 bg-indigo-50" : "border-slate-300 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/40"}`}
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
                 </div>
-              ) : null}
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    {copy({ en: "Drag & drop a file here", vi: "Kéo & thả file vào đây" })}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">{copy({ en: "PDF, DOC, DOCX — max 15 MB", vi: "PDF, DOC, DOCX — tối đa 15 MB" })}</p>
+                </div>
+                <label className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                  {copy({ en: "Browse file", vi: "Chọn file" })}
+                  <input
+                    type="file"
+                    accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                    className="sr-only"
+                  />
+                </label>
+                {uploadFile ? (
+                  <div className="w-full rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
+                    {uploadFile.name} · {(uploadFile.size / 1024).toFixed(0)} KB
+                    <button type="button" onClick={() => setUploadFile(null)} className="ml-3 text-indigo-400 hover:text-indigo-700">✕</button>
+                  </div>
+                ) : null}
+              </div>
               {!filters.leadId && uploadFile ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                   {copy({ en: "Enter a Lead ID above before uploading.", vi: "Nhập Mã ứng viên phía trên trước khi tải lên." })}
@@ -403,25 +457,67 @@ export function DocumentsPage() {
                   ]}
                 />
                 {selected.fileUrl ? (
-                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "file")}>
-                      {copy({ en: "Open file", vi: "Mở file" })}
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "download")}>
-                      {copy({ en: "Download", vi: "Tải xuống" })}
-                    </Button>
-                    <span className="min-w-0 flex-1 truncate text-xs text-slate-500">{selected.fileUrl}</span>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "file")}>
+                        {copy({ en: "Preview", vi: "Xem trước" })}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "download")}>
+                        {copy({ en: "Download", vi: "Tải xuống" })}
+                      </Button>
+                      <span className="min-w-0 flex-1 truncate text-xs text-slate-500">{selected.fileUrl}</span>
+                    </div>
+                    {/* Inline file viewer */}
+                    {viewerUrl && selected.id === selectedId ? (
+                      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                        <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-500">
+                          <span>{copy({ en: "Inline preview", vi: "Xem tại chỗ" })}</span>
+                          <button type="button" onClick={revokeViewer} className="hover:text-slate-800">✕ {copy({ en: "Close", vi: "Đóng" })}</button>
+                        </div>
+                        {viewerMime.startsWith("image/") ? (
+                          <img src={viewerUrl} alt="document preview" className="max-h-[480px] w-full object-contain" />
+                        ) : (
+                          <iframe src={viewerUrl} title="document preview" className="h-[480px] w-full border-0" />
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 {fileActionError ? <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{fileActionError}</div> : null}
+
+                {/* Verify actions — only for document_staff and admin */}
+                {canVerify ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <p className="text-sm font-medium text-amber-900">{copy({ en: "Document verification", vi: "Xác minh giấy tờ" })}</p>
+                    <Input
+                      label={copy({ en: "Rejection reason (if rejecting)", vi: "Lý do từ chối (nếu từ chối)" })}
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                    />
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => verifyDocument.mutate({ id: selected.id, action: "approve" })}
+                        disabled={verifyDocument.isPending}
+                      >
+                        {copy({ en: "Approve", vi: "Duyệt" })}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => verifyDocument.mutate({ id: selected.id, action: "reject", rejectionReason: rejectionReason || undefined })}
+                        disabled={verifyDocument.isPending}
+                      >
+                        {copy({ en: "Reject", vi: "Từ chối" })}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
                 <FieldGroup>
                   <Select label={copy({ en: "Status", vi: "Trạng thái" })} value={editForm.status} onChange={(e) => setEditForm((s) => ({ ...s, status: e.target.value }))}>
                     {DOC_STATUSES.filter(Boolean).map((value) => (
                       <option key={value} value={value}>{formatDocumentStatus(value)}</option>
                     ))}
                   </Select>
-                  <Input label={copy({ en: "File URL", vi: "URL file" })} value={editForm.fileUrl} onChange={(e) => setEditForm((s) => ({ ...s, fileUrl: e.target.value }))} />
-                  <Input label={copy({ en: "Storage bucket", vi: "Bucket lưu trữ" })} value={editForm.storageBucket} onChange={(e) => setEditForm((s) => ({ ...s, storageBucket: e.target.value }))} />
                   <Input label={copy({ en: "Issue date", vi: "Ngày cấp" })} type="date" value={editForm.issueDate} onChange={(e) => setEditForm((s) => ({ ...s, issueDate: e.target.value }))} />
                   <Input label={copy({ en: "Expiry date", vi: "Ngày hết hạn" })} type="date" value={editForm.expiryDate} onChange={(e) => setEditForm((s) => ({ ...s, expiryDate: e.target.value }))} />
                 </FieldGroup>
@@ -431,8 +527,6 @@ export function DocumentsPage() {
                       id: selected.id,
                       patch: {
                         status: editForm.status || undefined,
-                        fileUrl: editForm.fileUrl || null,
-                        storageBucket: editForm.storageBucket || null,
                         issueDate: editForm.issueDate || null,
                         expiryDate: editForm.expiryDate || null
                       }
