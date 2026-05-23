@@ -351,10 +351,15 @@ export function useCandidateDocumentChecklistQuery(candidateId?: string) {
   });
 }
 
-export function useFormStandardRegisterQuery(params: { offset: number; limit: number; status?: string; search?: string }) {
+export function useFormStandardRegisterQuery(
+  params: { offset: number; limit: number; status?: string; search?: string } | undefined,
+  options?: { enabled?: boolean },
+) {
+  const safeParams = params ?? { offset: 0, limit: 25 };
   return useQuery({
-    queryKey: ["documents", "form-standard-register", params],
-    queryFn: () => apiClient.getFormStandardRegister(params)
+    queryKey: ["documents", "form-standard-register", safeParams],
+    queryFn: () => apiClient.getFormStandardRegister(safeParams),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -669,6 +674,25 @@ export function useLeadsSearchQuery(search: string) {
     queryFn: () => apiClient.listLeads({ offset: 0, limit: 40, search: search || undefined }),
     enabled: search.length >= 1,
     staleTime: 10_000,
+  });
+}
+
+// ── Form-to-lead match ──────────────────────────────────────────────────────
+
+export function useFormPreviewQuery(documentId: string | null) {
+  return useQuery({
+    queryKey: ["documents", "form-preview", documentId],
+    queryFn: () => apiClient.getFormPreview(documentId!),
+    enabled: Boolean(documentId),
+    staleTime: 0,
+    retry: false,
+  });
+}
+
+export function useApplyFormToLeadMutation() {
+  return useMutation({
+    mutationFn: ({ documentId, fields }: { documentId: string; fields: Record<string, any> }) =>
+      apiClient.applyFormToLead(documentId, fields),
   });
 }
 

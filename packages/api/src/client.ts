@@ -652,6 +652,21 @@ export class SocialCrmApiClient {
     return { blob: response.data, filename };
   }
 
+  // ── Form-to-lead match ──────────────────────────────────────────────────────
+
+  async getFormPreview(documentId: string): Promise<{
+    extracted: Record<string, any>;
+    current: Record<string, any>;
+    leadId: string;
+  }> {
+    const res = await this.http.get(`/documents/${documentId}/form-preview`);
+    return unwrapEnvelope(res.data);
+  }
+
+  async applyFormToLead(documentId: string, fields: Record<string, any>): Promise<void> {
+    await this.http.post(`/documents/${documentId}/apply-to-lead`, { fields });
+  }
+
   // ── Google Drive edit session ────────────────────────────────────────────────
 
   async openEditSession(documentId: string): Promise<{ sessionId: string; editUrl: string; filename: string }> {
