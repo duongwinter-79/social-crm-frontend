@@ -38,6 +38,11 @@ function leadLabel(row: FormStandardRegisterRow) {
   return row.lead.fullName || row.lead.displayName || row.lead.phone || row.lead.id;
 }
 
+function apiErrorMessage(err: unknown): string | null {
+  const message = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message;
+  return typeof message === "string" && message.trim() ? message : null;
+}
+
 export function ApplicationDetailPage() {
   const { copy, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
@@ -124,9 +129,10 @@ export function ApplicationDetailPage() {
         localStorage.setItem("crm-app-edit-session", JSON.stringify(session));
         window.open(editUrl, "_blank", "noopener,noreferrer");
       },
-      onError: () => {
+      onError: (err: unknown) => {
         setFileActionError(
-          copy({ en: "Could not open Google Docs. Check Drive configuration.", vi: "Không mở được Google Docs. Kiểm tra cấu hình Drive." }),
+          apiErrorMessage(err)
+          ?? copy({ en: "Could not open Google Docs. Check Drive configuration.", vi: "Không mở được Google Docs. Kiểm tra cấu hình Drive." }),
         );
       },
     });
