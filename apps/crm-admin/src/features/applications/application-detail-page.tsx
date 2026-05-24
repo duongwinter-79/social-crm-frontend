@@ -77,7 +77,7 @@ export function ApplicationDetailPage() {
   const [lastUploadedDocumentId, setLastUploadedDocumentId] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [editSession, setEditSession] = useState<{
-    documentId: string; sessionId: string; editUrl: string;
+    documentId: string; sessionId: string; editUrl: string; driveFileId?: string;
   } | null>(() => {
     try {
       const raw = localStorage.getItem("crm-app-edit-session");
@@ -147,8 +147,8 @@ export function ApplicationDetailPage() {
     setFileActionError("");
     const docsTab = openPendingGoogleDocsTab();
     openEditSession.mutate(documentId, {
-      onSuccess: ({ sessionId, editUrl }) => {
-        const session = { documentId, sessionId, editUrl };
+      onSuccess: ({ sessionId, editUrl, driveFileId }) => {
+        const session = { documentId, sessionId, editUrl, driveFileId };
         setEditSession(session);
         localStorage.setItem("crm-app-edit-session", JSON.stringify(session));
         if (docsTab) {

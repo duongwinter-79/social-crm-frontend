@@ -679,8 +679,8 @@ export class SocialCrmApiClient {
 
   // ── Google Drive edit session ────────────────────────────────────────────────
 
-  async openEditSession(documentId: string): Promise<{ sessionId: string; editUrl: string; filename: string }> {
-    const res = await this.http.post<{ sessionId: string; editUrl: string; filename: string }>(
+  async openEditSession(documentId: string): Promise<{ sessionId: string; editUrl: string; filename: string; driveFileId: string }> {
+    const res = await this.http.post<{ sessionId: string; editUrl: string; filename: string; driveFileId: string }>(
       `/documents/${documentId}/edit-session`,
     );
     return unwrapEnvelope(res.data);

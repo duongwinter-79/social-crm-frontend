@@ -6,6 +6,7 @@ interface EditSession {
   documentId: string;
   sessionId: string;
   editUrl: string;
+  driveFileId?: string;
 }
 
 interface Props {
@@ -92,6 +93,11 @@ export function EditSessionBanner({ session, onExpired, onClosed }: Props) {
       </div>
       {closeError ? (
         <div className="mt-2 text-xs font-medium text-rose-700">{closeError}</div>
+      ) : null}
+      {session.driveFileId ? (
+        <div className="mt-2 font-mono text-[11px] text-amber-700/80">
+          {copy({ en: "Drive file ID", vi: "ID file Drive" })}: {session.driveFileId}
+        </div>
       ) : null}
     </div>
   );

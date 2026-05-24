@@ -108,7 +108,7 @@ export function DocumentsPage() {
   // Google Drive edit session state — persisted in localStorage so banner
   // survives page refresh while the user is editing in another tab.
   const [editSession, setEditSession] = useState<{
-    documentId: string; sessionId: string; editUrl: string;
+    documentId: string; sessionId: string; editUrl: string; driveFileId?: string;
   } | null>(() => {
     try {
       const raw = localStorage.getItem("crm-doc-edit-session");
@@ -209,8 +209,8 @@ export function DocumentsPage() {
   function openGoogleEdit(documentId: string) {
     const docsTab = openPendingGoogleDocsTab();
     openEditSession.mutate(documentId, {
-      onSuccess: ({ sessionId, editUrl, filename }) => {
-        const session = { documentId, sessionId, editUrl };
+      onSuccess: ({ sessionId, editUrl, filename, driveFileId }) => {
+        const session = { documentId, sessionId, editUrl, driveFileId };
         setEditSession(session);
         localStorage.setItem("crm-doc-edit-session", JSON.stringify(session));
         if (docsTab) {
