@@ -649,7 +649,13 @@ export function useCreateDocumentMutation() {
 export function useUploadFormStandardDocumentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { leadId: string; candidateId?: string; status?: string; file: File }) =>
+    mutationFn: (payload: {
+      leadId: string;
+      candidateId?: string;
+      status?: string;
+      file: File;
+      onUploadProgress?: (progress: number) => void;
+    }) =>
       apiClient.uploadFormStandardDocument(payload),
     onSuccess: (document) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEditSessionStatusQuery, useCloseEditSessionMutation } from "@social-crm/api";
+import { useI18n } from "@/i18n";
 
 interface EditSession {
   documentId: string;
@@ -19,6 +20,7 @@ interface Props {
  * "Save & close" forces a final sync before deleting the Drive file.
  */
 export function EditSessionBanner({ session, onExpired, onClosed }: Props) {
+  const { copy } = useI18n();
   const close = useCloseEditSessionMutation();
   const [closeError, setCloseError] = useState<string | null>(null);
 
@@ -39,8 +41,8 @@ export function EditSessionBanner({ session, onExpired, onClosed }: Props) {
     : null;
 
   const syncLabel = lastSynced
-    ? `Auto-saved at ${lastSynced}`
-    : "Waiting for first save in Google Docs...";
+    ? copy({ en: `Auto-saved at ${lastSynced}`, vi: `Đã tự lưu lúc ${lastSynced}` })
+    : copy({ en: "Waiting for first save in Google Docs...", vi: "Đang chờ lần lưu đầu tiên trong Google Docs..." });
 
   function handleClose() {
     setCloseError(null);
@@ -49,7 +51,10 @@ export function EditSessionBanner({ session, onExpired, onClosed }: Props) {
       {
         onSuccess: onClosed,
         onError: () => {
-          setCloseError("Could not save changes back to storage. Keep this session open and retry.");
+          setCloseError(copy({
+            en: "Could not save changes back to storage. Keep this session open and retry.",
+            vi: "Không thể lưu thay đổi về kho lưu trữ. Giữ phiên này mở và thử lại.",
+          }));
         },
       },
     );
@@ -58,18 +63,20 @@ export function EditSessionBanner({ session, onExpired, onClosed }: Props) {
   return (
     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
       <div className="flex items-center gap-3">
-        <span className="shrink-0 text-base">Edit</span>
+        <span className="shrink-0 text-base">{copy({ en: "Edit", vi: "Chỉnh sửa" })}</span>
         <span className="flex-1">
-          <span className="font-medium">Google Docs edit session active.</span>{" "}
+          <span className="font-medium">
+            {copy({ en: "Google Docs edit session active.", vi: "Phiên chỉnh sửa Google Docs đang hoạt động." })}
+          </span>{" "}
           {syncLabel}
           {" - "}
           <a
             href={session.editUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-amber-700"
+          className="underline hover:text-amber-700"
           >
-            Re-open Docs
+            {copy({ en: "Re-open Docs", vi: "Mở lại Docs" })}
           </a>
         </span>
         <button
@@ -78,7 +85,9 @@ export function EditSessionBanner({ session, onExpired, onClosed }: Props) {
           disabled={close.isPending}
           className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
         >
-          {close.isPending ? "Saving..." : "Save & close"}
+          {close.isPending
+            ? copy({ en: "Saving...", vi: "Đang lưu..." })
+            : copy({ en: "Save & close", vi: "Lưu & đóng" })}
         </button>
       </div>
       {closeError ? (

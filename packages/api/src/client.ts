@@ -589,7 +589,13 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async uploadFormStandardDocument(payload: { leadId: string; candidateId?: string; status?: string; file: File }) {
+  async uploadFormStandardDocument(payload: {
+    leadId: string;
+    candidateId?: string;
+    status?: string;
+    file: File;
+    onUploadProgress?: (progress: number) => void;
+  }) {
     const formData = new FormData();
     formData.append("leadId", payload.leadId);
     if (payload.candidateId) formData.append("candidateId", payload.candidateId);
@@ -597,7 +603,11 @@ export class SocialCrmApiClient {
     formData.append("file", payload.file);
 
     const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents/form-standard/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
+      headers: { "Content-Type": "multipart/form-data" },
+      onUploadProgress: (event) => {
+        if (!payload.onUploadProgress || !event.total) return;
+        payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      }
     });
     return unwrapEnvelope(response.data);
   }

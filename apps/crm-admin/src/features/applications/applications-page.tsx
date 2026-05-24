@@ -3,14 +3,10 @@ import { useNavigate } from "react-router-dom";
 import {
   Badge,
   Button,
-  EmptyState,
-  FieldGroup,
   Panel,
   PaginationFooter,
-  SectionHeader,
   Select,
   Toolbar,
-  ToolbarActions
 } from "@social-crm/ui";
 import { useFormStandardRegisterQuery } from "@social-crm/api";
 import { useI18n } from "@/i18n";
@@ -45,6 +41,7 @@ export function ApplicationsPage() {
   });
 
   const rows = registerQuery.data?.data ?? [];
+  const totalRecords = registerQuery.data?.total ?? 0;
 
   function openDetail(leadId?: string) {
     navigate(leadId ? `/applications/detail?leadId=${leadId}` : "/applications/detail");
@@ -52,55 +49,62 @@ export function ApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        eyebrow={copy({ en: "Applications", vi: "Hồ sơ ứng tuyển" })}
-        title={copy({ en: "Hồ sơ ứng tuyển", vi: "Hồ sơ ứng tuyển" })}
-        description={copy({
-          en: "Browse all worker application files and matched orders.",
-          vi: "Xem danh sách hồ sơ ứng tuyển và đơn hàng đã ghép.",
-        })}
-      />
-
       <Toolbar compact className="border-slate-200/90">
-        <FieldGroup columns={2}>
-          <Select
-            label={copy({ en: "Status", vi: "Trạng thái" })}
-            value={filters.status}
-            onChange={(e) => { setFilters((s) => ({ ...s, status: e.target.value })); setPage(0); }}
-          >
-            <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
-            {DOC_STATUSES.filter(Boolean).map((v) => (
-              <option key={v} value={v}>{formatDocumentStatus(v)}</option>
-            ))}
-          </Select>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              {copy({ en: "Search name / phone", vi: "Tìm tên / SĐT" })}
-            </label>
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => { setFilters((s) => ({ ...s, search: e.target.value })); setPage(0); }}
-              placeholder={copy({ en: "Search…", vi: "Tìm kiếm…" })}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-            />
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                {copy({ en: "Application register", vi: "Danh sách hồ sơ" })}
+              </div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {copy({
+                  en: "Filter candidates, then open a row to manage its file.",
+                  vi: "Lọc ứng viên rồi mở từng dòng để quản lý hồ sơ.",
+                })}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <Badge tone="neutral">
+                {copy({ en: `${totalRecords} records`, vi: `${totalRecords} hồ sơ` })}
+              </Badge>
+              <Button onClick={() => openDetail()} className="shadow-[0_12px_24px_rgba(79,70,229,0.18)]">
+                {copy({ en: "Upload file", vi: "Tải hồ sơ lên" })}
+              </Button>
+            </div>
           </div>
-        </FieldGroup>
-        <ToolbarActions>
-          <Badge tone="neutral">
-            {copy({ en: `${registerQuery.data?.total ?? 0} records`, vi: `${registerQuery.data?.total ?? 0} hồ sơ` })}
-          </Badge>
-          <Button onClick={() => openDetail()}>
-            {copy({ en: "Upload form", vi: "Tải hồ sơ lên" })}
-          </Button>
-        </ToolbarActions>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(220px,320px)_minmax(280px,1fr)]">
+            <Select
+              label={copy({ en: "Status", vi: "Trạng thái" })}
+              value={filters.status}
+              onChange={(e) => { setFilters((s) => ({ ...s, status: e.target.value })); setPage(0); }}
+            >
+              <option value="">{copy({ en: "All statuses", vi: "Tất cả trạng thái" })}</option>
+              {DOC_STATUSES.filter(Boolean).map((v) => (
+                <option key={v} value={v}>{formatDocumentStatus(v)}</option>
+              ))}
+            </Select>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-600">
+                {copy({ en: "Search name / phone", vi: "Tìm tên / SĐT" })}
+              </label>
+              <input
+                type="text"
+                value={filters.search}
+                onChange={(e) => { setFilters((s) => ({ ...s, search: e.target.value })); setPage(0); }}
+                placeholder={copy({ en: "Search candidate name or phone…", vi: "Tìm theo tên hoặc SĐT…" })}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+            </div>
+          </div>
+        </div>
       </Toolbar>
 
       <Panel
-        title={copy({ en: "Application file register", vi: "Danh sách hồ sơ ứng tuyển" })}
+        title={copy({ en: "Application files", vi: "Hồ sơ ứng tuyển" })}
         subtitle={copy({
-          en: "Click a row to view, upload, or manage the application file for that candidate.",
-          vi: "Nhấn vào một dòng để xem, tải lên hoặc quản lý hồ sơ của ứng viên.",
+          en: "Open a row to view, replace, download, or remove the candidate file.",
+          vi: "Mở một dòng để xem, thay thế, tải xuống hoặc xoá hồ sơ.",
         })}
       >
         {rows.length ? (
@@ -165,13 +169,22 @@ export function ApplicationsPage() {
             </table>
           </div>
         ) : (
-          <EmptyState
-            title={copy({ en: "No records found", vi: "Không tìm thấy hồ sơ" })}
-            description={copy({
-              en: "No application files match your filters. Click \"Upload form\" to add one.",
-              vi: "Không tìm thấy hồ sơ phù hợp. Nhấn \"Tải hồ sơ lên\" để thêm mới.",
-            })}
-          />
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
+            <h3 className="text-base font-semibold text-slate-900">
+              {copy({ en: "No records found", vi: "Không tìm thấy hồ sơ" })}
+            </h3>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-500">
+              {copy({
+                en: "No application files match your filters.",
+                vi: "Không tìm thấy hồ sơ phù hợp với bộ lọc.",
+              })}
+            </p>
+            <div className="mt-4">
+              <Button onClick={() => openDetail()}>
+                {copy({ en: "Upload file", vi: "Tải hồ sơ lên" })}
+              </Button>
+            </div>
+          </div>
         )}
         <PaginationFooter
           page={page}

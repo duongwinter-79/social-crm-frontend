@@ -69,6 +69,15 @@ function googleViewerUrl(url: string): string {
   return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
 }
 
+function openPendingGoogleDocsTab(): Window | null {
+  const tab = window.open("about:blank", "_blank");
+  if (tab) {
+    tab.document.title = "Opening Google Docs";
+    tab.document.body.innerHTML = "<p style=\"font-family: sans-serif; padding: 24px;\">Opening Google Docs...</p>";
+  }
+  return tab;
+}
+
 export function DocumentsPage() {
   const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
@@ -198,12 +207,17 @@ export function DocumentsPage() {
   }
 
   function openGoogleEdit(documentId: string) {
+    const docsTab = openPendingGoogleDocsTab();
     openEditSession.mutate(documentId, {
       onSuccess: ({ sessionId, editUrl, filename }) => {
         const session = { documentId, sessionId, editUrl };
         setEditSession(session);
         localStorage.setItem("crm-doc-edit-session", JSON.stringify(session));
-        window.open(editUrl, "_blank", "noopener,noreferrer");
+        if (docsTab) {
+          docsTab.location.href = editUrl;
+        } else {
+          window.open(editUrl, "_blank", "noopener,noreferrer");
+        }
         setFileActionError(
           copy({
             en: `"${filename}" opened in Google Docs. Changes auto-save to CRM every 30 s.`,
@@ -212,6 +226,7 @@ export function DocumentsPage() {
         );
       },
       onError: (err: unknown) => {
+        docsTab?.close();
         setFileActionError(
           apiErrorMessage(err)
           ?? copy({ en: "Could not open Google Docs. Check Drive configuration.", vi: "Không mở được Google Docs. Kiểm tra cấu hình Drive." }),
@@ -534,7 +549,10 @@ export function DocumentsPage() {
                     <EditSessionBanner
                       session={editSession?.documentId === selected.id ? editSession : null}
                       onExpired={clearEditSession}
-                      onClosed={clearEditSession}
+                      onClosed={() => {
+                        clearEditSession();
+                        documentsQuery.refetch();
+                      }}
                     />
                     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <Button variant="secondary" size="sm" onClick={() => void openDocumentFile(selected.id, "preview")}>

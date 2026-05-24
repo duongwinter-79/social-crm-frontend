@@ -73,7 +73,7 @@ export function LeadPicker({ value, onChange, label, placeholder }: LeadPickerPr
       {label ? (
         <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
       ) : null}
-      <div className="flex gap-1.5">
+      <div className="relative">
         <input
           type="text"
           value={inputValue}
@@ -83,15 +83,16 @@ export function LeadPicker({ value, onChange, label, placeholder }: LeadPickerPr
             setOpen(true);
           }}
           onFocus={() => { if (inputValue.length >= 1) setOpen(true); }}
-          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
         />
         {(value || inputValue) ? (
           <button
             type="button"
             onClick={handleClear}
-            className="rounded-xl border border-slate-200 px-2.5 py-2 text-xs text-slate-500 hover:bg-slate-50"
+            aria-label="Clear candidate"
+            className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-sm text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
-            ✕
+            ×
           </button>
         ) : null}
       </div>

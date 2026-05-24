@@ -151,7 +151,9 @@ function ProtectedLayout() {
       sidebar={
         <div className="admin-shell-sidebar">
           <div className="admin-shell-brand">
-            <div className="admin-shell-brand-mark">SM</div>
+            <div className="admin-shell-brand-mark" aria-hidden="true">
+              <img src="/sao-mai-logo.png" alt="" />
+            </div>
             <div className="admin-shell-brand-copy">
               <div className="admin-shell-brand-kicker">Sao Mai HR</div>
               <div className="admin-shell-brand-title">Sao Mai HR CRM</div>

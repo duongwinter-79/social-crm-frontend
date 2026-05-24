@@ -5,7 +5,6 @@ import {
   Button,
   EmptyState,
   Panel,
-  SectionHeader,
 } from "@social-crm/ui";
 import {
   apiClient,
@@ -51,6 +50,20 @@ function googleViewerUrl(url: string): string {
   return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function openPendingGoogleDocsTab(): Window | null {
+  const tab = window.open("about:blank", "_blank");
+  if (tab) {
+    tab.document.title = "Opening Google Docs";
+    tab.document.body.innerHTML = "<p style=\"font-family: sans-serif; padding: 24px;\">Opening Google Docs...</p>";
+  }
+  return tab;
+}
+
 export function ApplicationDetailPage() {
   const { copy, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
@@ -62,6 +75,7 @@ export function ApplicationDetailPage() {
   const [fileActionError, setFileActionError] = useState("");
   const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [lastUploadedDocumentId, setLastUploadedDocumentId] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [editSession, setEditSession] = useState<{
     documentId: string; sessionId: string; editUrl: string;
   } | null>(() => {
@@ -91,6 +105,7 @@ export function ApplicationDetailPage() {
   function handleLeadChange(id: string) {
     setSelectedLeadId(id);
     setUploadFile(null);
+    setUploadProgress(null);
     setFileActionError("");
     setConfirmUnlink(false);
     if (id) {
@@ -130,14 +145,20 @@ export function ApplicationDetailPage() {
 
   function openGoogleEdit(documentId: string) {
     setFileActionError("");
+    const docsTab = openPendingGoogleDocsTab();
     openEditSession.mutate(documentId, {
       onSuccess: ({ sessionId, editUrl }) => {
         const session = { documentId, sessionId, editUrl };
         setEditSession(session);
         localStorage.setItem("crm-app-edit-session", JSON.stringify(session));
-        window.open(editUrl, "_blank", "noopener,noreferrer");
+        if (docsTab) {
+          docsTab.location.href = editUrl;
+        } else {
+          window.open(editUrl, "_blank", "noopener,noreferrer");
+        }
       },
       onError: (err: unknown) => {
+        docsTab?.close();
         setFileActionError(
           apiErrorMessage(err)
           ?? copy({ en: "Could not open Google Docs. Check Drive configuration.", vi: "Không mở được Google Docs. Kiểm tra cấu hình Drive." }),
@@ -156,8 +177,11 @@ export function ApplicationDetailPage() {
     setFileActionError("");
     unlinkFormStandard.mutate(selectedLeadId, {
       onSuccess: () => {
+        clearEditSession();
         setConfirmUnlink(false);
         setUploadFile(null);
+        setUploadProgress(null);
+        setLastUploadedDocumentId(null);
         registerQuery.refetch();
       },
     });
@@ -165,33 +189,54 @@ export function ApplicationDetailPage() {
 
   const ext = fileExtension(selectedRow?.fileUrl);
   const isWord = ext === ".docx" || ext === ".doc";
+  const hasActiveEditSession = editSession?.documentId === selectedRow?.documentId;
+  const isUploadingForm = uploadFormStandard.isPending;
+  const visibleUploadProgress = uploadProgress ?? (isUploadingForm ? 8 : 0);
+  const uploadFileExtension = uploadFile?.name.includes(".")
+    ? uploadFile.name.slice(uploadFile.name.lastIndexOf(".") + 1).toUpperCase()
+    : copy({ en: "File", vi: "File" });
+  const selectedRowMeta = selectedRow
+    ? [
+      selectedRow.lead.phone ?? copy({ en: "No phone", vi: "Chưa có SĐT" }),
+      selectedRow.candidate?.code,
+      selectedRow.order?.name,
+    ].filter(Boolean).join(" · ")
+    : undefined;
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        eyebrow={copy({ en: "Applications", vi: "Hồ sơ ứng tuyển" })}
-        title={copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" })}
-        description={copy({
-          en: "Search for a candidate to view, upload, download, or remove their application file.",
-          vi: "Tìm ứng viên để xem, tải lên, tải xuống hoặc xoá hồ sơ ứng tuyển.",
-        })}
-      />
-
-      {/* Back + lead picker */}
-      <div className="flex items-end gap-4">
-        <button
-          type="button"
-          onClick={() => navigate("/applications")}
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 shadow-sm hover:bg-slate-50"
-        >
-          ← {copy({ en: "Back to list", vi: "Quay lại danh sách" })}
-        </button>
-        <div className="flex-1 max-w-sm">
-          <LeadPicker
-            label={copy({ en: "Select candidate", vi: "Chọn ứng viên" })}
-            value={selectedLeadId}
-            onChange={handleLeadChange}
-          />
+      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
+            <Button
+              variant="secondary"
+              onClick={() => navigate("/applications")}
+              className="shrink-0"
+            >
+              ← {copy({ en: "Back to list", vi: "Quay lại danh sách" })}
+            </Button>
+            <div className="min-w-0 flex-1 sm:max-w-xl">
+              <LeadPicker
+                label={copy({ en: "Select candidate", vi: "Chọn ứng viên" })}
+                placeholder={copy({
+                  en: "Search name, phone, or lead ID",
+                  vi: "Tìm tên, SĐT hoặc mã lead",
+                })}
+                value={selectedLeadId}
+                onChange={handleLeadChange}
+              />
+            </div>
+          </div>
+          {selectedRow ? (
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <Badge tone={toneForDocStatus(selectedRow.documentStatus)}>
+                {formatDocumentStatus(selectedRow.documentStatus)}
+              </Badge>
+              {selectedRow.hasFile
+                ? <Badge tone="success">{copy({ en: "File uploaded", vi: "Có file" })}</Badge>
+                : <Badge tone="warning">{copy({ en: "No file", vi: "Chưa có file" })}</Badge>}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -209,58 +254,78 @@ export function ApplicationDetailPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
           {/* Left: candidate info + file actions */}
           <Panel
-            title={copy({ en: "Application file", vi: "Hồ sơ ứng tuyển" })}
-            subtitle={selectedRow ? leadLabel(selectedRow) : undefined}
+            title={selectedRow ? leadLabel(selectedRow) : copy({ en: "Application file", vi: "Hồ sơ ứng tuyển" })}
+            subtitle={selectedRowMeta}
           >
             {selectedRow ? (
-              <div className="space-y-5">
-                {/* Candidate summary */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-                  <div className="font-semibold text-slate-900">{leadLabel(selectedRow)}</div>
-                  <div className="mt-1 text-slate-500">
-                    {selectedRow.lead.phone ?? copy({ en: "No phone", vi: "Chưa có SĐT" })}
-                    {selectedRow.candidate?.code ? ` · ${selectedRow.candidate.code}` : ""}
-                  </div>
-                  {selectedRow.order ? (
-                    <div className="mt-1 text-slate-500">{selectedRow.order.name}</div>
-                  ) : null}
-                  <div className="mt-2 flex gap-2">
-                    <Badge tone={toneForDocStatus(selectedRow.documentStatus)}>
-                      {formatDocumentStatus(selectedRow.documentStatus)}
-                    </Badge>
-                    {selectedRow.hasFile
-                      ? <Badge tone="success">{copy({ en: "File uploaded", vi: "Có file" })}</Badge>
-                      : <Badge tone="warning">{copy({ en: "No file", vi: "Chưa có file" })}</Badge>}
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {copy({ en: "Form data", vi: "Dữ liệu hồ sơ" })}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {hasActiveEditSession
+                          ? copy({
+                            en: "Save and close the Google Docs edit session before matching.",
+                            vi: "Lưu và đóng phiên chỉnh sửa Google Docs trước khi đối chiếu.",
+                          })
+                          : copy({
+                            en: "Extract data from the uploaded form for review.",
+                            vi: "Trích xuất dữ liệu từ hồ sơ đã tải lên để rà soát.",
+                          })}
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      disabled={hasActiveEditSession}
+                      onClick={() => navigate(`/applications/match/${selectedRow.documentId}`)}
+                      className="w-full sm:w-auto"
+                    >
+                      {copy({ en: "Match to lead profile →", vi: "Đối chiếu hồ sơ →" })}
+                    </Button>
                   </div>
                 </div>
 
-                {/* Match form data to profile */}
-                <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
-                  <Button
-                    variant="secondary"
-                    onClick={() => navigate(`/applications/match/${selectedRow.documentId}`)}
-                  >
-                    {copy({ en: "Match to lead profile →", vi: "Đối chiếu với hồ sơ ứng viên →" })}
-                  </Button>
-                  <span className="text-xs text-slate-400">
-                    {copy({ en: "Review extracted form data and apply selected fields.", vi: "Xem dữ liệu trích xuất và cập nhật các trường đã chọn." })}
-                  </span>
-                </div>
+                {lastUploadedDocumentId ? (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    <div className="font-medium">
+                      {copy({ en: "Form uploaded successfully.", vi: "Tải hồ sơ lên thành công." })}
+                    </div>
+                    <div className="mt-1 text-xs text-emerald-700">
+                      {copy({
+                        en: "Use Match to lead profile above to review the extracted data.",
+                        vi: "Dùng nút Đối chiếu với hồ sơ ứng viên ở trên để xem dữ liệu trích xuất.",
+                      })}
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Edit session banner */}
-                {editSession?.documentId === selectedRow.documentId ? (
+                {hasActiveEditSession ? (
                   <EditSessionBanner
                     session={editSession}
                     onExpired={clearEditSession}
-                    onClosed={clearEditSession}
+                    onClosed={() => {
+                      clearEditSession();
+                      registerQuery.refetch();
+                    }}
                   />
                 ) : null}
 
                 {/* Current file actions */}
                 {selectedRow.hasFile ? (
-                  <div className="space-y-3 border-t border-slate-100 pt-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {copy({ en: "Current file", vi: "File hiện tại" })}
+                  <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {copy({ en: "Current file", vi: "File hiện tại" })}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-500">
+                        {isWord
+                          ? copy({ en: "Preview, edit in Docs, or download.", vi: "Xem, chỉnh sửa trong Docs hoặc tải xuống." })
+                          : copy({ en: "Preview or download.", vi: "Xem hoặc tải xuống." })}
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -274,7 +339,7 @@ export function ApplicationDetailPage() {
                         <Button
                           variant="secondary"
                           size="sm"
-                          disabled={openEditSession.isPending || editSession?.documentId === selectedRow.documentId}
+                          disabled={openEditSession.isPending || hasActiveEditSession}
                           onClick={() => openGoogleEdit(selectedRow.documentId)}
                         >
                           {openEditSession.isPending
@@ -318,25 +383,101 @@ export function ApplicationDetailPage() {
                 en: selectedRow?.hasFile ? "Replace file" : "Upload file",
                 vi: selectedRow?.hasFile ? "Thay thế file" : "Tải file lên",
               })}
+              subtitle={copy({
+                en: "PDF, DOC, and DOCX are supported. DOC files are normalized before saving.",
+                vi: "Hỗ trợ PDF, DOC và DOCX. File DOC sẽ được chuẩn hoá trước khi lưu.",
+              })}
             >
               <div className="space-y-4">
-                <label className="block text-sm font-medium text-slate-700">
-                  {copy({ en: "Select file (PDF, DOC, DOCX)", vi: "Chọn file (PDF, DOC, DOCX)" })}
+                <label
+                  className={[
+                    "block cursor-pointer rounded-2xl border border-dashed px-4 py-5 transition",
+                    uploadFile
+                      ? "border-indigo-200 bg-indigo-50/60"
+                      : "border-slate-300 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/40",
+                    isUploadingForm ? "cursor-not-allowed opacity-70" : "",
+                  ].join(" ")}
+                >
                   <input
                     type="file"
                     accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
-                    onChange={(e) => { setUploadFile(e.target.files?.[0] ?? null); setFileActionError(""); }}
-                    className="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                    disabled={isUploadingForm}
+                    onChange={(e) => {
+                      setUploadFile(e.target.files?.[0] ?? null);
+                      setUploadProgress(null);
+                      setFileActionError("");
+                    }}
+                    className="sr-only"
                   />
+                  <span className="flex items-start gap-3">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-lg shadow-sm">
+                      ↑
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-slate-900">
+                        {uploadFile
+                          ? copy({ en: "File ready to upload", vi: "File đã sẵn sàng tải lên" })
+                          : copy({ en: "Choose application file", vi: "Chọn hồ sơ ứng tuyển" })}
+                      </span>
+                      <span className="mt-1 block text-xs leading-5 text-slate-500">
+                        {uploadFile
+                          ? copy({ en: "Review the file below, then upload.", vi: "Kiểm tra file bên dưới rồi tải lên." })
+                          : copy({ en: "PDF, DOC, or DOCX up to the configured server limit.", vi: "PDF, DOC hoặc DOCX theo giới hạn máy chủ." })}
+                      </span>
+                    </span>
+                  </span>
                 </label>
+
                 {uploadFile ? (
-                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-800">
-                    {uploadFile.name} · {(uploadFile.size / 1024).toFixed(0)} KB
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900">{uploadFile.name}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+                            {uploadFileExtension}
+                          </span>
+                          <span>{formatFileSize(uploadFile.size)}</span>
+                        </div>
+                      </div>
+                      {!isUploadingForm ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadFile(null);
+                            setUploadProgress(null);
+                          }}
+                          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                        >
+                          {copy({ en: "Remove", vi: "Bỏ chọn" })}
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {isUploadingForm ? (
+                      <div className="mt-3">
+                        <div className="mb-1.5 flex items-center justify-between text-xs">
+                          <span className="font-medium text-indigo-700">
+                            {copy({ en: "Uploading and processing...", vi: "Đang tải lên và xử lý..." })}
+                          </span>
+                          <span className="font-semibold text-slate-600">{visibleUploadProgress}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full bg-indigo-600 transition-all duration-300"
+                            style={{ width: `${visibleUploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
+
                 <Button
+                  className="w-full"
                   onClick={() => {
                     if (!uploadFile) return;
+                    setUploadProgress(0);
                     setFileActionError("");
                     uploadFormStandard.mutate(
                       {
@@ -344,55 +485,30 @@ export function ApplicationDetailPage() {
                         candidateId: resolvedCandidateId,
                         status: "verified",
                         file: uploadFile,
+                        onUploadProgress: setUploadProgress,
                       },
                       {
                         onSuccess: (result) => {
+                          setUploadProgress(100);
                           setUploadFile(null);
                           setLastUploadedDocumentId((result as any)?.id ?? selectedRow?.documentId ?? null);
                           registerQuery.refetch();
                         },
+                        onError: () => setUploadProgress(null),
+                        onSettled: () => {
+                          window.setTimeout(() => setUploadProgress(null), 400);
+                        },
                       },
                     );
                   }}
-                  disabled={uploadFormStandard.isPending || !uploadFile}
+                  disabled={isUploadingForm || !uploadFile}
                 >
-                  {uploadFormStandard.isPending
-                    ? copy({ en: "Uploading…", vi: "Đang tải lên…" })
-                    : copy({ en: "Upload application file", vi: "Tải hồ sơ ứng tuyển" })}
+                  {isUploadingForm
+                    ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
+                    : copy({ en: selectedRow?.hasFile ? "Replace file" : "Upload file", vi: selectedRow?.hasFile ? "Thay thế file" : "Tải file lên" })}
                 </Button>
               </div>
             </Panel>
-
-            {/* Post-upload: prompt operator to match form data */}
-            {lastUploadedDocumentId ? (
-              <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm">
-                <div className="font-medium text-indigo-900">
-                  {copy({ en: "Form uploaded successfully.", vi: "Tải hồ sơ lên thành công." })}
-                </div>
-                <div className="mt-1 text-indigo-700">
-                  {copy({
-                    en: "Would you like to review the extracted data and apply it to this lead's profile?",
-                    vi: "Bạn có muốn xem dữ liệu trích xuất và cập nhật vào hồ sơ ứng viên không?",
-                  })}
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => navigate(`/applications/match/${lastUploadedDocumentId}`)}
-                  >
-                    {copy({ en: "Review & apply form data →", vi: "Xem & cập nhật dữ liệu hồ sơ →" })}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setLastUploadedDocumentId(null)}
-                  >
-                    {copy({ en: "Dismiss", vi: "Bỏ qua" })}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
             {/* Delete */}
             {selectedRow?.hasFile ? (
               <Panel title={copy({ en: "Danger zone", vi: "Vùng nguy hiểm" })}>
@@ -431,7 +547,7 @@ export function ApplicationDetailPage() {
                     size="sm"
                     onClick={() => { setConfirmUnlink(true); setFileActionError(""); }}
                   >
-                    {copy({ en: "Remove application file", vi: "Xoá hồ sơ ứng tuyển" })}
+                    {copy({ en: "Remove file", vi: "Xoá file" })}
                   </Button>
                 )}
               </Panel>
