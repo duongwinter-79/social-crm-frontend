@@ -92,15 +92,13 @@ export function ApplicationDetailPage() {
   const candidateByLeadQuery = useCandidateByLeadQuery(selectedLeadId || undefined);
   const resolvedCandidateId = candidateByLeadQuery.data?.id;
 
-  // Load a broad register page to find this lead's row by ID.
-  // The register is typically small; 500 covers most realistic datasets.
+  // Fetch only this lead's row from the register — the backend filters by
+  // lead_id at the DB level, so we don't load and scan the whole list.
   const registerQuery = useFormStandardRegisterQuery(
-    { offset: 0, limit: 500 },
+    { offset: 0, limit: 1, leadId: selectedLeadId || undefined },
     { enabled: Boolean(selectedLeadId) },
   );
-  const selectedRow = (registerQuery.data?.data ?? []).find(
-    (r) => r.lead.id === selectedLeadId,
-  ) ?? null;
+  const selectedRow = registerQuery.data?.data?.[0] ?? null;
 
   function handleLeadChange(id: string) {
     setSelectedLeadId(id);

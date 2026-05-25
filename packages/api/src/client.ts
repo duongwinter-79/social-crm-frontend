@@ -579,7 +579,7 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async getFormStandardRegister(params: { offset: number; limit: number; status?: string; search?: string }) {
+  async getFormStandardRegister(params: { offset: number; limit: number; status?: string; search?: string; leadId?: string }) {
     const response = await this.http.get<ApiEnvelope<FormStandardRegisterResponse> | FormStandardRegisterResponse>("/documents/form-standard/register", { params });
     return unwrapEnvelope(response.data);
   }

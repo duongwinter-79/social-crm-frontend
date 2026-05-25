@@ -352,7 +352,7 @@ export function useCandidateDocumentChecklistQuery(candidateId?: string) {
 }
 
 export function useFormStandardRegisterQuery(
-  params: { offset: number; limit: number; status?: string; search?: string } | undefined,
+  params: { offset: number; limit: number; status?: string; search?: string; leadId?: string } | undefined,
   options?: { enabled?: boolean },
 ) {
   const safeParams = params ?? { offset: 0, limit: 25 };

@@ -678,7 +678,7 @@ export function LeadWorkbenchPage() {
               onClick={() => {
                 const params = new URLSearchParams({ leadId: lead.id, docType: "form_standard" });
                 if (candidate?.id) params.set("candidateId", candidate.id);
-                navigate(`/applications?${params.toString()}`);
+                navigate(`/applications/detail?${params.toString()}`);
               }}
             >
               {copy({ en: "Upload application file →", vi: "Tải hồ sơ ứng tuyển →" })}
