@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload } from "./types";
+import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus } from "./types";
 
 export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
 
@@ -352,7 +352,7 @@ export function useCandidateDocumentChecklistQuery(candidateId?: string) {
 }
 
 export function useFormStandardRegisterQuery(
-  params: { offset: number; limit: number; status?: string; search?: string } | undefined,
+  params: { offset: number; limit: number; status?: string; search?: string; leadId?: string } | undefined,
   options?: { enabled?: boolean },
 ) {
   const safeParams = params ?? { offset: 0, limit: 25 };
@@ -646,34 +646,6 @@ export function useCreateDocumentMutation() {
   });
 }
 
-export function useUploadFormStandardDocumentMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: {
-      leadId: string;
-      candidateId?: string;
-      status?: string;
-      file: File;
-      onUploadProgress?: (progress: number) => void;
-    }) =>
-      apiClient.uploadFormStandardDocument(payload),
-    onSuccess: (document) => {
-      queryClient.invalidateQueries({ queryKey: ["documents"] });
-      if (document.lead_id) {
-        queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
-        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "transitions"] });
-        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "order-suggestions"] });
-      }
-      queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
-      if (document.candidate_id) {
-        queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
-        queryClient.invalidateQueries({ queryKey: ["matching", "suggest", document.candidate_id] });
-      }
-    },
-    meta: { successMessage: { en: "Standard form uploaded", vi: "Đã tải lên form chuẩn lao động" } }
-  });
-}
-
 export function useLeadsSearchQuery(search: string) {
   return useQuery({
     queryKey: ["leads", "search", search],
@@ -683,47 +655,69 @@ export function useLeadsSearchQuery(search: string) {
   });
 }
 
-// ── Leadless analyze-and-pick upload flow ─────────────────────────────────
+// ── Staging-first upload flow ─────────────────────────────────────────────
 
-export function useAnalyzeFormStandardMutation() {
+export function useStageFormStandardMutation() {
   return useMutation({
     mutationFn: (payload: { file: File; onUploadProgress?: (progress: number) => void }) =>
-      apiClient.analyzeFormStandard(payload),
+      apiClient.stageFormStandard(payload),
   });
 }
 
-export function useCommitFormStandardPendingMutation() {
+export function useOpenPendingEditSessionMutation() {
+  return useMutation({
+    mutationFn: (pendingId: string) => apiClient.openPendingEditSession(pendingId),
+  });
+}
+
+export function useClosePendingEditSessionMutation() {
+  return useMutation({
+    mutationFn: (pendingId: string) => apiClient.closePendingEditSession(pendingId),
+  });
+}
+
+export function usePendingEditSessionStatusQuery(pendingId: string | null, opts: { poll?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["documents", "pending", pendingId, "edit-session-status"],
+    queryFn: () => apiClient.pollPendingEditSession(pendingId as string),
+    enabled: Boolean(pendingId) && Boolean(opts.poll),
+    refetchInterval: (query) => {
+      if (!opts.poll) return false;
+      const data = query.state.data as PendingEditSessionStatus | undefined;
+      return data?.status === "active" ? 5000 : false;
+    },
+  });
+}
+
+export function useVerifyPendingMutation() {
+  return useMutation({
+    mutationFn: ({ pendingId, leadId }: { pendingId: string; leadId?: string }) =>
+      apiClient.verifyPending(pendingId, leadId),
+  });
+}
+
+export function useCommitPendingFormMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ pendingId, payload }: {
       pendingId: string;
-      payload: { leadId: string; candidateId?: string; status?: string };
-    }) => apiClient.commitFormStandardPending(pendingId, payload),
+      payload: Parameters<typeof apiClient.commitPendingForm>[1];
+    }) => apiClient.commitPendingForm(pendingId, payload),
     onSuccess: (document) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       if (document.lead_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
         queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "transitions"] });
-        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "order-suggestions"] });
       }
       queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
     },
-    meta: { successMessage: { en: "Form linked to lead", vi: "Đã gắn hồ sơ với ứng viên" } }
+    meta: { successMessage: { en: "Form verified and linked", vi: "Đã xác nhận và gắn hồ sơ" } }
   });
 }
 
-export function useRematchFormStandardPendingMutation() {
+export function useCancelPendingMutation() {
   return useMutation({
-    mutationFn: ({ pendingId, payload }: {
-      pendingId: string;
-      payload: { phone?: string; name?: string };
-    }) => apiClient.rematchFormStandardPending(pendingId, payload),
-  });
-}
-
-export function useCancelFormStandardPendingMutation() {
-  return useMutation({
-    mutationFn: (pendingId: string) => apiClient.cancelFormStandardPending(pendingId),
+    mutationFn: (pendingId: string) => apiClient.cancelPending(pendingId),
   });
 }
 
@@ -736,55 +730,6 @@ export function useCreateLeadMutation() {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     meta: { successMessage: { en: "Lead created", vi: "Đã tạo ứng viên" } }
-  });
-}
-
-// ── Form-to-lead match ──────────────────────────────────────────────────────
-
-export function useFormPreviewQuery(documentId: string | null) {
-  return useQuery({
-    queryKey: ["documents", "form-preview", documentId],
-    queryFn: () => apiClient.getFormPreview(documentId!),
-    enabled: Boolean(documentId),
-    staleTime: 0,
-    retry: false,
-  });
-}
-
-export function useApplyFormToLeadMutation() {
-  return useMutation({
-    mutationFn: ({ documentId, fields }: { documentId: string; fields: Record<string, any> }) =>
-      apiClient.applyFormToLead(documentId, fields),
-  });
-}
-
-// ── Google Drive edit session ────────────────────────────────────────────────
-
-export function useOpenEditSessionMutation() {
-  return useMutation({
-    mutationFn: (documentId: string) => apiClient.openEditSession(documentId),
-  });
-}
-
-export function useEditSessionStatusQuery(
-  documentId: string | null,
-  sessionId: string | null,
-  enabled: boolean,
-) {
-  return useQuery({
-    queryKey: ["documents", "edit-session", documentId, sessionId],
-    queryFn: () => apiClient.pollEditSession(documentId!, sessionId!),
-    enabled: enabled && !!documentId && !!sessionId,
-    refetchInterval: 30_000,
-    staleTime: 0,
-  });
-}
-
-export function useCloseEditSessionMutation() {
-  return useMutation({
-    mutationFn: ({ documentId, sessionId }: { documentId: string; sessionId: string }) =>
-      apiClient.closeEditSession(documentId, sessionId),
-    meta: { successMessage: { en: "Changes saved and edit session closed", vi: "Đã lưu thay đổi và đóng phiên chỉnh sửa" } },
   });
 }
 

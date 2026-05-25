@@ -15,7 +15,6 @@ const MatchingPage = lazy(() => import("@/features/matching/matching-page").then
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
 const ApplicationsPage = lazy(() => import("@/features/applications/applications-page").then((m) => ({ default: m.ApplicationsPage })));
 const ApplicationDetailPage = lazy(() => import("@/features/applications/application-detail-page").then((m) => ({ default: m.ApplicationDetailPage })));
-const ApplicationMatchPage = lazy(() => import("@/features/applications/application-match-page").then((m) => ({ default: m.ApplicationMatchPage })));
 const FormEditorPage = lazy(() => import("@/features/applications/form-editor-page").then((m) => ({ default: m.FormEditorPage })));
 const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
@@ -117,7 +116,6 @@ function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: {
 function titleForPath(pathname: string, copy: (value: { en: string; vi: string }) => string) {
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   if (pathname === "/applications/detail") return copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" });
-  if (pathname.match(/^\/applications\/match\//)) return copy({ en: "Match form to lead", vi: "Đối chiếu hồ sơ với ứng viên" });
   if (pathname.match(/^\/applications\/[^/]+\/edit$/)) return copy({ en: "Form editor", vi: "Chỉnh sửa hồ sơ ứng tuyển" });
   return navItems.find((item) => pathname === item.to)?.label
     ? copy(navItems.find((item) => pathname === item.to)!.label)
@@ -360,7 +358,6 @@ export function AppRouter() {
         {/* Legacy URL kept as a redirect for bookmarks. The merged detail page handles both upload and view. */}
         <Route path="/applications/upload" element={<Navigate to="/applications/detail" replace />} />
         <Route path="/applications/detail" element={<LazyRoute><ApplicationDetailPage /></LazyRoute>} />
-        <Route path="/applications/match/:documentId" element={<LazyRoute><ApplicationMatchPage /></LazyRoute>} />
         <Route path="/applications/:leadId/edit" element={<LazyRoute><FormEditorPage /></LazyRoute>} />
         <Route path="/documents" element={<Navigate to="/applications" replace />} />
         <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />

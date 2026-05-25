@@ -633,10 +633,54 @@ export interface FormStandardSuggestions {
   nameMatches: FormStandardLeadSuggestion[];
 }
 
-/** Result of POST /documents/form-standard/analyze — file is staged, lead not yet picked. */
-export interface FormStandardAnalyzeResult extends FormStandardSuggestions {
+// ── Staging-first flow types ───────────────────────────────────────────────
+
+/** Result of POST /documents/form-standard/upload-pending. */
+export interface FormStandardStageResult {
   pendingId: string;
+  originalFilename: string;
+  mimeType: string;
+  fileSize: number;
+}
+
+/** Result of POST /documents/form-standard/pending/:id/edit-session. */
+export interface PendingEditSessionOpenResult {
+  sessionId: string; // aliased to pendingId server-side
+  editUrl: string;
+  filename: string;
+  driveFileId: string;
+  expiresAt: string;
+}
+
+/** Result of GET /documents/form-standard/pending/:id/edit-session/status. */
+export interface PendingEditSessionStatus {
+  status: "active" | "expired" | "none";
+  lastSyncedAt: string | null;
+  editUrl: string | null;
+}
+
+/** Result of POST /documents/form-standard/pending/:id/verify. */
+export interface VerifyPendingResult {
   extracted: FormStandardExtractedFields | null;
+  current: FormStandardExtractedFields | null;
+  phoneMatch: FormStandardLeadSuggestion | null;
+  nameMatches: FormStandardLeadSuggestion[];
+}
+
+/** Inline lead-create payload used inside CommitPendingFormPayload. */
+export interface CreateNewLeadOnCommit {
+  fullName?: string;
+  displayName?: string;
+  phone?: string;
+  source: "zalo" | "facebook";
+  leadSource?: LeadAcquisitionSource;
+}
+
+/** Body for POST /documents/form-standard/pending/:id/commit. */
+export interface CommitPendingFormPayload {
+  leadId?: string;
+  createNewLead?: CreateNewLeadOnCommit;
+  applyFields?: Partial<FormStandardExtractedFields>;
 }
 
 /** Allowed acquisition sources. Mirrors Lead.leadSource and CreateLeadDto.leadSource. */

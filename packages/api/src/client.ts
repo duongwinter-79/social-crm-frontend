@@ -29,8 +29,11 @@ import type {
   DashboardStats,
   DocumentChecklistSummary,
   FormStandardRegisterResponse,
-  FormStandardAnalyzeResult,
-  FormStandardSuggestions,
+  FormStandardStageResult,
+  PendingEditSessionOpenResult,
+  PendingEditSessionStatus,
+  VerifyPendingResult,
+  CommitPendingFormPayload,
   CreateLeadPayload,
   DocumentListResponse,
   DocumentRecord,
@@ -587,7 +590,7 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async getFormStandardRegister(params: { offset: number; limit: number; status?: string; search?: string }) {
+  async getFormStandardRegister(params: { offset: number; limit: number; status?: string; search?: string; leadId?: string }) {
     const response = await this.http.get<ApiEnvelope<FormStandardRegisterResponse> | FormStandardRegisterResponse>("/documents/form-standard/register", { params });
     return unwrapEnvelope(response.data);
   }
@@ -597,43 +600,20 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async uploadFormStandardDocument(payload: {
-    leadId: string;
-    candidateId?: string;
-    status?: string;
-    file: File;
-    onUploadProgress?: (progress: number) => void;
-  }) {
-    const formData = new FormData();
-    formData.append("leadId", payload.leadId);
-    if (payload.candidateId) formData.append("candidateId", payload.candidateId);
-    if (payload.status) formData.append("status", payload.status);
-    formData.append("file", payload.file);
-
-    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents/form-standard/upload", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-      onUploadProgress: (event) => {
-        if (!payload.onUploadProgress || !event.total) return;
-        payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
-      }
-    });
-    return unwrapEnvelope(response.data);
-  }
-
   async unlinkFormStandardDocument(leadId: string): Promise<void> {
     await this.http.delete(`/documents/form-standard/${leadId}`);
   }
 
-  // ── Leadless analyze-and-pick upload flow ────────────────────────────────
+  // ── Staging-first upload flow ─────────────────────────────────────────────
 
-  async analyzeFormStandard(payload: {
+  async stageFormStandard(payload: {
     file: File;
     onUploadProgress?: (progress: number) => void;
-  }): Promise<FormStandardAnalyzeResult> {
+  }): Promise<FormStandardStageResult> {
     const formData = new FormData();
     formData.append("file", payload.file);
-    const response = await this.http.post<ApiEnvelope<FormStandardAnalyzeResult> | FormStandardAnalyzeResult>(
-      "/documents/form-standard/analyze",
+    const response = await this.http.post<ApiEnvelope<FormStandardStageResult> | FormStandardStageResult>(
+      "/documents/form-standard/upload-pending",
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
@@ -646,30 +626,52 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async commitFormStandardPending(
-    pendingId: string,
-    payload: { leadId: string; candidateId?: string; status?: string }
-  ): Promise<DocumentRecord> {
-    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>(
-      `/documents/form-standard/analyze/${pendingId}/commit`,
-      payload
-    );
-    return unwrapEnvelope(response.data);
+  async getPendingDownloadUrl(pendingId: string, download = false): Promise<{ url: string; filename: string } | null> {
+    const qs = download ? "?download=true" : "";
+    const res = await this.http.get<
+      ApiEnvelope<{ url: string | null; filename?: string }> | { url: string | null; filename?: string }
+    >(`/documents/form-standard/pending/${pendingId}/download-url${qs}`);
+    const resolved = unwrapEnvelope(res.data);
+    if (!resolved.url) return null;
+    return { url: resolved.url, filename: resolved.filename ?? `pending-${pendingId}` };
   }
 
-  async rematchFormStandardPending(
-    pendingId: string,
-    payload: { phone?: string; name?: string }
-  ): Promise<FormStandardSuggestions> {
-    const response = await this.http.post<ApiEnvelope<FormStandardSuggestions> | FormStandardSuggestions>(
-      `/documents/form-standard/analyze/${pendingId}/match`,
-      payload
+  async openPendingEditSession(pendingId: string): Promise<PendingEditSessionOpenResult> {
+    const res = await this.http.post<ApiEnvelope<PendingEditSessionOpenResult> | PendingEditSessionOpenResult>(
+      `/documents/form-standard/pending/${pendingId}/edit-session`,
     );
-    return unwrapEnvelope(response.data);
+    return unwrapEnvelope(res.data);
   }
 
-  async cancelFormStandardPending(pendingId: string): Promise<void> {
-    await this.http.delete(`/documents/form-standard/analyze/${pendingId}`);
+  async pollPendingEditSession(pendingId: string): Promise<PendingEditSessionStatus> {
+    const res = await this.http.get<ApiEnvelope<PendingEditSessionStatus> | PendingEditSessionStatus>(
+      `/documents/form-standard/pending/${pendingId}/edit-session/status`,
+    );
+    return unwrapEnvelope(res.data);
+  }
+
+  async closePendingEditSession(pendingId: string): Promise<void> {
+    await this.http.delete(`/documents/form-standard/pending/${pendingId}/edit-session`);
+  }
+
+  async verifyPending(pendingId: string, leadId?: string): Promise<VerifyPendingResult> {
+    const qs = leadId ? `?leadId=${encodeURIComponent(leadId)}` : "";
+    const res = await this.http.post<ApiEnvelope<VerifyPendingResult> | VerifyPendingResult>(
+      `/documents/form-standard/pending/${pendingId}/verify${qs}`,
+    );
+    return unwrapEnvelope(res.data);
+  }
+
+  async commitPendingForm(pendingId: string, payload: CommitPendingFormPayload): Promise<DocumentRecord> {
+    const res = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>(
+      `/documents/form-standard/pending/${pendingId}/commit`,
+      payload,
+    );
+    return unwrapEnvelope(res.data);
+  }
+
+  async cancelPending(pendingId: string): Promise<void> {
+    await this.http.delete(`/documents/form-standard/pending/${pendingId}`);
   }
 
   async updateDocument(id: string, patch: Record<string, unknown>) {
@@ -716,42 +718,6 @@ export class SocialCrmApiClient {
     });
     const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `document-${id}`;
     return { blob: response.data, filename };
-  }
-
-  // ── Form-to-lead match ──────────────────────────────────────────────────────
-
-  async getFormPreview(documentId: string): Promise<{
-    extracted: Record<string, any>;
-    current: Record<string, any>;
-    leadId: string;
-  }> {
-    const res = await this.http.get(`/documents/${documentId}/form-preview`);
-    return unwrapEnvelope(res.data);
-  }
-
-  async applyFormToLead(documentId: string, fields: Record<string, any>): Promise<void> {
-    await this.http.post(`/documents/${documentId}/apply-to-lead`, { fields });
-  }
-
-  // ── Google Drive edit session ────────────────────────────────────────────────
-
-  async openEditSession(documentId: string): Promise<{ sessionId: string; editUrl: string; filename: string; driveFileId: string }> {
-    const res = await this.http.post<{ sessionId: string; editUrl: string; filename: string; driveFileId: string }>(
-      `/documents/${documentId}/edit-session`,
-    );
-    return unwrapEnvelope(res.data);
-  }
-
-  async pollEditSession(
-    documentId: string,
-    sessionId: string,
-  ): Promise<{ status: "active" | "expired"; lastSyncedAt: string | null; editUrl: string }> {
-    const res = await this.http.get(`/documents/${documentId}/edit-session/${sessionId}/status`);
-    return unwrapEnvelope(res.data);
-  }
-
-  async closeEditSession(documentId: string, sessionId: string): Promise<void> {
-    await this.http.delete(`/documents/${documentId}/edit-session/${sessionId}`);
   }
 
   async listTrainingFinance(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {
