@@ -47,6 +47,14 @@ export function ApplicationsPage() {
     navigate(leadId ? `/applications/detail?leadId=${leadId}` : "/applications/detail");
   }
 
+  /**
+   * The detail page renders its empty state when no leadId is in the URL —
+   * that empty state offers both LeadPicker and the leadless upload zone.
+   */
+  function openLeadlessUpload() {
+    navigate("/applications/detail");
+  }
+
   return (
     <div className="space-y-6">
       <Toolbar compact className="border-slate-200/90">
@@ -67,7 +75,7 @@ export function ApplicationsPage() {
               <Badge tone="neutral">
                 {copy({ en: `${totalRecords} records`, vi: `${totalRecords} hồ sơ` })}
               </Badge>
-              <Button onClick={() => openDetail()} className="shadow-[0_12px_24px_rgba(79,70,229,0.18)]">
+              <Button onClick={openLeadlessUpload} className="shadow-[0_12px_24px_rgba(79,70,229,0.18)]">
                 {copy({ en: "Upload file", vi: "Tải hồ sơ lên" })}
               </Button>
             </div>
@@ -180,7 +188,7 @@ export function ApplicationsPage() {
               })}
             </p>
             <div className="mt-4">
-              <Button onClick={() => openDetail()}>
+              <Button onClick={openLeadlessUpload}>
                 {copy({ en: "Upload file", vi: "Tải hồ sơ lên" })}
               </Button>
             </div>

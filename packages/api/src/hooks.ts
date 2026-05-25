@@ -683,6 +683,62 @@ export function useLeadsSearchQuery(search: string) {
   });
 }
 
+// ── Leadless analyze-and-pick upload flow ─────────────────────────────────
+
+export function useAnalyzeFormStandardMutation() {
+  return useMutation({
+    mutationFn: (payload: { file: File; onUploadProgress?: (progress: number) => void }) =>
+      apiClient.analyzeFormStandard(payload),
+  });
+}
+
+export function useCommitFormStandardPendingMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pendingId, payload }: {
+      pendingId: string;
+      payload: { leadId: string; candidateId?: string; status?: string };
+    }) => apiClient.commitFormStandardPending(pendingId, payload),
+    onSuccess: (document) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      if (document.lead_id) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
+        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "transitions"] });
+        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "order-suggestions"] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
+    },
+    meta: { successMessage: { en: "Form linked to lead", vi: "Đã gắn hồ sơ với ứng viên" } }
+  });
+}
+
+export function useRematchFormStandardPendingMutation() {
+  return useMutation({
+    mutationFn: ({ pendingId, payload }: {
+      pendingId: string;
+      payload: { phone?: string; name?: string };
+    }) => apiClient.rematchFormStandardPending(pendingId, payload),
+  });
+}
+
+export function useCancelFormStandardPendingMutation() {
+  return useMutation({
+    mutationFn: (pendingId: string) => apiClient.cancelFormStandardPending(pendingId),
+  });
+}
+
+export function useCreateLeadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof apiClient.createLead>[0]) =>
+      apiClient.createLead(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    meta: { successMessage: { en: "Lead created", vi: "Đã tạo ứng viên" } }
+  });
+}
+
 // ── Form-to-lead match ──────────────────────────────────────────────────────
 
 export function useFormPreviewQuery(documentId: string | null) {

@@ -29,6 +29,9 @@ import type {
   DashboardStats,
   DocumentChecklistSummary,
   FormStandardRegisterResponse,
+  FormStandardAnalyzeResult,
+  FormStandardSuggestions,
+  CreateLeadPayload,
   DocumentListResponse,
   DocumentRecord,
   HealthStatus,
@@ -383,6 +386,11 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async createLead(payload: CreateLeadPayload) {
+    const response = await this.http.post<ApiEnvelope<Lead> | Lead>("/leads", payload);
+    return unwrapEnvelope(response.data);
+  }
+
   async getLeadTransitions(id: string) {
     const response = await this.http.get<ApiEnvelope<LeadTransitions> | LeadTransitions>(`/leads/${id}/transitions`);
     return unwrapEnvelope(response.data);
@@ -614,6 +622,54 @@ export class SocialCrmApiClient {
 
   async unlinkFormStandardDocument(leadId: string): Promise<void> {
     await this.http.delete(`/documents/form-standard/${leadId}`);
+  }
+
+  // ── Leadless analyze-and-pick upload flow ────────────────────────────────
+
+  async analyzeFormStandard(payload: {
+    file: File;
+    onUploadProgress?: (progress: number) => void;
+  }): Promise<FormStandardAnalyzeResult> {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    const response = await this.http.post<ApiEnvelope<FormStandardAnalyzeResult> | FormStandardAnalyzeResult>(
+      "/documents/form-standard/analyze",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!payload.onUploadProgress || !event.total) return;
+          payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async commitFormStandardPending(
+    pendingId: string,
+    payload: { leadId: string; candidateId?: string; status?: string }
+  ): Promise<DocumentRecord> {
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>(
+      `/documents/form-standard/analyze/${pendingId}/commit`,
+      payload
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async rematchFormStandardPending(
+    pendingId: string,
+    payload: { phone?: string; name?: string }
+  ): Promise<FormStandardSuggestions> {
+    const response = await this.http.post<ApiEnvelope<FormStandardSuggestions> | FormStandardSuggestions>(
+      `/documents/form-standard/analyze/${pendingId}/match`,
+      payload
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async cancelFormStandardPending(pendingId: string): Promise<void> {
+    await this.http.delete(`/documents/form-standard/analyze/${pendingId}`);
   }
 
   async updateDocument(id: string, patch: Record<string, unknown>) {

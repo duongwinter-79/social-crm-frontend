@@ -357,6 +357,8 @@ export function AppRouter() {
         <Route path="/matching" element={<LazyRoute><MatchingPage /></LazyRoute>} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
         <Route path="/applications" element={<LazyRoute><ApplicationsPage /></LazyRoute>} />
+        {/* Legacy URL kept as a redirect for bookmarks. The merged detail page handles both upload and view. */}
+        <Route path="/applications/upload" element={<Navigate to="/applications/detail" replace />} />
         <Route path="/applications/detail" element={<LazyRoute><ApplicationDetailPage /></LazyRoute>} />
         <Route path="/applications/match/:documentId" element={<LazyRoute><ApplicationMatchPage /></LazyRoute>} />
         <Route path="/applications/:leadId/edit" element={<LazyRoute><FormEditorPage /></LazyRoute>} />

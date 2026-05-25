@@ -604,6 +604,58 @@ export interface FormStandardRegisterResponse {
   total: number;
 }
 
+/** Lead suggestion summary surfaced by the leadless analyze flow. */
+export interface FormStandardLeadSuggestion {
+  id: string;
+  fullName: string | null;
+  displayName: string | null;
+  phone: string | null;
+  status: string | null;
+}
+
+/** Per-field values extracted from the uploaded form (all nullable). */
+export interface FormStandardExtractedFields {
+  name: string | null;
+  phone: string | null;
+  gender: string | null;
+  birthYear: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  experienceField: string | null;
+  preferredRegions: string[] | null;
+  desiredIndustry: string | null;
+  desiredSalary: string | number | null;
+}
+
+/** Suggestion bundle: at most one phone match (unique index) + 0..N name matches. */
+export interface FormStandardSuggestions {
+  phoneMatch: FormStandardLeadSuggestion | null;
+  nameMatches: FormStandardLeadSuggestion[];
+}
+
+/** Result of POST /documents/form-standard/analyze — file is staged, lead not yet picked. */
+export interface FormStandardAnalyzeResult extends FormStandardSuggestions {
+  pendingId: string;
+  extracted: FormStandardExtractedFields | null;
+}
+
+/** Allowed acquisition sources. Mirrors Lead.leadSource and CreateLeadDto.leadSource. */
+export type LeadAcquisitionSource = "facebook" | "zalo" | "tiktok" | "website" | "gioi_thieu";
+
+/** Body for POST /leads — required source is the messaging channel (zalo/facebook). */
+export interface CreateLeadPayload {
+  displayName?: string;
+  fullName?: string;
+  phone?: string;
+  source: "zalo" | "facebook";
+  sourceUserId?: string;
+  region?: string;
+  status?: string;
+  tags?: string[];
+  leadSource?: LeadAcquisitionSource;
+  aiExtractedData?: Record<string, unknown>;
+}
+
 export interface DocumentChecklistSummary {
   requiredDocTypes: string[];
   presentDocTypes: string[];
