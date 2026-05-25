@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
-  EmptyState,
   Panel,
 } from "@social-crm/ui";
 import {
@@ -471,6 +470,11 @@ export function ApplicationDetailPage() {
       selectedRow.order?.name,
     ].filter(Boolean).join(" · ")
     : undefined;
+  const selectedCandidateDisplay = selectedRow
+    ? leadLabel(selectedRow)
+    : selectedLeadId
+      ? `ID: ${selectedLeadId.slice(0, 8)}...`
+      : null;
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -527,36 +531,56 @@ export function ApplicationDetailPage() {
 
   function renderEmpty() {
     return (
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Panel
-          title={copy({ en: "Pick an existing candidate", vi: "Chọn ứng viên có sẵn" })}
-          subtitle={copy({
-            en: "Use the search field above to open a candidate's application file directly.",
-            vi: "Dùng ô tìm kiếm phía trên để mở hồ sơ ứng tuyển của ứng viên có sẵn.",
-          })}
-        >
-          <EmptyState
-            title={copy({ en: "Search for a candidate above", vi: "Tìm ứng viên ở trên" })}
-            description={copy({
-              en: "Type a name or phone number to find a candidate and manage their application file.",
-              vi: "Nhập tên hoặc số điện thoại để tìm ứng viên và quản lý hồ sơ ứng tuyển.",
-            })}
-          />
-        </Panel>
+      <Panel
+        title={copy({
+          en: selectedLeadId ? "Upload application form" : "Upload a form or choose a candidate",
+          vi: selectedLeadId ? "Tải hồ sơ ứng tuyển" : "Tải hồ sơ hoặc chọn ứng viên",
+        })}
+        subtitle={copy({
+          en: "Stage a PDF, DOC, or DOCX, then preview, edit, extract, and link it to the right candidate.",
+          vi: "Lưu tạm PDF, DOC hoặc DOCX, sau đó xem, chỉnh sửa, trích xuất và gắn vào đúng ứng viên.",
+        })}
+      >
+        <div className="grid gap-5 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
+          <div className="border-b border-slate-100 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {copy({ en: "Candidate context", vi: "Ứng viên" })}
+            </div>
+            {selectedCandidateDisplay ? (
+              <div className="mt-3 space-y-2">
+                <div className="truncate text-base font-semibold text-slate-950">
+                  {selectedCandidateDisplay}
+                </div>
+                <Badge tone="neutral">
+                  {copy({ en: "No application file yet", vi: "Chưa có hồ sơ" })}
+                </Badge>
+                <p className="text-sm leading-6 text-slate-600">
+                  {copy({
+                    en: "The uploaded form will be staged first. It is only linked after verification.",
+                    vi: "File sẽ được lưu tạm trước. Hồ sơ chỉ được gắn sau bước xác nhận.",
+                  })}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3 space-y-2">
+                <div className="text-base font-semibold text-slate-950">
+                  {copy({ en: "No candidate selected", vi: "Chưa chọn ứng viên" })}
+                </div>
+                <p className="text-sm leading-6 text-slate-600">
+                  {copy({
+                    en: "Choose a candidate above, or upload first and let the extracted phone/name suggest a match.",
+                    vi: "Chọn ứng viên ở trên, hoặc tải file trước để hệ thống gợi ý theo SĐT/tên trích xuất.",
+                  })}
+                </p>
+              </div>
+            )}
+          </div>
 
-        <Panel
-          title={copy({
-            en: selectedLeadId ? "Upload a new form for this candidate" : "Or, upload a form first",
-            vi: selectedLeadId ? "Tải lên hồ sơ mới cho ứng viên này" : "Hoặc tải hồ sơ lên trước",
-          })}
-          subtitle={copy({
-            en: "Drop a PDF / DOC / DOCX. You'll be able to preview and edit before verifying.",
-            vi: "Tải PDF / DOC / DOCX. Bạn có thể xem và chỉnh sửa trước khi xác nhận.",
-          })}
-        >
-          {renderUploadZone()}
-        </Panel>
-      </div>
+          <div className="lg:pl-1">
+            {renderUploadZone()}
+          </div>
+        </div>
+      </Panel>
     );
   }
 
