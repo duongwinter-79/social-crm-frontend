@@ -11,6 +11,7 @@ const LeadsPage = lazy(() => import("@/features/leads/leads-page").then((m) => (
 const ConversationsPage = lazy(() => import("@/features/conversations/conversations-page").then((m) => ({ default: m.ConversationsPage })));
 const PipelinePage = lazy(() => import("@/features/pipeline/pipeline-page").then((m) => ({ default: m.PipelinePage })));
 const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-page").then((m) => ({ default: m.LeadWorkbenchPage })));
+const CandidateDossierPage = lazy(() => import("@/features/leads/candidate-dossier-page").then((m) => ({ default: m.CandidateDossierPage })));
 const MatchingPage = lazy(() => import("@/features/matching/matching-page").then((m) => ({ default: m.MatchingPage })));
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
 const ApplicationsPage = lazy(() => import("@/features/applications/applications-page").then((m) => ({ default: m.ApplicationsPage })));
@@ -114,6 +115,7 @@ function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: {
 }
 
 function titleForPath(pathname: string, copy: (value: { en: string; vi: string }) => string) {
+  if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   if (pathname === "/applications/detail") return copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" });
   if (pathname.match(/^\/applications\/[^/]+\/edit$/)) return copy({ en: "Form editor", vi: "Chỉnh sửa hồ sơ ứng tuyển" });
@@ -349,6 +351,7 @@ export function AppRouter() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<LazyRoute><DashboardPage /></LazyRoute>} />
         <Route path="/leads" element={<LazyRoute><LeadsPage /></LazyRoute>} />
+        <Route path="/leads/:leadId/dossier" element={<LazyRoute><CandidateDossierPage /></LazyRoute>} />
         <Route path="/leads/:leadId" element={<LazyRoute><LeadWorkbenchPage /></LazyRoute>} />
         <Route path="/conversations" element={<LazyRoute><ConversationsPage /></LazyRoute>} />
         <Route path="/pipeline" element={<LazyRoute><PipelinePage /></LazyRoute>} />

@@ -29,6 +29,7 @@ import type {
   LeadAcquisitionSource,
 } from "@social-crm/api";
 import { LeadPicker } from "@/components/lead-picker";
+import { ApplicationContextNav } from "./application-context-nav";
 
 /**
  * Unified staging-first flow.
@@ -609,6 +610,8 @@ export function ApplicationDetailPage() {
           </div>
         </div>
       </div>
+
+      <ApplicationContextNav leadId={selectedLeadId || undefined} active="form" />
 
       {pageState === "EMPTY" ? renderEmpty()
         : pageState === "STAGED" ? renderStaged()

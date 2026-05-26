@@ -298,10 +298,14 @@ export function useOrderDetailQuery(id?: string) {
   });
 }
 
-export function useApplicationsQuery(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; status?: string }) {
+export function useApplicationsQuery(
+  params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; status?: string },
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: ["applications", params],
-    queryFn: () => apiClient.listApplications(params)
+    queryFn: () => apiClient.listApplications(params),
+    enabled: options?.enabled ?? true,
   });
 }
 

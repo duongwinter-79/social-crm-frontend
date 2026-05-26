@@ -40,7 +40,6 @@ import {
 } from "./field-with-provenance";
 import { LeadConversationInline } from "./lead-conversation-inline";
 import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
-import { CandidateDossierPanel } from "./candidate-dossier-panel";
 
 function toneForStatus(status: string) {
   if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
@@ -123,6 +122,7 @@ export function LeadWorkbenchPage() {
   const [disqualifyDraft, setDisqualifyDraft] = useState<string | null>(null);
 
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
+  const [conversationVisible, setConversationVisible] = useState(false);
   const [qualificationForm, setQualificationForm] = useState({
     age: "",
     gender: "",
@@ -438,7 +438,44 @@ export function LeadWorkbenchPage() {
         className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
       />
 
-      <CandidateDossierPanel profile={candidate?.profile ?? null} />
+      <Panel
+        title={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}
+        subtitle={copy({
+          en: "Full form-derived candidate data now lives on its own page, linked to the verified document record.",
+          vi: "Dữ liệu ứng viên từ form đã được tách sang trang riêng và liên kết với hồ sơ đã xác minh."
+        })}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1 text-sm text-slate-600">
+            <div>
+              <span className="font-semibold text-slate-800">{copy({ en: "Candidate:", vi: "Ứng viên:" })}</span>{" "}
+              {candidate?.code ?? candidate?.id ?? copy({ en: "Not created yet", vi: "Chưa tạo" })}
+            </div>
+            <div>
+              {candidate?.profile
+                ? copy({ en: "Open the dossier to review form fields and document evidence.", vi: "Mở hồ sơ để xem dữ liệu từ form và bằng chứng tài liệu." })
+                : copy({ en: "Upload and verify the standard worker form to create the candidate dossier.", vi: "Tải lên và xác minh form lao động chuẩn để tạo hồ sơ ứng viên." })}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/leads/${lead.id}/dossier`)}
+              disabled={!candidate?.profile}
+            >
+              {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
+            </Button>
+            {canEditLeads && !candidate?.profile ? (
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/applications/detail?leadId=${lead.id}`)}
+              >
+                {copy({ en: "Upload form", vi: "Tải form" })}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </Panel>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
         <div className="space-y-6">
@@ -449,7 +486,38 @@ export function LeadWorkbenchPage() {
               vi: "Tin nhắn gần nhất từ luồng hội thoại chính. Bao gồm cả hai chiều: ứng viên gửi vào và nhân sự trả lời qua Zalo OA."
             })}
           >
-            <LeadConversationInline thread={lead.threads?.[0]} />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm text-slate-600">
+                {selectedThreadId
+                  ? copy({ en: "Conversation is hidden by default to keep this workbench focused.", vi: "Hội thoại được ẩn mặc định để trang xử lý gọn hơn." })
+                  : copy({ en: "No primary conversation thread is linked to this lead.", vi: "Chưa có luồng hội thoại chính được liên kết với hồ sơ này." })}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setConversationVisible((value) => !value)}
+                  disabled={!selectedThreadId}
+                >
+                  {conversationVisible
+                    ? copy({ en: "Hide conversation", vi: "Ẩn hội thoại" })
+                    : copy({ en: "Show conversation", vi: "Xem hội thoại" })}
+                </Button>
+                {selectedThreadId ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate(`/conversations?threadId=${selectedThreadId}`)}
+                  >
+                    {copy({ en: "Open full page", vi: "Mở trang hội thoại" })}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+
+            {conversationVisible ? (
+              <div className="mt-4">
+                <LeadConversationInline thread={lead.threads?.[0]} />
+              </div>
+            ) : null}
 
             {lead.threads?.length ? (
               <div className="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs md:grid-cols-3">

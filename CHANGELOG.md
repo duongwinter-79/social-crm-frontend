@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-05-27
+
+### Lead workbench flow cleanup
+
+- moved the full form-derived candidate dossier out of the lead workbench into a dedicated `/leads/:leadId/dossier` route
+- replaced the embedded dossier body on the workbench with a compact dossier summary and direct links to the dossier or form upload flow
+- changed the workbench conversation panel so messages are hidden by default and only mounted after the operator clicks "Show conversation"; a separate button opens the full Conversations page for the selected thread
+- kept the manual AI question and lead-stage matching areas on the workbench, but reduced always-visible document/conversation weight
+- added a shared contextual navigation bar between Form, Candidate dossier, and Application surfaces for a selected lead
+- `/applications?tab=applications&leadId=...` now filters the application table to the selected lead so the Application workflow nav lands on a real editable application context
+
 ## 2026-05-26
 
 ### Permission helper + role-aware UI gates

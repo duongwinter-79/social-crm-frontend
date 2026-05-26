@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -19,6 +19,7 @@ import {
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import type { ApplicationRecord, CandidateRef, FormStandardRegisterRow } from "@social-crm/api";
+import { ApplicationContextNav } from "./application-context-nav";
 
 const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
 const APPLICATION_STATUSES = [
@@ -114,8 +115,11 @@ function hasVerifiedForm(row?: FormStandardRegisterRow | null) {
 export function ApplicationsPage() {
   const { copy, formatDocumentStatus, formatApplicationStatus, formatLeadStatus } = useI18n();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const contextLeadId = searchParams.get("leadId") ?? "";
+  const initialTab = searchParams.get("tab") === "forms" ? "forms" : "applications";
 
-  const [activeTab, setActiveTab] = useState<TabKey>("applications");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [applicationStatus, setApplicationStatus] = useState("");
   const [applicationPage, setApplicationPage] = useState(0);
   const [documentFilters, setDocumentFilters] = useState({ status: "", search: "" });
@@ -126,14 +130,22 @@ export function ApplicationsPage() {
   const [selectedOrderId, setSelectedOrderId] = useState("");
   const [drafts, setDrafts] = useState<Record<string, ApplicationDraft>>({});
 
+  useEffect(() => {
+    setActiveTab(initialTab);
+    setApplicationPage(0);
+    setDocumentPage(0);
+  }, [contextLeadId, initialTab]);
+
   const applicationsQuery = useApplicationsQuery({
     offset: applicationPage * APPLICATION_PAGE_SIZE,
     limit: APPLICATION_PAGE_SIZE,
+    leadId: contextLeadId || undefined,
     status: applicationStatus || undefined,
   });
   const registerQuery = useFormStandardRegisterQuery({
     offset: documentPage * DOCUMENT_PAGE_SIZE,
     limit: DOCUMENT_PAGE_SIZE,
+    leadId: contextLeadId || undefined,
     status: documentFilters.status || undefined,
     search: documentFilters.search || undefined,
   });
@@ -217,6 +229,21 @@ export function ApplicationsPage() {
     navigate(leadId ? `/applications/detail?leadId=${leadId}` : "/applications/detail");
   }
 
+  function selectTab(tab: TabKey) {
+    setActiveTab(tab);
+    setApplicationPage(0);
+    setDocumentPage(0);
+    if (contextLeadId) {
+      setSearchParams({ leadId: contextLeadId, tab });
+    }
+  }
+
+  function clearContext() {
+    setSearchParams({});
+    setApplicationPage(0);
+    setDocumentPage(0);
+  }
+
   function readDraft(application: ApplicationRecord): ApplicationDraft {
     return drafts[application.id] ?? {
       status: application.status,
@@ -284,6 +311,11 @@ export function ApplicationsPage() {
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <Badge tone="neutral">{copy({ en: `${stats.applications} applications`, vi: `${stats.applications} ứng tuyển` })}</Badge>
               <Badge tone="neutral">{copy({ en: `${stats.forms} form files`, vi: `${stats.forms} form` })}</Badge>
+              {contextLeadId ? (
+                <Button variant="ghost" size="sm" onClick={clearContext}>
+                  {copy({ en: "Clear lead filter", vi: "Bỏ lọc lead" })}
+                </Button>
+              ) : null}
               <Button onClick={() => { setActiveTab("applications"); setCreateOpen(true); }}>
                 {copy({ en: "Create application", vi: "Tạo ứng tuyển" })}
               </Button>
@@ -294,16 +326,20 @@ export function ApplicationsPage() {
             <TabButton
               active={activeTab === "applications"}
               label={copy({ en: "Applications", vi: "Ứng tuyển" })}
-              onClick={() => setActiveTab("applications")}
+              onClick={() => selectTab("applications")}
             />
             <TabButton
               active={activeTab === "forms"}
               label={copy({ en: "Form documents", vi: "Form hồ sơ" })}
-              onClick={() => setActiveTab("forms")}
+              onClick={() => selectTab("forms")}
             />
           </div>
         </div>
       </Toolbar>
+
+      {contextLeadId ? (
+        <ApplicationContextNav leadId={contextLeadId} active={activeTab === "forms" ? "form" : "application"} />
+      ) : null}
 
       {activeTab === "applications" ? (
         <div className="space-y-6">
