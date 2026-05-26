@@ -41,6 +41,7 @@ import {
 } from "./field-with-provenance";
 import { LeadConversationInline } from "./lead-conversation-inline";
 import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
+import { CandidateDossierPanel } from "./candidate-dossier-panel";
 
 function toneForStatus(status: string) {
   if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
@@ -435,6 +436,8 @@ export function LeadWorkbenchPage() {
         extractionStatus={runExtraction.backgroundStatus}
         className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
       />
+
+      <CandidateDossierPanel profile={candidate?.profile ?? null} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
         <div className="space-y-6">

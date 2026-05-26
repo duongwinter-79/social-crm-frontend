@@ -613,15 +613,29 @@ export interface FormStandardLeadSuggestion {
   status: string | null;
 }
 
-/** Per-field values extracted from the uploaded form (all nullable). */
+/**
+ * Per-field dossier values surfaced by Verify. The same shape is used for
+ * BOTH "from form" (AI-extracted from the uploaded file) and "current in
+ * dossier" (read from CandidateProfile).
+ *
+ * Some keys are populated only on one side in practice:
+ *  - `phone` lives on Lead (channel identity), never on the dossier.
+ *  - `hometownProvince`, `experienceDetails`, `experienceYears` are dossier
+ *    columns the AI doesn't extract today.
+ */
 export interface FormStandardExtractedFields {
   name: string | null;
   phone: string | null;
+  dateOfBirth: string | null;
   gender: string | null;
   birthYear: number | null;
   heightCm: number | null;
   weightKg: number | null;
+  hometownProvince: string | null;
+  address: string | null;
+  experienceDetails: string | null;
   experienceField: string | null;
+  experienceYears: number | null;
   preferredRegions: string[] | null;
   desiredIndustry: string | null;
   desiredSalary: string | number | null;
@@ -662,7 +676,11 @@ export interface PendingEditSessionStatus {
 /** Result of POST /documents/form-standard/pending/:id/verify. */
 export interface VerifyPendingResult {
   extracted: FormStandardExtractedFields | null;
+  /** Soft form fields (family / marital / education / etc.) from the file. */
+  extractedSoft: Record<string, unknown> | null;
   current: FormStandardExtractedFields | null;
+  /** Soft form fields currently in the dossier (CandidateProfile.softFields). */
+  currentSoft: Record<string, unknown> | null;
   phoneMatch: FormStandardLeadSuggestion | null;
   nameMatches: FormStandardLeadSuggestion[];
 }
@@ -676,11 +694,22 @@ export interface CreateNewLeadOnCommit {
   leadSource?: LeadAcquisitionSource;
 }
 
-/** Body for POST /documents/form-standard/pending/:id/commit. */
+/**
+ * Body for POST /documents/form-standard/pending/:id/commit.
+ *
+ * `dossierFields` is the operator-resolved per-field outcome from the Verify
+ * screen. Keys present only when the operator chose "use form value" or
+ * "override". Fields where the operator kept the current dossier value are
+ * omitted so the existing value stays untouched. Writes land on
+ * CandidateProfile — NEVER the Lead.
+ *
+ * The blob may include a `softFields` sub-object for the closed-key
+ * informational form fields (family / marital / etc.).
+ */
 export interface CommitPendingFormPayload {
   leadId?: string;
   createNewLead?: CreateNewLeadOnCommit;
-  applyFields?: Partial<FormStandardExtractedFields>;
+  dossierFields?: Record<string, unknown>;
 }
 
 /** Allowed acquisition sources. Mirrors Lead.leadSource and CreateLeadDto.leadSource. */

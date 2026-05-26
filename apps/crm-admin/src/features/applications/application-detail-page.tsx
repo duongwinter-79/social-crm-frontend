@@ -8,6 +8,7 @@ import {
 import {
   apiClient,
   useFormStandardRegisterQuery,
+  useLeadDetailQuery,
   useUnlinkFormStandardMutation,
   useStageFormStandardMutation,
   useOpenPendingEditSessionMutation,
@@ -49,6 +50,74 @@ const ACQUISITION_SOURCES: { value: LeadAcquisitionSource; en: string; vi: strin
   { value: "website", en: "Website", vi: "Website" },
   { value: "gioi_thieu", en: "Referral", vi: "Giới thiệu" },
 ];
+
+/**
+ * Verify-screen field catalog. Each entry drives one side-by-side row in the
+ * comparison view. `group` decides where the value lands in the commit
+ * payload: `typed` → top-level dossierFields key; `soft` → nested under
+ * dossierFields.softFields.
+ *
+ * Phone is intentionally NOT here — it's channel identity on Lead, not
+ * dossier data. Form upload never writes Lead.phone.
+ */
+type ChoicePerField = "current" | "form" | "override";
+
+type VerifyFieldDef = {
+  key: string;
+  group: "typed" | "soft";
+  section: "identity" | "physical" | "background" | "family" | "work" | "wishes";
+  en: string;
+  vi: string;
+  /** UI input type for the Override column. */
+  input: "text" | "number" | "select-gender" | "select-yes-no";
+};
+
+const VERIFY_FIELDS: readonly VerifyFieldDef[] = [
+  // ── Identity ─────────────────────────────────────────────────────────
+  { key: "name",              group: "typed", section: "identity",   en: "Full name",          vi: "Họ và tên",            input: "text" },
+  { key: "dateOfBirth",       group: "typed", section: "identity",   en: "Date of birth",      vi: "Ngày sinh",            input: "text" },
+  { key: "birthYear",         group: "typed", section: "identity",   en: "Birth year",         vi: "Năm sinh",             input: "number" },
+  { key: "gender",            group: "typed", section: "identity",   en: "Gender",             vi: "Giới tính",            input: "select-gender" },
+  // ── Physical ─────────────────────────────────────────────────────────
+  { key: "heightCm",          group: "typed", section: "physical",   en: "Height (cm)",        vi: "Chiều cao (cm)",       input: "number" },
+  { key: "weightKg",          group: "typed", section: "physical",   en: "Weight (kg)",        vi: "Cân nặng (kg)",        input: "number" },
+  { key: "vision",            group: "soft",  section: "physical",   en: "Vision",             vi: "Thị lực",              input: "text" },
+  { key: "handedness",        group: "soft",  section: "physical",   en: "Handedness",         vi: "Thuận tay",            input: "text" },
+  { key: "tattooNote",        group: "soft",  section: "physical",   en: "Tattoo note",        vi: "Hình xăm",             input: "text" },
+  // ── Background ───────────────────────────────────────────────────────
+  { key: "hometownProvince",  group: "typed", section: "background", en: "Hometown",           vi: "Hộ khẩu",              input: "text" },
+  { key: "address",           group: "typed", section: "background", en: "Address",            vi: "Địa chỉ",              input: "text" },
+  { key: "education",         group: "soft",  section: "background", en: "Education",          vi: "Trình độ",             input: "text" },
+  // ── Family ───────────────────────────────────────────────────────────
+  { key: "maritalStatus",     group: "soft",  section: "family",     en: "Marital status",     vi: "Tình trạng hôn nhân",  input: "text" },
+  { key: "spouseName",        group: "soft",  section: "family",     en: "Spouse name",        vi: "Họ tên vợ/chồng",      input: "text" },
+  { key: "spouseAge",         group: "soft",  section: "family",     en: "Spouse age",         vi: "Tuổi vợ/chồng",        input: "number" },
+  { key: "childrenCount",     group: "soft",  section: "family",     en: "Children count",     vi: "Số con",               input: "number" },
+  { key: "childrenAges",      group: "soft",  section: "family",     en: "Children ages",      vi: "Tuổi con",             input: "text" },
+  { key: "fatherName",        group: "soft",  section: "family",     en: "Father's name",      vi: "Họ tên bố",            input: "text" },
+  { key: "fatherAge",         group: "soft",  section: "family",     en: "Father's age",       vi: "Tuổi bố",              input: "number" },
+  { key: "motherName",        group: "soft",  section: "family",     en: "Mother's name",      vi: "Họ tên mẹ",            input: "text" },
+  { key: "motherAge",         group: "soft",  section: "family",     en: "Mother's age",       vi: "Tuổi mẹ",              input: "number" },
+  { key: "siblingsCount",     group: "soft",  section: "family",     en: "Siblings count",     vi: "Số anh chị em",        input: "number" },
+  { key: "birthOrder",        group: "soft",  section: "family",     en: "Birth order",        vi: "Thứ tự sinh",          input: "number" },
+  // ── Work ─────────────────────────────────────────────────────────────
+  { key: "experienceField",   group: "typed", section: "work",       en: "Experience field",   vi: "Ngành kinh nghiệm",    input: "text" },
+  { key: "experienceDetails", group: "typed", section: "work",       en: "Experience details", vi: "Chi tiết kinh nghiệm", input: "text" },
+  { key: "experienceYears",   group: "typed", section: "work",       en: "Experience years",   vi: "Số năm KN",            input: "number" },
+  { key: "hasBeenToTaiwan",   group: "soft",  section: "work",       en: "Has been to Taiwan", vi: "Đã qua Đài Loan",      input: "select-yes-no" },
+  // ── Wishes ───────────────────────────────────────────────────────────
+  { key: "desiredIndustry",   group: "typed", section: "wishes",     en: "Desired industry",   vi: "Ngành mong muốn",      input: "text" },
+  { key: "desiredSalary",     group: "typed", section: "wishes",     en: "Desired salary",     vi: "Lương mong muốn",      input: "text" },
+];
+
+const SECTION_LABELS: Record<VerifyFieldDef["section"], { en: string; vi: string }> = {
+  identity:   { en: "Identity",   vi: "Thông tin cơ bản" },
+  physical:   { en: "Physical",   vi: "Thể chất" },
+  background: { en: "Background", vi: "Hoàn cảnh" },
+  family:     { en: "Family",     vi: "Gia đình" },
+  work:       { en: "Work",       vi: "Nghề nghiệp" },
+  wishes:     { en: "Wishes",     vi: "Nguyện vọng" },
+};
 
 const EXTRACTABLE_FIELDS: { key: keyof FormStandardExtractedFields; en: string; vi: string }[] = [
   { key: "name", en: "Full name", vi: "Họ và tên" },
@@ -130,8 +199,12 @@ export function ApplicationDetailPage() {
   const [fileActionError, setFileActionError] = useState("");
   const [confirmUnlink, setConfirmUnlink] = useState(false);
 
-  // Verify-screen UI state
-  const [checked, setChecked] = useState<Set<string>>(new Set());
+  // Verify-screen UI state — per-field operator choice (current / form /
+  // override). `overrides` holds the operator's typed value when choice is
+  // "override". Form-wins is the default when the form provides a non-null
+  // value; otherwise current-wins.
+  const [choices, setChoices] = useState<Record<string, ChoicePerField>>({});
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [newLeadFullName, setNewLeadFullName] = useState("");
   const [newLeadDisplayName, setNewLeadDisplayName] = useState("");
   const [newLeadPhone, setNewLeadPhone] = useState("");
@@ -169,6 +242,12 @@ export function ApplicationDetailPage() {
   const selectedRow = (registerQuery.data?.data ?? []).find(
     (r) => r.lead.id === selectedLeadId,
   ) ?? null;
+
+  // Lead detail for the candidate-context panel. Used in the EMPTY/STAGED
+  // states where selectedRow is null (no committed FORM_STANDARD doc yet) but
+  // we still want to show the picked lead's name instead of a raw UUID.
+  const leadDetailQuery = useLeadDetailQuery(selectedLeadId || undefined);
+  const pickedLead = leadDetailQuery.data;
 
   // Page-state derivation. Order matters: VERIFIED > STAGED > COMMITTED > EMPTY.
   type PageState = "EMPTY" | "STAGED" | "VERIFIED" | "COMMITTED";
@@ -238,7 +317,8 @@ export function ApplicationDetailPage() {
     setUploadProgress(null);
     setEditSessionOpen(false);
     setStageError("");
-    setChecked(new Set());
+    setChoices({});
+    setOverrides({});
     setNewLeadFullName("");
     setNewLeadDisplayName("");
     setNewLeadPhone("");
@@ -347,15 +427,16 @@ export function ApplicationDetailPage() {
       {
         onSuccess: (result) => {
           setVerifyResult(result);
-          // Default-check every field that has a value.
-          const defaults = new Set<string>();
-          if (result.extracted) {
-            for (const f of EXTRACTABLE_FIELDS) {
-              const v = result.extracted[f.key];
-              if (v !== null && v !== undefined && v !== "") defaults.add(f.key as string);
-            }
+          // Form-wins default: if the form has a non-null value for a field,
+          // pre-select "form"; otherwise pre-select "current". Operator can
+          // flip to override per row and type a fresh value.
+          const initialChoices: Record<string, ChoicePerField> = {};
+          for (const f of VERIFY_FIELDS) {
+            const formVal = readFieldValue(result.extracted, result.extractedSoft, f);
+            initialChoices[f.key] = isNonEmpty(formVal) ? "form" : "current";
           }
-          setChecked(defaults);
+          setChoices(initialChoices);
+          setOverrides({});
           // Pre-fill the create-new-lead panel from extracted fields.
           if (!selectedLeadId && result.extracted) {
             setNewLeadFullName(result.extracted.name ?? "");
@@ -376,9 +457,9 @@ export function ApplicationDetailPage() {
   function handleConfirmWithExistingLead(leadId: string) {
     if (!pending || !verifyResult) return;
     setStageError("");
-    const applyFields = buildApplyFields(verifyResult.extracted, checked);
+    const dossierFields = buildDossierFields(verifyResult, choices, overrides);
     commitMutation.mutate(
-      { pendingId: pending.pendingId, payload: { leadId, applyFields } },
+      { pendingId: pending.pendingId, payload: { leadId, dossierFields } },
       {
         onSuccess: () => {
           resetStagingState();
@@ -405,7 +486,7 @@ export function ApplicationDetailPage() {
       return;
     }
     setStageError("");
-    const applyFields = buildApplyFields(verifyResult.extracted, checked);
+    const dossierFields = buildDossierFields(verifyResult, choices, overrides);
     const channelSource = newLeadAcquisitionSource === "facebook" ? "facebook" : "zalo";
     commitMutation.mutate(
       {
@@ -418,7 +499,7 @@ export function ApplicationDetailPage() {
             source: channelSource,
             leadSource: newLeadAcquisitionSource,
           },
-          applyFields,
+          dossierFields,
         },
       },
       {
@@ -470,10 +551,13 @@ export function ApplicationDetailPage() {
       selectedRow.order?.name,
     ].filter(Boolean).join(" · ")
     : undefined;
+  // Display chain: committed-row label → picked-lead fields → null (panel
+  // omits the name line entirely). The raw lead-id UUID is never shown — it's
+  // operator-hostile and the LeadPicker already proves the lead exists.
   const selectedCandidateDisplay = selectedRow
     ? leadLabel(selectedRow)
-    : selectedLeadId
-      ? `ID: ${selectedLeadId.slice(0, 8)}...`
+    : pickedLead
+      ? (pickedLead.fullName || pickedLead.displayName || pickedLead.phone || null)
       : null;
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -546,11 +630,13 @@ export function ApplicationDetailPage() {
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {copy({ en: "Candidate context", vi: "Ứng viên" })}
             </div>
-            {selectedCandidateDisplay ? (
+            {selectedLeadId ? (
               <div className="mt-3 space-y-2">
-                <div className="truncate text-base font-semibold text-slate-950">
-                  {selectedCandidateDisplay}
-                </div>
+                {selectedCandidateDisplay ? (
+                  <div className="truncate text-base font-semibold text-slate-950">
+                    {selectedCandidateDisplay}
+                  </div>
+                ) : null}
                 <Badge tone="neutral">
                   {copy({ en: "No application file yet", vi: "Chưa có hồ sơ" })}
                 </Badge>
@@ -777,62 +863,127 @@ export function ApplicationDetailPage() {
     return (
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <Panel
-          title={copy({ en: "Confirm the fields to apply to the lead", vi: "Xác nhận các trường cần ghi vào ứng viên" })}
+          title={copy({ en: "Confirm the dossier fields", vi: "Xác nhận hồ sơ ứng viên" })}
           subtitle={copy({
-            en: "All fields with values are pre-checked. Uncheck any you do not want written.",
-            vi: "Mọi trường có giá trị đều đã được chọn sẵn. Bỏ chọn các trường bạn không muốn ghi.",
+            en: "Per field: keep current value, use form value, or override. Form wins by default when the form has a value. Writes land on the candidate dossier — not the lead.",
+            vi: "Mỗi trường: giữ giá trị hiện tại, dùng giá trị từ form, hoặc nhập mới. Mặc định dùng form khi form có giá trị. Dữ liệu được ghi vào hồ sơ ứng viên — không ghi vào lead.",
           })}
         >
-          <div className="overflow-auto rounded-xl border border-slate-200">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="w-10 px-3 py-3" />
-                  <th className="px-3 py-3 text-left">{copy({ en: "Field", vi: "Trường" })}</th>
-                  <th className="px-3 py-3 text-left">{copy({ en: "From form", vi: "Từ hồ sơ" })}</th>
-                  {selectedLeadId ? (
-                    <th className="px-3 py-3 text-left">{copy({ en: "Current in database", vi: "Hiện tại trong CSDL" })}</th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody>
-                {EXTRACTABLE_FIELDS.map((field) => {
-                  const formVal = verifyResult.extracted?.[field.key];
-                  const currVal = verifyResult.current?.[field.key];
-                  const hasFormValue = formVal !== null && formVal !== undefined && formVal !== "";
-                  const isChecked = checked.has(field.key as string);
-                  return (
-                    <tr key={field.key} className={`border-t border-slate-100 ${!hasFormValue ? "opacity-40" : ""}`}>
-                      <td className="px-3 py-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          disabled={!hasFormValue}
-                          onChange={() => toggleChecked(field.key as string)}
-                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                      </td>
-                      <td className="px-3 py-3 font-medium text-slate-700">{copy(field)}</td>
-                      <td className="px-3 py-3 text-slate-900">{displayValue(formVal)}</td>
-                      {selectedLeadId ? (
-                        <td className="px-3 py-3 text-slate-600">{displayValue(currVal)}</td>
-                      ) : null}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="mb-3 flex items-center gap-3 text-sm">
+            <button type="button" onClick={resetAllToFormWins} className="text-indigo-600 hover:underline">
+              {copy({ en: "Reset all to form-wins", vi: "Đặt lại tất cả về form-wins" })}
+            </button>
           </div>
 
-          <div className="mt-4 flex items-center gap-3">
-            <button type="button" onClick={selectAllWithValues} className="text-sm text-indigo-600 hover:underline">
-              {copy({ en: "Select all with values", vi: "Chọn tất cả có giá trị" })}
-            </button>
-            <span className="text-slate-300">|</span>
-            <button type="button" onClick={() => setChecked(new Set())} className="text-sm text-slate-500 hover:underline">
-              {copy({ en: "Deselect all", vi: "Bỏ chọn tất cả" })}
-            </button>
-          </div>
+          {(["identity", "physical", "background", "family", "work", "wishes"] as const).map((section) => {
+            const sectionFields = VERIFY_FIELDS.filter((f) => f.section === section);
+            return (
+              <div key={section} className="mb-5">
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {copy(SECTION_LABELS[section])}
+                </div>
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2 text-left">{copy({ en: "Field", vi: "Trường" })}</th>
+                        <th className="px-3 py-2 text-left">{copy({ en: "Current in dossier", vi: "Trong hồ sơ hiện tại" })}</th>
+                        <th className="px-3 py-2 text-left">{copy({ en: "From form", vi: "Từ form" })}</th>
+                        <th className="px-3 py-2 text-left">{copy({ en: "Decision", vi: "Quyết định" })}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionFields.map((field) => {
+                        const formVal = readFieldValue(verifyResult.extracted, verifyResult.extractedSoft, field);
+                        const currVal = readFieldValue(verifyResult.current, verifyResult.currentSoft, field);
+                        const choice = choices[field.key] ?? "current";
+                        const override = overrides[field.key] ?? "";
+                        const formHasValue = isNonEmpty(formVal);
+                        const currentHasValue = isNonEmpty(currVal);
+                        return (
+                          <tr key={field.key} className="border-t border-slate-100 align-top">
+                            <td className="px-3 py-2 font-medium text-slate-700">{copy(field)}</td>
+                            <td className={`px-3 py-2 ${currentHasValue ? "text-slate-700" : "text-slate-300"}`}>
+                              {displayValue(currVal)}
+                            </td>
+                            <td className={`px-3 py-2 ${formHasValue ? "font-medium text-indigo-700" : "text-slate-300"}`}>
+                              {displayValue(formVal)}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <label className="inline-flex items-center gap-1 text-xs">
+                                  <input
+                                    type="radio"
+                                    name={`choice-${field.key}`}
+                                    checked={choice === "current"}
+                                    onChange={() => setChoice(field.key, "current")}
+                                    className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  {copy({ en: "Keep", vi: "Giữ" })}
+                                </label>
+                                <label className="inline-flex items-center gap-1 text-xs">
+                                  <input
+                                    type="radio"
+                                    name={`choice-${field.key}`}
+                                    checked={choice === "form"}
+                                    disabled={!formHasValue}
+                                    onChange={() => setChoice(field.key, "form")}
+                                    className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
+                                  />
+                                  {copy({ en: "Use form", vi: "Dùng form" })}
+                                </label>
+                                <label className="inline-flex items-center gap-1 text-xs">
+                                  <input
+                                    type="radio"
+                                    name={`choice-${field.key}`}
+                                    checked={choice === "override"}
+                                    onChange={() => setChoice(field.key, "override")}
+                                    className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  {copy({ en: "Edit", vi: "Sửa" })}
+                                </label>
+                                {choice === "override" ? (
+                                  field.input === "select-gender" ? (
+                                    <select
+                                      value={override}
+                                      onChange={(e) => setOverride(field.key, e.target.value)}
+                                      className="ml-2 rounded-md border border-slate-200 px-2 py-1 text-xs"
+                                    >
+                                      <option value="">—</option>
+                                      <option value="male">{copy({ en: "Male", vi: "Nam" })}</option>
+                                      <option value="female">{copy({ en: "Female", vi: "Nữ" })}</option>
+                                    </select>
+                                  ) : field.input === "select-yes-no" ? (
+                                    <select
+                                      value={override}
+                                      onChange={(e) => setOverride(field.key, e.target.value)}
+                                      className="ml-2 rounded-md border border-slate-200 px-2 py-1 text-xs"
+                                    >
+                                      <option value="">—</option>
+                                      <option value="true">{copy({ en: "Yes", vi: "Rồi" })}</option>
+                                      <option value="false">{copy({ en: "No", vi: "Chưa" })}</option>
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type={field.input === "number" ? "number" : "text"}
+                                      value={override}
+                                      onChange={(e) => setOverride(field.key, e.target.value)}
+                                      placeholder={String(displayValue(formVal))}
+                                      className="ml-2 w-32 rounded-md border border-slate-200 px-2 py-1 text-xs"
+                                    />
+                                  )
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
         </Panel>
 
         <div className="space-y-6">
@@ -978,6 +1129,26 @@ export function ApplicationDetailPage() {
             </div>
           </div>
 
+          {/* Hand-off to the lead workbench where the operator picks an order
+              and clicks Create placement — the manual "ghép đơn" step. */}
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-indigo-900">
+                {copy({
+                  en: "Form on file. The candidate is now ready to be matched to an order.",
+                  vi: "Đã có hồ sơ. Ứng viên đã sẵn sàng để ghép đơn.",
+                })}
+              </div>
+              <Button
+                size="sm"
+                onClick={() => navigate(`/leads/${selectedLeadId}`)}
+                className="shrink-0"
+              >
+                {copy({ en: "Open candidate to ghép đơn →", vi: "Mở ứng viên để ghép đơn →" })}
+              </Button>
+            </div>
+          </div>
+
           {fileActionError ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
               {fileActionError}
@@ -1021,36 +1192,93 @@ export function ApplicationDetailPage() {
     );
   }
 
-  function toggleChecked(key: string) {
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  function setChoice(key: string, choice: ChoicePerField) {
+    setChoices((prev) => ({ ...prev, [key]: choice }));
   }
 
-  function selectAllWithValues() {
-    if (!verifyResult?.extracted) return;
-    const all = new Set<string>();
-    for (const f of EXTRACTABLE_FIELDS) {
-      const v = verifyResult.extracted[f.key];
-      if (v !== null && v !== undefined && v !== "") all.add(f.key as string);
+  function setOverride(key: string, value: string) {
+    setOverrides((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function resetAllToFormWins() {
+    if (!verifyResult) return;
+    const next: Record<string, ChoicePerField> = {};
+    for (const f of VERIFY_FIELDS) {
+      const formVal = readFieldValue(verifyResult.extracted, verifyResult.extractedSoft, f);
+      next[f.key] = isNonEmpty(formVal) ? "form" : "current";
     }
-    setChecked(all);
+    setChoices(next);
   }
 }
 
-function buildApplyFields(
-  extracted: FormStandardExtractedFields | null,
-  checked: Set<string>,
-): Partial<FormStandardExtractedFields> {
-  if (!extracted) return {};
-  const result: any = {};
-  for (const key of checked) {
-    const v = (extracted as any)[key];
-    if (v !== null && v !== undefined && v !== "") result[key] = v;
+/** Read a field's value from one side of the comparison. Typed fields live on
+ *  the top-level object; soft fields live under .softFields. */
+function readFieldValue(
+  typed: FormStandardExtractedFields | null,
+  soft: Record<string, unknown> | null | undefined,
+  field: VerifyFieldDef,
+): unknown {
+  if (field.group === "typed") return typed ? (typed as any)[field.key] : null;
+  return soft ? (soft as any)[field.key] : null;
+}
+
+function isNonEmpty(v: unknown): boolean {
+  if (v === null || v === undefined) return false;
+  if (typeof v === "string" && v.trim() === "") return false;
+  if (Array.isArray(v) && v.length === 0) return false;
+  return true;
+}
+
+/**
+ * Build the commit payload from the operator's per-field choices.
+ *
+ * Each VERIFY_FIELDS row resolves to one of:
+ *   - choice === "current"   → omit the key (existing dossier value stays)
+ *   - choice === "form"      → use the form-extracted value
+ *   - choice === "override"  → use the operator-typed override
+ *
+ * Typed-group values land at the top level of dossierFields. Soft-group
+ * values land under `dossierFields.softFields`.
+ */
+function buildDossierFields(
+  verifyResult: VerifyPendingResult,
+  choices: Record<string, ChoicePerField>,
+  overrides: Record<string, string>,
+): Record<string, unknown> {
+  const typed: Record<string, unknown> = {};
+  const soft: Record<string, unknown> = {};
+
+  for (const field of VERIFY_FIELDS) {
+    const choice = choices[field.key] ?? "current";
+    if (choice === "current") continue;
+
+    let value: unknown;
+    if (choice === "override") {
+      const raw = overrides[field.key] ?? "";
+      if (field.input === "number") {
+        const n = Number(raw);
+        value = Number.isFinite(n) ? n : null;
+      } else if (field.input === "select-yes-no") {
+        value = raw === "true" ? true : raw === "false" ? false : null;
+      } else if (raw.trim() === "") {
+        value = null;
+      } else {
+        value = raw;
+      }
+    } else {
+      // choice === "form"
+      value = readFieldValue(verifyResult.extracted, verifyResult.extractedSoft, field);
+    }
+
+    if (field.group === "typed") {
+      typed[field.key] = value;
+    } else {
+      soft[field.key] = value;
+    }
   }
+
+  const result: Record<string, unknown> = { ...typed };
+  if (Object.keys(soft).length > 0) result.softFields = soft;
   return result;
 }
 

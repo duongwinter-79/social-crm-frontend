@@ -95,6 +95,28 @@ interface AccessTokenResponse {
   access_token: string;
 }
 
+interface LoginPublicKeyResponse {
+  keyId: string;
+  algorithm: "RSA-OAEP-256";
+  publicKey: JsonWebKey;
+}
+
+interface EncryptedCredentialPayload {
+  keyId: string;
+  encryptedPassword: string;
+}
+
+function arrayBufferToBase64(value: ArrayBuffer) {
+  const bytes = new Uint8Array(value);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    const chunk = bytes.subarray(offset, offset + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
 export class SocialCrmApiClient {
   private readonly http: AxiosInstance;
   /** In-flight refresh request shared across concurrent callers (single-flight). */
@@ -123,7 +145,10 @@ export class SocialCrmApiClient {
    */
   private async attachToken(config: InternalAxiosRequestConfig) {
     const url = config.url ?? "";
-    const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/refresh");
+    const isAuthEndpoint =
+      url.includes("/auth/login") ||
+      url.includes("/auth/login-key") ||
+      url.includes("/auth/refresh");
 
     const accessToken = useSessionStore.getState().accessToken;
     if (!accessToken) return config;
@@ -203,14 +228,42 @@ export class SocialCrmApiClient {
   }
 
   async login(username: string, password: string) {
+    const credential = await this.encryptPasswordCredential(password);
     const response = await this.http.post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>(
       "/auth/login",
-      { username, password }
+      { username, ...credential }
     );
     const accessToken = unwrapEnvelope(response.data).access_token;
     useSessionStore.getState().setSession(accessToken);
     notifyLoginAcrossTabs(accessToken);
     return { accessToken, user: decodeJwtUser(accessToken) };
+  }
+
+  private async encryptPasswordCredential(password: string): Promise<EncryptedCredentialPayload> {
+    const subtle = globalThis.crypto?.subtle;
+    if (!subtle) {
+      throw new Error("Secure credential encryption is not available in this browser.");
+    }
+
+    const keyResponse = await this.http.get<ApiEnvelope<LoginPublicKeyResponse> | LoginPublicKeyResponse>("/auth/login-key");
+    const loginKey = unwrapEnvelope(keyResponse.data);
+    const publicKey = await subtle.importKey(
+      "jwk",
+      loginKey.publicKey,
+      { name: "RSA-OAEP", hash: "SHA-256" },
+      false,
+      ["encrypt"]
+    );
+    const encrypted = await subtle.encrypt(
+      { name: "RSA-OAEP" },
+      publicKey,
+      new TextEncoder().encode(password)
+    );
+
+    return {
+      keyId: loginKey.keyId,
+      encryptedPassword: arrayBufferToBase64(encrypted)
+    };
   }
 
   /**
@@ -756,12 +809,24 @@ export class SocialCrmApiClient {
   }
 
   async createUser(payload: { username: string; password: string; role?: string; isActive?: boolean }) {
-    const response = await this.http.post<ApiEnvelope<AdminUser> | AdminUser>("/users", payload);
+    const credential = await this.encryptPasswordCredential(payload.password);
+    const { password: _password, ...rest } = payload;
+    const response = await this.http.post<ApiEnvelope<AdminUser> | AdminUser>("/users", {
+      ...rest,
+      ...credential
+    });
     return unwrapEnvelope(response.data);
   }
 
   async updateUser(id: string, payload: { username?: string; password?: string; role?: string; isActive?: boolean }) {
-    const response = await this.http.patch<ApiEnvelope<AdminUser> | AdminUser>(`/users/${id}`, payload);
+    const { password, ...rest } = payload;
+    const body = password
+      ? {
+          ...rest,
+          ...(await this.encryptPasswordCredential(password))
+        }
+      : rest;
+    const response = await this.http.patch<ApiEnvelope<AdminUser> | AdminUser>(`/users/${id}`, body);
     return unwrapEnvelope(response.data);
   }
 
