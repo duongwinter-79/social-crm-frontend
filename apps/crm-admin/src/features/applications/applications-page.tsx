@@ -30,6 +30,7 @@ const APPLICATION_STATUSES = [
   "interview_passed",
   "interview_failed",
   "signing",
+  "ready_to_depart",
   "rejected",
   "withdrawn",
 ] as const;
@@ -53,7 +54,7 @@ function toneForDocStatus(status: string) {
 
 function toneForApplicationStatus(status: string) {
   if (["interview_failed", "rejected", "withdrawn"].includes(status)) return "danger" as const;
-  if (["interview_passed", "signing"].includes(status)) return "success" as const;
+  if (["interview_passed", "signing", "ready_to_depart"].includes(status)) return "success" as const;
   if (["referred", "interview_scheduled"].includes(status)) return "warning" as const;
   return "accent" as const;
 }

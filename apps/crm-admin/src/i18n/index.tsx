@@ -71,6 +71,7 @@ const enumLabels: Record<string, Copy> = {
   interview_passed: { en: "Interview passed", vi: "Đậu đơn" },
   interview_failed: { en: "Interview failed", vi: "Rớt đơn" },
   signing: { en: "Signing", vi: "Ký giấy tờ" },
+  ready_to_depart: { en: "Ready to depart", vi: "Sẵn sàng xuất cảnh" },
   rejected: { en: "Rejected", vi: "Từ chối" },
   withdrawn: { en: "Withdrawn", vi: "Rút hồ sơ" },
   pending: { en: "Pending", vi: "Chờ xử lý" },

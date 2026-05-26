@@ -2,6 +2,11 @@
 
 ## 2026-05-27
 
+### Ready-to-depart application status
+
+- added `ready_to_depart` to the Applications table status filter and row editor
+- added bilingual display text for the new application status so operators can mark an application as ready before training-finance can complete departure
+
 ### Lead workbench flow cleanup
 
 - moved the full form-derived candidate dossier out of the lead workbench into a dedicated `/leads/:leadId/dossier` route
