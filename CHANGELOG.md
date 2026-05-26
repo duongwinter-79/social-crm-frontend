@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-05-26
+
+### Permission helper + role-aware UI gates
+
+- new `packages/api/src/permissions.ts` exposing `usePermissions()` hook plus pure `hasPermission(user, p)` and `hasRole(user, role)` helpers; matrix mirrors the backend `permissions.guard.ts` 1:1 (admin, recruiter, document_staff, finance_staff, user → admin_all / view_leads / edit_leads / verify_documents / manage_finance / manage_recruitment)
+- exported `Role`, `Permission`, `usePermissions`, `hasPermission`, `hasRole` from the `@social-crm/api` index alongside the existing session helpers
+- lead workbench gates wired through `usePermissions()`:
+  - status-transition toolbar (per-status `Move to …` buttons) hidden when the operator lacks `edit_leads`
+  - "Save verified qualification" button replaced with read-only hint when operator lacks `edit_leads`
+  - "Upload application file →" CTA hidden entirely when operator lacks `edit_leads`
+  - "Restore lead" button on the disqualified-banner hidden behind admin-only check; viewers/operators see an "Admin only" hint inline
+- no other workbench affordances changed (transitions data still fetches; AI snapshot, dossier panel, lead summary all remain visible to viewers)
+- frontend `vite build` clean; `lead-workbench-page` chunk grew ~2 KB (gzipped 17 kB)
+
+### Candidate dossier panel on the lead workbench
+
+- new `apps/crm-admin/src/features/leads/candidate-dossier-panel.tsx` rendering the form-derived dossier read-only, organised into 6 sections (Identity / Physical / Background / Family / Work / Wishes) with bilingual labels
+- 30-row field metadata covering both typed columns (top-level on `candidate_profiles`) and soft keys (inside `softFields` JSONB); `readDossierValue` routes to the right source per row
+- panel auto-hides when the lead has no dossier at all; within the panel, individual sections only render if at least one field is populated
+- mounted on `lead-workbench-page.tsx` directly under `LeadAiSnapshotCard`
+- subtitle directs operators to `/applications/detail?leadId=…` (remove file → re-upload) as the only way to edit the dossier — no in-place edit affordance
+
+### Two-source Verify panel on the upload flow
+
+- rewrote the Verify panel on `apps/crm-admin/src/features/applications/application-detail-page.tsx` to compare extracted form values against the current dossier with a per-field 3-state radio (**Keep** / **Use form** / **Edit**)
+- 29 fields × 6 sections; form-wins default — radios initialise to `Use form` wherever the form has a value, else `Keep`
+- override input adapts to field input type (text / number / select Male-Female / select Yes-No)
+- new helpers in the page module: `readFieldValue`, `isNonEmpty`, `buildDossierFields` (constructs the typed + softFields payload from operator choices + overrides)
+- "Reset all to form-wins" button restores the default selection
+- updated `packages/api/src/types.ts`: `FormStandardExtractedFields` expanded to 15 keys; `VerifyPendingResult` now exposes `extractedSoft` and `currentSoft`; `CommitPendingFormPayload`: `applyFields` → `dossierFields`
+- frontend `vite build` clean; `application-detail-page` chunk: 34.66 kB / 10.79 kB gzipped
+
+### Applications workflow and form replacement
+
+- rebuilt `/applications` as an operational Applications workspace with separate tabs for real candidate-to-order application records and form documents
+- removed the unsafe formal suggested-order placement card from the lead workbench; operators now create applications from the Applications page by explicitly selecting both candidate and order
+- added frontend creation gates that require a selected candidate, selected order, verified uploaded form, and eligible lead status before an application can be created
+- added a Replace form section on the form detail page so an incorrect uploaded form can be staged, verified, and committed while the current verified form remains active
+- disabled standalone Remove file when the form is already used by an application and replaced the warning copy with clearer guidance: upload a replacement so the application keeps a complete form record
+- extended API types to expose active form version and application form-version evidence fields returned by the backend
+
 ## 2026-05-23
 
 ### Applications screen — hồ sơ ứng tuyển overhaul

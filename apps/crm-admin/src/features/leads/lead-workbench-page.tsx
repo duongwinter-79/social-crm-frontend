@@ -19,7 +19,6 @@ import {
 import {
   useAiQueryMutation,
   useCandidateByLeadQuery,
-  useCreateApplicationMutation,
   useLeadAiSuggestionsQuery,
   useLeadDetailQuery,
   useLeadOrderSuggestionsQuery,
@@ -27,11 +26,11 @@ import {
   useLeadTransitionsQuery,
   useProcessThreadExtractionMutation,
   useRestoreLeadMutation,
-  useSuggestedOrdersQuery,
   useUpdateLeadMutation,
-  useUpdateLeadQualificationMutation
+  useUpdateLeadQualificationMutation,
+  usePermissions
 } from "@social-crm/api";
-import type { CandidateSuggestion, LeadOrderSuggestion, Order } from "@social-crm/api";
+import type { LeadOrderSuggestion } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 import { type NavigationReturnState, resolveReturnState } from "@/app/navigation-state";
 import {
@@ -110,14 +109,13 @@ export function LeadWorkbenchPage() {
   const transitionsQuery = useLeadTransitionsQuery(leadId);
   const qualificationQuery = useLeadQualificationQuery(leadId);
   const suggestionsQuery = useLeadAiSuggestionsQuery(leadId);
-  const suggestedOrdersQuery = useSuggestedOrdersQuery(candidateQuery.data?.id);
   const leadOrderSuggestionsQuery = useLeadOrderSuggestionsQuery(leadId, 5);
   const updateLead = useUpdateLeadMutation();
   const restoreLead = useRestoreLeadMutation();
-  const createApplication = useCreateApplicationMutation();
   const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
+  const { canEditLeads, isAdmin } = usePermissions();
 
   // Two-step disqualification: clicking "Move to disqualified" opens an inline
   // reason form; the operator types a reason and confirms. Backend rejects the
@@ -186,7 +184,6 @@ export function LeadWorkbenchPage() {
   const lead = leadQuery.data;
   const candidate = candidateQuery.data;
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
-  const suggestedOrders = suggestedOrdersQuery.data ?? [];
   const hasCandidate = Boolean(candidate?.id);
 
   // Per-field provenance lookup. `verifiedKeys` lives on the lead detail.
@@ -245,7 +242,7 @@ export function LeadWorkbenchPage() {
             <InfoCard label={copy({ en: "Threads", vi: "Luồng hội thoại" })} value={lead.threads?.length ?? 0} className="bg-slate-50" />
           </div>
           <ToolbarActions className="xl:justify-end">
-            {(transitionsQuery.data?.allowed ?? []).map((next) => {
+            {canEditLeads && (transitionsQuery.data?.allowed ?? []).map((next) => {
               const blocker = (transitionsQuery.data?.blocked ?? []).find((b) => b.status === next);
               const isBlocked = Boolean(blocker);
               const isDisqualify = next === "disqualified";
@@ -366,21 +363,27 @@ export function LeadWorkbenchPage() {
                     })
               }
             >
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={restoreLead.isPending || !lead.previousStatus}
-                onClick={() => restoreLead.mutate(leadId)}
-              >
-                {restoreLead.isPending
-                  ? copy({ en: "Restoring…", vi: "Đang khôi phục…" })
-                  : lead.previousStatus
-                    ? copy({
-                        en: `Restore to ${formatLeadStatus(lead.previousStatus)}`,
-                        vi: `Khôi phục về ${formatLeadStatus(lead.previousStatus)}`
-                      })
-                    : copy({ en: "Restore unavailable", vi: "Không thể khôi phục" })}
-              </Button>
+              {isAdmin ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={restoreLead.isPending || !lead.previousStatus}
+                  onClick={() => restoreLead.mutate(leadId)}
+                >
+                  {restoreLead.isPending
+                    ? copy({ en: "Restoring…", vi: "Đang khôi phục…" })
+                    : lead.previousStatus
+                      ? copy({
+                          en: `Restore to ${formatLeadStatus(lead.previousStatus)}`,
+                          vi: `Khôi phục về ${formatLeadStatus(lead.previousStatus)}`
+                        })
+                      : copy({ en: "Restore unavailable", vi: "Không thể khôi phục" })}
+                </Button>
+              ) : (
+                <span className="text-xs italic text-slate-500">
+                  {copy({ en: "Admin only", vi: "Chỉ admin có thể khôi phục" })}
+                </span>
+              )}
             </span>
           </div>
         </InfoStrip>
@@ -412,10 +415,8 @@ export function LeadWorkbenchPage() {
           <Badge tone="neutral">{copy({ en: "Profile completeness drives matching quality", vi: "Độ đầy đủ hồ sơ ảnh hưởng chất lượng ghép đơn" })}</Badge>
           <Badge tone="neutral">
             {hasCandidate
-              ? suggestedOrders.length
-                ? copy({ en: `${suggestedOrders.length} formal suggestions`, vi: `${suggestedOrders.length} đề xuất chính thức` })
-                : copy({ en: "No formal suggestions yet", vi: "Chưa có đề xuất chính thức" })
-              : copy({ en: "Qualification required before formal suggestions", vi: "Cần xác minh trước khi có đề xuất chính thức" })}
+              ? copy({ en: "Candidate record linked", vi: "Đã liên kết hồ sơ ứng viên" })
+              : copy({ en: "No candidate created yet", vi: "Chưa tạo hồ sơ ứng viên" })}
           </Badge>
           <Badge tone={candidate ? "success" : "warning"}>{candidate ? `${copy({ en: "Candidate", vi: "Ứng viên" })} ${candidate.code ?? candidate.id}` : copy({ en: "No candidate created yet", vi: "Chưa tạo hồ sơ ứng viên" })}</Badge>
         </div>
@@ -623,9 +624,15 @@ export function LeadWorkbenchPage() {
               <Input label={copy({ en: "Qualification note", vi: "Ghi chú xác minh" })} value={qualificationForm.note} onChange={(e) => setQualificationForm((s) => ({ ...s, note: e.target.value }))} />
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <Button onClick={() => qualificationMutation.mutate(buildQualificationPatch(qualificationForm))} disabled={qualificationMutation.isPending}>
-                {qualificationMutation.isPending ? copy({ en: "Saving qualification...", vi: "Đang lưu dữ liệu xác minh..." }) : copy({ en: "Save verified qualification", vi: "Lưu dữ liệu xác minh" })}
-              </Button>
+              {canEditLeads ? (
+                <Button onClick={() => qualificationMutation.mutate(buildQualificationPatch(qualificationForm))} disabled={qualificationMutation.isPending}>
+                  {qualificationMutation.isPending ? copy({ en: "Saving qualification...", vi: "Đang lưu dữ liệu xác minh..." }) : copy({ en: "Save verified qualification", vi: "Lưu dữ liệu xác minh" })}
+                </Button>
+              ) : (
+                <span className="text-xs italic text-slate-500">
+                  {copy({ en: "Read-only — requires edit_leads permission", vi: "Chỉ xem — cần quyền edit_leads để lưu" })}
+                </span>
+              )}
             </div>
           </Panel>
         </div>
@@ -669,78 +676,22 @@ export function LeadWorkbenchPage() {
             )}
           </Panel>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
-            <div className="text-sm text-indigo-900">
-              {copy({
-                en: "Standard worker form is required before the lead can advance to matching.",
-                vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
-              })}
+          {canEditLeads ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
+              <div className="text-sm text-indigo-900">
+                {copy({
+                  en: "Standard worker form is required before the lead can advance to matching.",
+                  vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
+                })}
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/applications/detail?leadId=${lead.id}`)}
+              >
+                {copy({ en: "Upload application file →", vi: "Tải hồ sơ ứng tuyển →" })}
+              </Button>
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/applications/detail?leadId=${lead.id}`)}
-            >
-              {copy({ en: "Upload application file →", vi: "Tải hồ sơ ứng tuyển →" })}
-            </Button>
-          </div>
-
-          <Panel title={copy({ en: "Formal suggested orders", vi: "Đơn hàng đề xuất chính thức" })} subtitle={copy({ en: "Shown only after this lead has a linked candidate record.", vi: "Chỉ hiển thị sau khi ứng viên tiềm năng đã có hồ sơ ứng viên liên kết." })}>
-            {!hasCandidate ? (
-              <div className="space-y-4">
-                <EmptyState
-                  title={copy({ en: "Candidate required before formal suggestions", vi: "Cần tạo hồ sơ ứng viên trước khi có đề xuất chính thức" })}
-                  description={copy({
-                    en: "Complete the qualification overlay and move the lead through the backend transition to qualified. The backend creates the candidate record before formal matching and application creation.",
-                    vi: "Hoàn tất lớp xác minh và chuyển trạng thái ứng viên tiềm năng sang đủ điều kiện. Hệ thống sẽ tạo hồ sơ ứng viên trước khi ghép đơn chính thức và tạo hồ sơ ứng tuyển."
-                  })}
-                />
-                <div className="grid gap-3">
-                  <InfoCard label={copy({ en: "Current lead status", vi: "Trạng thái ứng viên tiềm năng hiện tại" })} value={<Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>} className="bg-slate-50" />
-                  <InfoCard label={copy({ en: "Required operator action", vi: "Hành động nhân sự cần làm" })} value={copy({ en: "Save verified qualification data, then use the allowed backend transition buttons at the top of this page.", vi: "Lưu dữ liệu xác minh, sau đó dùng các nút chuyển trạng thái hợp lệ ở đầu trang." })} className="bg-slate-50" />
-                  <InfoCard label={copy({ en: "Why orders are hidden", vi: "Vì sao ẩn đơn hàng" })} value={copy({ en: "Order suggestions here are candidate-stage matching results, not lead-stage catalog previews.", vi: "Đề xuất tại đây là kết quả ghép đơn chính thức cho hồ sơ ứng viên, không phải danh mục xem trước ở giai đoạn tiếp nhận." })} className="bg-slate-50" />
-                </div>
-              </div>
-            ) : suggestedOrders.length ? (
-              <div className="space-y-3">
-                {suggestedOrders.map((order) => (
-                  <div key={order.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-slate-900">{order.name}</div>
-                        <div className="mt-1 text-xs leading-5 text-slate-500">{order.region || copy({ en: "No region", vi: "Chưa có khu vực" })} · {order.industry || copy({ en: "No industry", vi: "Chưa có ngành" })}</div>
-                        <div className="mt-1 text-xs leading-5 text-slate-500">
-                          {copy({ en: "Min height", vi: "Chiều cao tối thiểu" })}: {order.heightMin ? `${order.heightMin} cm` : copy({ en: "Not set", vi: "Chưa đặt" })} · {copy({ en: "Returnees", vi: "Lao động từng đi về" })}: {
-                            typeof order.acceptsReturnees === "boolean"
-                              ? order.acceptsReturnees
-                                ? copy({ en: "Accepted", vi: "Nhận" })
-                                : copy({ en: "Not accepted", vi: "Không nhận" })
-                              : copy({ en: "Not set", vi: "Chưa đặt" })
-                          }
-                        </div>
-                      </div>
-                      {renderOrderBadge(order)}
-                    </div>
-                    <div className="mt-3 text-xs leading-5 text-slate-500">{order.description || order.requirements || copy({ en: "No additional order detail available.", vi: "Không có thông tin bổ sung cho đơn hàng." })}</div>
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <Button size="sm" onClick={() => { if (!candidate?.id) return; createApplication.mutate({ candidateId: candidate.id, orderId: order.id }); }} disabled={createApplication.isPending}>
-                        {createApplication.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create placement", vi: "Tạo bản ghi ghép đơn" })}
-                      </Button>
-                      <span className="text-xs text-slate-500">
-                        {copy({ en: "Uses the linked candidate record from the recruitment API.", vi: "Sử dụng hồ sơ ứng viên đã liên kết trong hệ thống tuyển dụng." })}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                {createApplication.error ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {copy({ en: "Application creation failed. Check whether this candidate/order application already exists or whether the backend rejected the request.", vi: "Tạo hồ sơ ứng tuyển thất bại. Kiểm tra hồ sơ ứng viên/đơn hàng đã tồn tại hoặc hệ thống từ chối yêu cầu." })}
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <EmptyState title={copy({ en: "No formal suggestions returned", vi: "Chưa có đề xuất chính thức" })} description={copy({ en: "The backend candidate matching suggestion endpoint did not return orders for this candidate yet. Review the verified profile and formal matching page if needed.", vi: "API đề xuất ghép đơn chưa trả về đơn hàng cho ứng viên này. Hãy kiểm tra hồ sơ đã xác minh và trang ghép đơn chính thức nếu cần." })} />
-            )}
-          </Panel>
+          ) : null}
 
           <Panel title={copy({ en: "Verified qualification snapshot", vi: "Dữ liệu xác minh đã lưu" })} subtitle={copy({ en: "Staff-confirmed fields used for scoring and matching.", vi: "Các trường nhân sự đã xác nhận để tính điểm và ghép đơn." })}>
             <DescriptionList
@@ -757,14 +708,6 @@ export function LeadWorkbenchPage() {
       </div>
     </div>
   );
-}
-
-function renderOrderBadge(order: Order | CandidateSuggestion) {
-  if ("matchScore" in order && typeof order.matchScore === "number") {
-    return <Badge tone="accent">{order.matchScore} pts</Badge>;
-  }
-
-  return <Badge tone="neutral">Catalog</Badge>;
 }
 
 /**

@@ -526,6 +526,7 @@ export interface ApplicationRecord {
   id: string;
   lead_id: string;
   order_id: string;
+  form_document_version_id?: string | null;
   candidate_id?: string | null;
   status: string;
   interviewDate?: string | null;
@@ -570,6 +571,7 @@ export interface DocumentListResponse {
 
 export interface FormStandardRegisterRow {
   documentId: string;
+  activeVersionId?: string | null;
   documentStatus: string;
   fileUrl?: string | null;
   hasFile: boolean;
@@ -589,6 +591,7 @@ export interface FormStandardRegisterRow {
   application?: {
     id: string;
     status: string;
+    formDocumentVersionId?: string | null;
     updatedAt?: string;
   } | null;
   order?: {

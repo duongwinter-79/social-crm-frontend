@@ -305,6 +305,12 @@ export function ApplicationDetailPage() {
         setConfirmUnlink(false);
         registerQuery.refetch();
       },
+      onError: (err) => {
+        setFileActionError(apiErrorMessage(err) ?? copy({
+          en: "Could not remove this file.",
+          vi: "Không xoá được file này.",
+        }));
+      },
     });
   }
 
@@ -1100,6 +1106,7 @@ export function ApplicationDetailPage() {
 
   function renderCommitted() {
     if (!selectedRow) return null;
+    const formUsedByApplication = Boolean(selectedRow.application);
     return (
       <Panel
         title={leadLabel(selectedRow)}
@@ -1131,6 +1138,16 @@ export function ApplicationDetailPage() {
 
           {/* Hand-off to the lead workbench where the operator picks an order
               and clicks Create placement — the manual "ghép đơn" step. */}
+          <Panel
+            title={copy({ en: "Replace form", vi: "Thay hồ sơ" })}
+            subtitle={copy({
+              en: "Use this when the uploaded form was wrong or needs correction. The current verified form stays active until the replacement is verified.",
+              vi: "Dùng khi hồ sơ đã tải lên bị sai hoặc cần chỉnh lại. Hồ sơ đã xác nhận hiện tại vẫn còn hiệu lực cho đến khi bản thay thế được xác nhận.",
+            })}
+          >
+            {renderUploadZone()}
+          </Panel>
+
           <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-indigo-900">
@@ -1157,6 +1174,14 @@ export function ApplicationDetailPage() {
 
           {confirmUnlink ? (
             <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+              {formUsedByApplication ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                  {copy({
+                    en: "This form is already used by an application. Upload a replacement above instead, so the application keeps a complete form record.",
+                    vi: "Hồ sơ này đã được dùng cho một ứng tuyển. Hãy tải bản thay thế ở phía trên để ứng tuyển vẫn có đủ hồ sơ đi kèm.",
+                  })}
+                </div>
+              ) : null}
               <p className="font-semibold">
                 {copy({
                   en: "Only the form file is removed. The candidate's profile data — fields you applied during Verify — stays in the database. After removal you can:",
@@ -1172,7 +1197,7 @@ export function ApplicationDetailPage() {
                 {copy({ en: "This action cannot be undone.", vi: "Không thể hoàn tác thao tác này." })}
               </p>
               <div className="flex gap-2">
-                <Button variant="danger" size="sm" onClick={handleUnlink} disabled={unlinkFormStandard.isPending}>
+                <Button variant="danger" size="sm" onClick={handleUnlink} disabled={unlinkFormStandard.isPending || formUsedByApplication}>
                   {unlinkFormStandard.isPending
                     ? copy({ en: "Removing…", vi: "Đang xoá…" })
                     : copy({ en: "Yes, remove file", vi: "Xác nhận xoá file" })}
@@ -1183,8 +1208,10 @@ export function ApplicationDetailPage() {
               </div>
             </div>
           ) : (
-            <Button variant="danger" size="sm" onClick={() => { setConfirmUnlink(true); setFileActionError(""); }}>
-              {copy({ en: "Remove file", vi: "Xoá file" })}
+            <Button variant="danger" size="sm" onClick={() => { setConfirmUnlink(true); setFileActionError(""); }} disabled={formUsedByApplication}>
+              {formUsedByApplication
+                ? copy({ en: "Use Replace form", vi: "Dùng Thay hồ sơ" })
+                : copy({ en: "Remove file", vi: "Xoá file" })}
             </Button>
           )}
         </div>
