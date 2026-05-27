@@ -26,8 +26,15 @@ import {
 import type { ApplicationRecord, TrainingFinanceRecord } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 import { getLeadDisplayName } from "@/lib/lead-display";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 const PAGE_SIZE = 25;
+
+type DeleteTarget = {
+  id: string;
+  lead: string;
+  application: string;
+} | null;
 
 function toneForMilestone(record: TrainingFinanceRecord) {
   if (record.departureDate) return "success" as const;
@@ -72,6 +79,7 @@ export function TrainingFinancePage() {
   });
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [createForm, setCreateForm] = useState({
     leadId: "",
     orderId: "",
@@ -158,15 +166,10 @@ export function TrainingFinancePage() {
 
   function submitTrainingFinanceDelete(record: TrainingFinanceRecord) {
     if (!isAdmin) return;
-    const confirmed = window.confirm(
-      copy({
-        en: `Delete this training-finance record?\n\nLead: ${record.lead ? getLeadDisplayName(record.lead) : record.lead_id}\nApplication: ${record.application ? applicationLabel(record.application, formatApplicationStatus) : "Not linked"}\n\nUse this only when the record was created by mistake.`,
-        vi: `Xoá bản ghi đào tạo/tài chính này?\n\nỨng viên: ${record.lead ? getLeadDisplayName(record.lead) : record.lead_id}\nỨng tuyển: ${record.application ? applicationLabel(record.application, formatApplicationStatus) : "Chưa liên kết"}\n\nChỉ dùng khi bản ghi được tạo nhầm.`,
-      }),
-    );
-    if (!confirmed) return;
-    deleteTrainingFinance.mutate(record.id, {
-      onSuccess: () => setSelectedId(""),
+    setDeleteTarget({
+      id: record.id,
+      lead: record.lead ? getLeadDisplayName(record.lead) : record.lead_id,
+      application: record.application ? applicationLabel(record.application, formatApplicationStatus) : copy({ en: "Not linked", vi: "Chưa liên kết" }),
     });
   }
 
@@ -437,7 +440,7 @@ export function TrainingFinancePage() {
                   >
                     {deleteTrainingFinance.isPending
                       ? copy({ en: "Deleting...", vi: "Đang xoá..." })
-                      : copy({ en: "Delete wrong record", vi: "Xoá bản ghi nhầm" })}
+                      : copy({ en: "Delete record", vi: "Xóa bản ghi" })}
                   </Button>
                 ) : null}
               </div>
@@ -453,6 +456,36 @@ export function TrainingFinancePage() {
           </Panel>
         </div>
       </div>
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title={copy({ en: "Delete training-finance record?", vi: "Xóa bản ghi đào tạo/tài chính?" })}
+        description={copy({
+          en: "This removes only the selected milestone record. Use it for admin corrections when the record was created by mistake.",
+          vi: "Thao tác này chỉ xóa bản ghi tiến độ đang chọn. Chỉ dùng để hiệu chỉnh admin khi bản ghi được tạo nhầm.",
+        })}
+        details={deleteTarget ? [
+          { label: copy({ en: "Lead", vi: "Ứng viên" }), value: deleteTarget.lead },
+          { label: copy({ en: "Application", vi: "Ứng tuyển" }), value: deleteTarget.application },
+        ] : []}
+        warning={copy({
+          en: "If the linked application or order is wrong, correct those relationships before deleting records.",
+          vi: "Nếu ứng tuyển hoặc đơn hàng liên kết bị sai, hãy chỉnh các liên kết đó trước khi xóa bản ghi.",
+        })}
+        confirmLabel={copy({ en: "Delete record", vi: "Xóa bản ghi" })}
+        pendingLabel={copy({ en: "Deleting...", vi: "Đang xóa..." })}
+        cancelLabel={copy({ en: "Cancel", vi: "Hủy" })}
+        isPending={deleteTrainingFinance.isPending}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteTrainingFinance.mutate(deleteTarget.id, {
+            onSuccess: () => {
+              setSelectedId("");
+              setDeleteTarget(null);
+            },
+          });
+        }}
+      />
     </div>
   );
 }

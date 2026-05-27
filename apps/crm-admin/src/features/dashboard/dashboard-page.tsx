@@ -1,215 +1,411 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Badge, EmptyState, Panel, SectionHeader } from "@social-crm/ui";
-import { useDashboardStatsQuery, useLeadsQuery } from "@social-crm/api";
+import { useDashboardStatsQuery, usePipelineQuery } from "@social-crm/api";
+import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
-import { getLeadDisplayName } from "@/lib/lead-display";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import "./dashboard-page.css";
 
-function toneForStatus(status: string) {
-  if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
-  if (["MATCHED", "INTERVIEW_PASSED", "CONTRACT_SIGNED", "DEPARTED"].includes(status)) return "success" as const;
-  if (["QUALIFIED", "MATCHING", "INTERVIEW_SCHEDULED", "VISA_PROCESSING"].includes(status)) return "warning" as const;
+const ACTIVE_APPLICATION_STATUSES = ["matching", "referred", "interview_scheduled", "interview_passed", "signing"];
+
+function count(bucket: Record<string, number> | undefined, key: string) {
+  return bucket?.[key] ?? bucket?.[key.toUpperCase()] ?? 0;
+}
+
+function normalizeStatus(value: string | null | undefined) {
+  return String(value ?? "").toLowerCase();
+}
+
+function sum(bucket: Record<string, number> | undefined, keys: string[]) {
+  return keys.reduce((total, key) => total + count(bucket, key), 0);
+}
+
+function workflowValue(stats: Record<string, number> | undefined, key: string) {
+  return Number(stats?.[key] ?? 0);
+}
+
+function toneForLeadStatus(status: string) {
+  const value = normalizeStatus(status);
+  if (["interview_failed", "disqualified"].includes(value)) return "danger" as const;
+  if (["matched", "interview_passed", "contract_signed", "departed"].includes(value)) return "success" as const;
+  if (["qualified", "matching", "interview_scheduled", "visa_processing"].includes(value)) return "warning" as const;
   return "accent" as const;
 }
 
+function toneForApplicationStatus(status: string) {
+  const value = normalizeStatus(status);
+  if (["interview_failed", "rejected", "withdrawn"].includes(value)) return "danger" as const;
+  if (["interview_passed", "signing", "ready_to_depart"].includes(value)) return "success" as const;
+  if (["referred", "interview_scheduled"].includes(value)) return "warning" as const;
+  return "accent" as const;
+}
+
+function toneForDocumentStatus(status: string) {
+  const value = normalizeStatus(status);
+  if (["rejected", "expired"].includes(value)) return "danger" as const;
+  if (value === "verified") return "success" as const;
+  if (value === "submitted") return "warning" as const;
+  return "neutral" as const;
+}
+
+function rowHasDocumentWork(row: PipelineRow) {
+  return row.documents.missingRequired.length > 0 || row.documents.expired.length > 0;
+}
+
+function rowHasFinanceWork(row: PipelineRow) {
+  const action = row.nextAction.toLowerCase();
+  return Boolean(
+    action.includes("training") ||
+    action.includes("finance") ||
+    action.includes("visa") ||
+    action.includes("departure") ||
+    (row.trainingFinance && (!row.trainingFinance.visaDate || !row.trainingFinance.departureDate))
+  );
+}
+
+function rowHasRecruitmentWork(row: PipelineRow) {
+  const status = normalizeStatus(row.applicationStatus);
+  return !row.candidateId || !row.applicationStatus || ["matching", "referred", "interview_scheduled", "interview_passed", "signing"].includes(status);
+}
+
+function linkForRow(row: PipelineRow) {
+  if (rowHasDocumentWork(row)) return `/applications/detail?leadId=${row.leadId}`;
+  if (!row.applicationStatus) return `/applications?tab=applications&leadId=${row.leadId}`;
+  if (rowHasFinanceWork(row)) return `/training-finance`;
+  return `/leads/${row.leadId}`;
+}
+
+function translateNextAction(action: string, copy: (value: { en: string; vi: string }) => string) {
+  const actions: Record<string, { en: string; vi: string }> = {
+    "Promote lead to candidate": { en: "Promote lead to candidate", vi: "Tao ho so ung vien" },
+    "Create application": { en: "Create application", vi: "Tao ung tuyen" },
+    "Complete required documents": { en: "Complete required documents", vi: "Hoan tat ho so bat buoc" },
+    "Create training-finance record": { en: "Create training-finance record", vi: "Tao ban ghi dao tao/tai chinh" },
+    "Advance visa readiness": { en: "Advance visa readiness", vi: "Cap nhat san sang visa" },
+    "Schedule departure": { en: "Schedule departure", vi: "Len lich xuat canh" },
+    "Monitor departure completion": { en: "Monitor departure completion", vi: "Theo doi xuat canh" },
+    "Continue qualification": { en: "Continue qualification", vi: "Tiep tuc danh gia" },
+  };
+  return actions[action] ? copy(actions[action]) : action;
+}
+
+function translateBlocker(
+  blocker: string,
+  copy: (value: { en: string; vi: string }) => string,
+  formatDocumentType: (value: string) => string,
+  formatApplicationStatus: (value: string) => string,
+) {
+  if (blocker === "Candidate record missing") {
+    return copy({ en: "Candidate record missing", vi: "Chua co ho so ung vien" });
+  }
+  if (blocker.startsWith("Missing docs: ")) {
+    const docs = blocker.replace("Missing docs: ", "").split(", ").map(formatDocumentType).join(", ");
+    return copy({ en: `Missing docs: ${docs}`, vi: `Thieu ho so: ${docs}` });
+  }
+  if (blocker.startsWith("Expired docs: ")) {
+    const docs = blocker.replace("Expired docs: ", "").split(", ").map(formatDocumentType).join(", ");
+    return copy({ en: `Expired docs: ${docs}`, vi: `Ho so het han: ${docs}` });
+  }
+  if (blocker.startsWith("Application outcome: ")) {
+    const status = blocker.replace("Application outcome: ", "");
+    return copy({ en: `Application outcome: ${formatApplicationStatus(status)}`, vi: `Ket qua ung tuyen: ${formatApplicationStatus(status)}` });
+  }
+  return blocker;
+}
+
 export function DashboardPage() {
-  const { copy, formatLeadStatus, formatEnum } = useI18n();
+  const { copy, formatLeadStatus, formatApplicationStatus, formatDocumentStatus, formatDocumentType, formatPipelineStage, formatChannel } = useI18n();
   const stats = useDashboardStatsQuery();
-  const leads = useLeadsQuery({ offset: 0, limit: 50 });
+  const pipeline = usePipelineQuery({ offset: 0, limit: 12 });
 
-  const allLeads = leads.data?.data ?? [];
+  const dashboardStats = stats.data;
+  const pipelineRows = pipeline.data?.data ?? [];
+  const leadStatus = dashboardStats?.leadsByStatus;
+  const applicationStatus = dashboardStats?.applicationsByStatus;
+  const documentStatus = dashboardStats?.documentsByStatus;
+  const workflowSummary = dashboardStats?.workflowSummary;
 
-  const classification = useMemo(() => {
-    const buckets = [
-      { name: "HOT", value: allLeads.filter((lead) => lead.leadClassification === "HOT").length, color: "#4f46e5" },
-      { name: "WARM", value: allLeads.filter((lead) => lead.leadClassification === "WARM").length, color: "#f59e0b" },
-      { name: "COLD", value: allLeads.filter((lead) => !lead.leadClassification || lead.leadClassification === "COLD").length, color: "#94a3b8" }
+  const intakeNeedsContact = sum(leadStatus, ["new", "contacted"]);
+  const formReady = sum(leadStatus, ["qualified"]);
+  const activeApplications = sum(applicationStatus, ACTIVE_APPLICATION_STATUSES);
+  const readyToDepart = count(applicationStatus, "ready_to_depart");
+  const rejectedDocuments = count(documentStatus, "rejected");
+  const expiredDocuments = count(documentStatus, "expired");
+  const missingCoreDocuments = workflowValue(workflowSummary, "leadsMissingCoreDocuments");
+  const documentIssues = rejectedDocuments + expiredDocuments + missingCoreDocuments;
+  const activeTraining = workflowValue(workflowSummary, "activeTraining");
+  const visaInFlight = workflowValue(workflowSummary, "visaInFlight");
+  const departuresScheduled = workflowValue(workflowSummary, "departuresScheduled");
+  const departurePending = Math.max(visaInFlight - departuresScheduled, 0);
+
+  const workflowCards = [
+    {
+      label: copy({ en: "Needs first action", vi: "Cần xử lý đầu tiên" }),
+      value: intakeNeedsContact,
+      caption: copy({ en: "New or contacted leads", vi: "Lead mới hoặc đã liên hệ" }),
+      href: "/leads",
+      tone: "accent",
+    },
+    {
+      label: copy({ en: "Form ready", vi: "Đã có form" }),
+      value: formReady,
+      caption: copy({ en: "Ready for matching/application", vi: "Sẵn sàng ghép đơn hoặc tạo ứng tuyển" }),
+      href: "/applications",
+      tone: "warning",
+    },
+    {
+      label: copy({ en: "Application follow-up", vi: "Cần theo ứng tuyển" }),
+      value: activeApplications,
+      caption: copy({ en: "Active application records", vi: "Ứng tuyển đang xử lý" }),
+      href: "/applications?tab=applications",
+      tone: "warning",
+    },
+    {
+      label: copy({ en: "Document blockers", vi: "Vướng hồ sơ" }),
+      value: documentIssues,
+      caption: copy({ en: "Missing, rejected, or expired", vi: "Thiếu, bị từ chối hoặc hết hạn" }),
+      href: "/applications?tab=forms",
+      tone: "danger",
+    },
+    {
+      label: copy({ en: "Departure pending", vi: "Chờ xuất cảnh" }),
+      value: departurePending,
+      caption: copy({ en: "Visa in flight without departure", vi: "Đã đóng visa, chưa có ngày xuất cảnh" }),
+      href: "/training-finance",
+      tone: "success",
+    },
+  ];
+
+  const roleQueues = [
+    {
+      label: copy({ en: "Recruitment", vi: "Tuyển dụng" }),
+      value: pipelineRows.filter(rowHasRecruitmentWork).length,
+      caption: copy({ en: "Candidate, order, or interview action", vi: "Ứng viên, đơn hàng hoặc phỏng vấn" }),
+    },
+    {
+      label: copy({ en: "Documents", vi: "Hồ sơ" }),
+      value: pipelineRows.filter(rowHasDocumentWork).length,
+      caption: copy({ en: "Missing or expired paperwork", vi: "Thiếu hoặc hết hạn giấy tờ" }),
+    },
+    {
+      label: copy({ en: "Training & finance", vi: "Đào tạo & tài chính" }),
+      value: pipelineRows.filter(rowHasFinanceWork).length,
+      caption: copy({ en: "Training, visa, or departure milestone", vi: "Đào tạo, visa hoặc xuất cảnh" }),
+    },
+  ];
+
+  const applicationChart = useMemo(() => {
+    const rows = [
+      { name: copy({ en: "Active", vi: "Đang xử lý" }), value: activeApplications, color: "#4f46e5" },
+      { name: copy({ en: "Ready", vi: "Sẵn sàng" }), value: readyToDepart, color: "#059669" },
+      { name: copy({ en: "Closed", vi: "Đã đóng" }), value: sum(applicationStatus, ["interview_failed", "rejected", "withdrawn"]), color: "#94a3b8" },
     ];
-    return buckets.filter((item) => item.value > 0);
-  }, [allLeads]);
+    return rows.filter((row) => row.value > 0);
+  }, [activeApplications, applicationStatus, copy, readyToDepart]);
 
-  const stageCounts = useMemo(() => {
-    return [
-      { label: copy({ en: "New", vi: "Mới" }), value: allLeads.filter((lead) => lead.status === "NEW").length, tone: "accent" },
-      { label: copy({ en: "Qualified", vi: "Đủ điều kiện" }), value: allLeads.filter((lead) => lead.status === "QUALIFIED").length, tone: "warning" },
-      { label: copy({ en: "Matching", vi: "Đang ghép" }), value: allLeads.filter((lead) => ["MATCHING", "MATCHED"].includes(lead.status)).length, tone: "warning" },
-      { label: copy({ en: "Blocked", vi: "Bị chặn" }), value: allLeads.filter((lead) => ["INTERVIEW_FAILED", "DISQUALIFIED"].includes(lead.status)).length, tone: "danger" }
-    ];
-  }, [allLeads, copy]);
-
-  const statusDistribution = useMemo(() => {
-    const grouped = new Map<string, number>();
-    for (const lead of allLeads) {
-      grouped.set(lead.status, (grouped.get(lead.status) ?? 0) + 1);
-    }
-
-    return [...grouped.entries()]
-      .map(([status, count]) => ({ status, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  }, [allLeads]);
-
-  const priorityQueue = useMemo(() => {
-    return [...allLeads]
-      .sort((a, b) => (b.leadScore ?? 0) - (a.leadScore ?? 0))
-      .slice(0, 6);
-  }, [allLeads]);
-
-  const operationalStats = useMemo(() => {
-    const stale = allLeads.filter((lead) => !lead.updatedAt || lead.updatedAt === lead.createdAt).length;
-    const missingRegion = allLeads.filter((lead) => !lead.region).length;
-    const highScore = allLeads.filter((lead) => (lead.leadScore ?? 0) >= 80).length;
-    return { stale, missingRegion, highScore };
-  }, [allLeads]);
+  const actionRows = useMemo(() => {
+    return [...pipelineRows]
+      .filter((row) => row.blockers.length > 0 || row.nextAction !== "Monitor departure completion")
+      .sort((a, b) => {
+        const bScore = b.blockers.length * 10 + (b.nextAction ? 1 : 0);
+        const aScore = a.blockers.length * 10 + (a.nextAction ? 1 : 0);
+        return bScore - aScore;
+      })
+      .slice(0, 8);
+  }, [pipelineRows]);
 
   return (
     <div className="dashboard-page">
       <SectionHeader
         eyebrow={copy({ en: "Operations overview", vi: "Tổng quan vận hành" })}
-        title={copy({ en: "Daily control surface", vi: "Bề mặt điều hành hằng ngày" })}
+        title={copy({ en: "Today’s work queue", vi: "Hàng đợi công việc hôm nay" })}
         description={copy({
-          en: "Backend-backed recruiting metrics arranged in the same dense, operator-first UI language as the source CRM.",
-          vi: "Các chỉ số tuyển dụng từ API được trình bày theo giao diện tác nghiệp thống nhất của CRM."
+          en: "A compact view of intake, application, document, and downstream blockers. Use it to choose the next screen to work in.",
+          vi: "Góc nhìn gọn về đầu vào, ứng tuyển, hồ sơ và điểm nghẽn phía sau. Dùng màn hình này để chọn nơi cần xử lý tiếp.",
         })}
       />
 
-      <section className="dashboard-hero">
-        <div className="dashboard-hero-grid">
-          <div>
-            <div className="dashboard-hero-kicker">{copy({ en: "Today's operating picture", vi: "Bức tranh vận hành hôm nay" })}</div>
-            <h2>{copy({ en: "Track intake pressure, live lead quality, and where recruiters should act next.", vi: "Theo dõi áp lực đầu vào, chất lượng ứng viên hiện tại và nơi đội tuyển dụng cần hành động tiếp theo." })}</h2>
-            <p>
-              {copy({
-                en: "This dashboard stays grounded in current backend coverage: lead load, stage concentration, and the highest-priority records in the visible working set.",
-          vi: "Bảng tổng quan này bám sát phạm vi API hiện có: danh sách ứng viên tiềm năng, phân bổ theo giai đoạn và các hồ sơ ưu tiên cao nhất đang hiển thị."
-              })}
-            </p>
-
-            <div className="dashboard-hero-stats">
-              <div className="dashboard-hero-stat">
-                <div className="dashboard-hero-stat-label">{copy({ en: "Total leads", vi: "Tổng ứng viên" })}</div>
-                <div className="dashboard-hero-stat-value">{stats.data?.totalLeads ?? "-"}</div>
-              </div>
-              <div className="dashboard-hero-stat">
-                <div className="dashboard-hero-stat-label">{copy({ en: "Conversation threads", vi: "Luồng hội thoại" })}</div>
-                <div className="dashboard-hero-stat-value">{stats.data?.totalThreads ?? "-"}</div>
-              </div>
-              <div className="dashboard-hero-stat">
-                <div className="dashboard-hero-stat-label">{copy({ en: "Loaded workset", vi: "Tập làm việc đã tải" })}</div>
-                <div className="dashboard-hero-stat-value">{allLeads.length}</div>
-              </div>
-            </div>
-          </div>
-
-          <aside className="dashboard-hero-panel">
-            <div className="dashboard-hero-panel-title">{copy({ en: "Immediate focus", vi: "Ưu tiên tức thời" })}</div>
-            <div className="dashboard-hero-panel-list">
-              <div className="dashboard-hero-panel-item">
-                <div className="dashboard-hero-panel-name">{copy({ en: "High-score leads", vi: "Ứng viên điểm cao" })}</div>
-                <div className="dashboard-hero-panel-value">{operationalStats.highScore}</div>
-              </div>
-              <div className="dashboard-hero-panel-item">
-                <div className="dashboard-hero-panel-name">{copy({ en: "Untouched records", vi: "Hồ sơ chưa xử lý" })}</div>
-                <div className="dashboard-hero-panel-value">{operationalStats.stale}</div>
-              </div>
-              <div className="dashboard-hero-panel-item">
-                <div className="dashboard-hero-panel-name">{copy({ en: "Missing region", vi: "Thiếu khu vực" })}</div>
-                <div className="dashboard-hero-panel-value">{operationalStats.missingRegion}</div>
-              </div>
-            </div>
-          </aside>
-        </div>
+      <section className="dashboard-summary">
+        <SummaryMetric label={copy({ en: "Leads", vi: "Lead" })} value={dashboardStats?.totalLeads ?? 0} />
+        <SummaryMetric label={copy({ en: "Candidates", vi: "Ứng viên" })} value={dashboardStats?.totalCandidates ?? 0} />
+        <SummaryMetric label={copy({ en: "Applications", vi: "Ứng tuyển" })} value={dashboardStats?.totalApplications ?? 0} />
+        <SummaryMetric label={copy({ en: "Documents", vi: "Hồ sơ" })} value={dashboardStats?.totalDocuments ?? 0} />
+        <SummaryMetric label={copy({ en: "Threads", vi: "Hội thoại" })} value={dashboardStats?.totalThreads ?? 0} />
       </section>
 
+      <div className="dashboard-attention-grid">
+        {workflowCards.map((card) => (
+          <Link key={card.label} to={card.href} className={`dashboard-attention-card tone-${card.tone}`}>
+            <span className="dashboard-attention-label">{card.label}</span>
+            <strong>{card.value}</strong>
+            <span className="dashboard-attention-caption">{card.caption}</span>
+          </Link>
+        ))}
+      </div>
+
       <div className="dashboard-grid">
-        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Pipeline pressure", vi: "Áp lực pipeline" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Where the current recruiter workset is clustering.", vi: "Các điểm tập trung chính của tập công việc tuyển dụng hiện tại." })}</span>}>
-          <div className="dashboard-stage-grid">
-            {stageCounts.map((item) => (
-              <div key={item.label} className={`dashboard-stage-card tone-${item.tone}`}>
-                <div className="dashboard-stage-label">{item.label}</div>
-                <div className="dashboard-stage-value">{item.value}</div>
+        <Panel
+          className="dashboard-module"
+          title={<span className="dashboard-panel-title">{copy({ en: "Role queues", vi: "Hàng đợi theo vai trò" })}</span>}
+          subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Based on the visible pipeline rows and their blockers.", vi: "Dựa trên các hồ sơ pipeline đang hiển thị và điểm nghẽn của chúng." })}</span>}
+        >
+          <div className="dashboard-role-list">
+            {roleQueues.map((queue) => (
+              <div key={queue.label} className="dashboard-role-item">
+                <div>
+                  <div className="dashboard-role-label">{queue.label}</div>
+                  <div className="dashboard-role-caption">{queue.caption}</div>
+                </div>
+                <strong>{queue.value}</strong>
               </div>
             ))}
           </div>
         </Panel>
 
-        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Lead temperature", vi: "Mức ưu tiên ứng viên" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Classification spread across the visible backend query.", vi: "Phân bổ phân loại trên tập dữ liệu API đang hiển thị." })}</span>}>
-          {classification.length ? (
+        <Panel
+          className="dashboard-module"
+          title={<span className="dashboard-panel-title">{copy({ en: "Application health", vi: "Sức khoẻ ứng tuyển" })}</span>}
+          subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Global application status grouped into active, ready, and closed work.", vi: "Trạng thái ứng tuyển toàn hệ thống được gom theo đang xử lý, sẵn sàng và đã đóng." })}</span>}
+        >
+          {applicationChart.length ? (
             <div className="dashboard-chart-wrap">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={classification} dataKey="value" nameKey="name" innerRadius={58} outerRadius={86}>
-                    {classification.map((entry) => (
+                  <Pie data={applicationChart} dataKey="value" nameKey="name" innerRadius={58} outerRadius={86}>
+                    {applicationChart.map((entry) => (
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="dashboard-chart-legend">
-                {classification.map((entry) => (
+                {applicationChart.map((entry) => (
                   <div key={entry.name} className="dashboard-chart-legend-item">
                     <span className="dashboard-chart-swatch" style={{ background: entry.color }} />
-                    <span>{formatEnum(entry.name)}</span>
+                    <span>{entry.name}</span>
                     <strong>{entry.value}</strong>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <EmptyState title={copy({ en: "No classification data yet", vi: "Chưa có dữ liệu phân loại" })} description={copy({ en: "Lead scoring may still be populating, or the current dashboard window returned no scored leads.", vi: "Điểm ứng viên có thể vẫn đang được cập nhật, hoặc cửa sổ dashboard hiện tại chưa trả về ứng viên nào đã chấm điểm." })} />
+            <EmptyState title={copy({ en: "No application records yet", vi: "Chưa có ứng tuyển" })} description={copy({ en: "Applications will appear here after verified forms are matched to orders.", vi: "Ứng tuyển sẽ xuất hiện sau khi form đã xác minh được ghép với đơn hàng." })} />
           )}
         </Panel>
       </div>
 
       <div className="dashboard-lower-grid">
-        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Status distribution", vi: "Phân bổ trạng thái" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Top current statuses in the loaded lead window.", vi: "Các trạng thái nổi bật trong cửa sổ ứng viên hiện đang tải." })}</span>}>
-          {statusDistribution.length ? (
+        <Panel
+          className="dashboard-module"
+          title={<span className="dashboard-panel-title">{copy({ en: "Pipeline distribution", vi: "Phân bổ pipeline" })}</span>}
+          subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Global lead statuses from the backend aggregate.", vi: "Trạng thái lead toàn hệ thống từ thống kê backend." })}</span>}
+        >
+          {leadStatus && Object.keys(leadStatus).length ? (
             <div className="dashboard-status-list">
-              {statusDistribution.map((item) => (
-                <div key={item.status} className="dashboard-status-item">
-                  <Badge tone={toneForStatus(item.status)}>{formatLeadStatus(item.status)}</Badge>
-                  <strong>{item.count}</strong>
-                </div>
-              ))}
+              {Object.entries(leadStatus)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8)
+                .map(([status, value]) => (
+                  <div key={status} className="dashboard-status-item">
+                    <Badge tone={toneForLeadStatus(status)}>{formatLeadStatus(status)}</Badge>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
             </div>
           ) : (
-        <EmptyState title={copy({ en: "No lead statuses loaded", vi: "Chưa tải được trạng thái ứng viên" })} description={copy({ en: "The current lead query returned no records to summarize.", vi: "Bộ lọc ứng viên hiện tại không có bản ghi để tổng hợp." })} />
+            <EmptyState title={copy({ en: "No lead statuses loaded", vi: "Chưa tải được trạng thái lead" })} description={copy({ en: "The dashboard aggregate did not return lead status counts.", vi: "Thống kê dashboard chưa trả về số lượng theo trạng thái lead." })} />
           )}
         </Panel>
 
-        <Panel className="dashboard-module" title={<span className="dashboard-panel-title">{copy({ en: "Priority lead queue", vi: "Hàng đợi ứng viên ưu tiên" })}</span>} subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Highest score first, for immediate operator review.", vi: "Ưu tiên điểm cao nhất trước để nhân sự rà soát ngay." })}</span>}>
-          {priorityQueue.length ? (
+        <Panel
+          className="dashboard-module"
+          title={<span className="dashboard-panel-title">{copy({ en: "Document status", vi: "Trạng thái hồ sơ" })}</span>}
+          subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Global document status counts, including computed expired documents.", vi: "Số lượng hồ sơ toàn hệ thống, bao gồm hồ sơ hết hạn được tính tự động." })}</span>}
+        >
+          {documentStatus && Object.keys(documentStatus).length ? (
+            <div className="dashboard-status-list">
+              {Object.entries(documentStatus)
+                .sort((a, b) => b[1] - a[1])
+                .map(([status, value]) => (
+                  <div key={status} className="dashboard-status-item">
+                    <Badge tone={toneForDocumentStatus(status)}>
+                      {formatDocumentStatus(status)}
+                    </Badge>
+                    <strong>{value}</strong>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <EmptyState title={copy({ en: "No document data", vi: "Chưa có dữ liệu hồ sơ" })} description={copy({ en: "Document status counts will appear after documents are created.", vi: "Số lượng theo trạng thái sẽ xuất hiện sau khi có hồ sơ." })} />
+          )}
+        </Panel>
+      </div>
+
+      <Panel
+        className="dashboard-module"
+        title={<span className="dashboard-panel-title">{copy({ en: "Priority action queue", vi: "Hàng đợi cần xử lý" })}</span>}
+        subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Pipeline rows with blockers or a concrete next action. Open the suggested workspace directly from each row.", vi: "Các hồ sơ có điểm nghẽn hoặc hành động tiếp theo rõ ràng. Mở thẳng màn hình xử lý từ từng dòng." })}</span>}
+      >
+        {actionRows.length ? (
+          <div className="dashboard-action-table-wrap">
             <table className="dashboard-table">
               <thead>
                 <tr>
-                  <th>{copy({ en: "Lead", vi: "Ứng viên" })}</th>
-                  <th>{copy({ en: "Status", vi: "Trạng thái" })}</th>
-                  <th>{copy({ en: "Channel", vi: "Kênh" })}</th>
-                  <th>{copy({ en: "Score", vi: "Điểm" })}</th>
+                  <th>{copy({ en: "Lead", vi: "Lead" })}</th>
+                  <th>{copy({ en: "Stage", vi: "Giai đoạn" })}</th>
+                  <th>{copy({ en: "Application", vi: "Ứng tuyển" })}</th>
+                  <th>{copy({ en: "Blocker", vi: "Điểm nghẽn" })}</th>
+                  <th>{copy({ en: "Next", vi: "Tiếp theo" })}</th>
                 </tr>
               </thead>
               <tbody>
-                {priorityQueue.map((lead) => (
-                  <tr key={lead.id}>
+                {actionRows.map((row) => (
+                  <tr key={row.leadId}>
                     <td>
-                      <strong>{getLeadDisplayName(lead)}</strong>
-                      <div className="dashboard-cell-sub">{lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })} · {lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })}</div>
+                      <Link className="dashboard-row-link" to={`/leads/${row.leadId}`}>
+                        {row.leadName || row.phone || row.leadId}
+                      </Link>
+                      <div className="dashboard-cell-sub">{row.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · {formatChannel(row.source)}</div>
                     </td>
                     <td>
-                      <Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>
+                      <Badge tone={toneForLeadStatus(row.currentStage)}>{formatPipelineStage(row.currentStage)}</Badge>
                     </td>
-                    <td>{lead.source}</td>
-                    <td><strong>{lead.leadScore ?? "-"}</strong></td>
+                    <td>
+                      {row.applicationStatus ? (
+                        <Badge tone={toneForApplicationStatus(row.applicationStatus)}>{formatApplicationStatus(row.applicationStatus)}</Badge>
+                      ) : (
+                        <span className="dashboard-muted">{copy({ en: "None", vi: "Chưa có" })}</span>
+                      )}
+                    </td>
+                    <td>
+                      {row.blockers.length
+                        ? translateBlocker(row.blockers[0], copy, formatDocumentType, formatApplicationStatus)
+                        : copy({ en: "No blocker", vi: "Không có điểm nghẽn" })}
+                    </td>
+                    <td>
+                      <Link className="dashboard-row-action" to={linkForRow(row)}>
+                        {row.nextAction ? translateNextAction(row.nextAction, copy) : copy({ en: "Open workspace", vi: "Mở màn hình xử lý" })}
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : (
-            <EmptyState title={copy({ en: "No leads loaded", vi: "Chưa tải được ứng viên" })} description={copy({ en: "The current dashboard window has no leads to prioritize.", vi: "Cửa sổ dashboard hiện tại không có ứng viên nào để ưu tiên." })} />
-          )}
-        </Panel>
-      </div>
+          </div>
+        ) : (
+          <EmptyState title={copy({ en: "No pipeline work loaded", vi: "Chưa có hồ sơ cần xử lý" })} description={copy({ en: "The visible pipeline query did not return any rows.", vi: "Truy vấn pipeline hiện tại chưa trả về hồ sơ nào." })} />
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+function SummaryMetric(props: { label: string; value: number }) {
+  return (
+    <div className="dashboard-summary-metric">
+      <span>{props.label}</span>
+      <strong>{props.value}</strong>
     </div>
   );
 }

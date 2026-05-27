@@ -13,9 +13,11 @@ import {
   type ImportRowDedupStatus
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 type DedupFilter = ImportRowDedupStatus | "";
 const IMPORT_PREVIEW_PAGE_SIZE = 100;
+type ConfirmAction = "apply" | "cancel" | null;
 
 function statusTone(status: string) {
   if (status === "completed") return "success" as const;
@@ -44,6 +46,7 @@ export function ImportPage() {
   const { copy, formatChannel, formatEnum } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pickedFile, setPickedFile] = useState<File | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
   const [dedupFilter, setDedupFilter] = useState<DedupFilter>("");
   const [rowPage, setRowPage] = useState(0);
@@ -99,32 +102,12 @@ export function ImportPage() {
 
   const handleApply = () => {
     if (!activeBatchId) return;
-    if (
-      !window.confirm(
-        copy({
-          en: "Apply this import? New leads will be created in the database.",
-          vi: "Áp dụng đợt nhập này? Ứng viên mới sẽ được tạo trong cơ sở dữ liệu."
-        })
-      )
-    ) {
-      return;
-    }
-    applyMutation.mutate(activeBatchId);
+    setConfirmAction("apply");
   };
 
   const handleCancel = () => {
     if (!activeBatchId) return;
-    if (
-      !window.confirm(
-        copy({
-          en: "Cancel this batch? Staged rows will be discarded.",
-          vi: "Hủy đợt nhập này? Các dòng đã chuẩn bị sẽ bị bỏ."
-        })
-      )
-    ) {
-      return;
-    }
-    cancelMutation.mutate(activeBatchId);
+    setConfirmAction("cancel");
   };
 
   return (
@@ -530,6 +513,34 @@ export function ImportPage() {
           </table>
         </DataTable>
       </Panel>
+      <ConfirmationDialog
+        open={Boolean(confirmAction)}
+        title={confirmAction === "cancel"
+          ? copy({ en: "Cancel import batch?", vi: "Hủy đợt nhập?" })
+          : copy({ en: "Apply import batch?", vi: "Áp dụng đợt nhập?" })}
+        description={confirmAction === "cancel"
+          ? copy({ en: "Staged rows from this batch will be discarded.", vi: "Các dòng đã chuẩn bị trong đợt này sẽ bị bỏ." })
+          : copy({ en: "New leads from this preview will be created in the database.", vi: "Ứng viên mới trong bản xem trước sẽ được tạo trong cơ sở dữ liệu." })}
+        details={activeBatchId ? [{ label: copy({ en: "Batch ID", vi: "Mã đợt nhập" }), value: activeBatchId }] : []}
+        warning={confirmAction === "cancel"
+          ? copy({ en: "This does not delete leads that were already applied.", vi: "Thao tác này không xóa lead đã được áp dụng trước đó." })
+          : copy({ en: "Review duplicates and field mapping before applying.", vi: "Hãy kiểm tra trùng lặp và ánh xạ trường trước khi áp dụng." })}
+        confirmLabel={confirmAction === "cancel"
+          ? copy({ en: "Cancel batch", vi: "Hủy đợt nhập" })
+          : copy({ en: "Apply import", vi: "Áp dụng nhập" })}
+        pendingLabel={copy({ en: "Working...", vi: "Đang xử lý..." })}
+        cancelLabel={copy({ en: "Back", vi: "Quay lại" })}
+        isPending={applyMutation.isPending || cancelMutation.isPending}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (!activeBatchId || !confirmAction) return;
+          if (confirmAction === "cancel") {
+            cancelMutation.mutate(activeBatchId, { onSuccess: () => setConfirmAction(null) });
+            return;
+          }
+          applyMutation.mutate(activeBatchId, { onSuccess: () => setConfirmAction(null) });
+        }}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   type ImportNotesSuggestion
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 /**
  * /extract - operator-triggered AI extraction on the notes from a completed
@@ -35,6 +36,7 @@ export function ExtractPage() {
   } = useI18n();
   const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const [picked, setPicked] = useState<Set<string>>(() => new Set());
+  const [confirmApplyOpen, setConfirmApplyOpen] = useState(false);
 
   const batchesQuery = useImportBatchesQuery({ limit: 50 });
   const batchQuery = useImportBatchQuery(selectedBatchId || undefined);
@@ -101,16 +103,11 @@ export function ExtractPage() {
 
   const handleApply = () => {
     if (!selectedBatchId || picked.size === 0) return;
-    if (
-      !window.confirm(
-        copy({
-          en: `Apply ${picked.size} suggestion(s) to the listed leads?`,
-          vi: `Áp dụng ${picked.size} gợi ý vào các ứng viên trong danh sách?`
-        })
-      )
-    ) {
-      return;
-    }
+    setConfirmApplyOpen(true);
+  };
+
+  const applyPickedSuggestions = () => {
+    if (!selectedBatchId || picked.size === 0) return;
     // Group picks by leadId.
     const byLead = new Map<string, string[]>();
     for (const key of picked) {
@@ -127,6 +124,7 @@ export function ExtractPage() {
       {
         onSuccess: () => {
           setPicked(new Set());
+          setConfirmApplyOpen(false);
         }
       }
     );
@@ -276,6 +274,28 @@ export function ExtractPage() {
           )}
         </Panel>
       ) : null}
+      <ConfirmationDialog
+        open={confirmApplyOpen}
+        title={copy({ en: "Apply selected suggestions?", vi: "Áp dụng gợi ý đã chọn?" })}
+        description={copy({
+          en: "Selected AI suggestions will be written to the listed lead records.",
+          vi: "Các gợi ý AI đã chọn sẽ được ghi vào những hồ sơ lead trong danh sách.",
+        })}
+        details={[
+          { label: copy({ en: "Batch ID", vi: "Mã đợt nhập" }), value: selectedBatchId || "—" },
+          { label: copy({ en: "Suggestions", vi: "Gợi ý" }), value: String(picked.size) },
+        ]}
+        warning={copy({
+          en: "Unselected suggestions stay available for later review.",
+          vi: "Các gợi ý chưa chọn vẫn được giữ lại để xem sau.",
+        })}
+        confirmLabel={copy({ en: "Apply suggestions", vi: "Áp dụng gợi ý" })}
+        pendingLabel={copy({ en: "Applying...", vi: "Đang áp dụng..." })}
+        cancelLabel={copy({ en: "Back", vi: "Quay lại" })}
+        isPending={applyMutation.isPending}
+        onCancel={() => setConfirmApplyOpen(false)}
+        onConfirm={applyPickedSuggestions}
+      />
     </div>
   );
 }

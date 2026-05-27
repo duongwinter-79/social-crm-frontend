@@ -14,6 +14,7 @@ const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-pag
 const CandidateDossierPage = lazy(() => import("@/features/leads/candidate-dossier-page").then((m) => ({ default: m.CandidateDossierPage })));
 const MatchingPage = lazy(() => import("@/features/matching/matching-page").then((m) => ({ default: m.MatchingPage })));
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
+const OrderDetailPage = lazy(() => import("@/features/orders/order-detail-page").then((m) => ({ default: m.OrderDetailPage })));
 const ApplicationsPage = lazy(() => import("@/features/applications/applications-page").then((m) => ({ default: m.ApplicationsPage })));
 const ApplicationDetailPage = lazy(() => import("@/features/applications/application-detail-page").then((m) => ({ default: m.ApplicationDetailPage })));
 const FormEditorPage = lazy(() => import("@/features/applications/form-editor-page").then((m) => ({ default: m.FormEditorPage })));
@@ -357,6 +358,7 @@ export function AppRouter() {
         <Route path="/pipeline" element={<LazyRoute><PipelinePage /></LazyRoute>} />
         <Route path="/matching" element={<LazyRoute><MatchingPage /></LazyRoute>} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
+        <Route path="/orders/:orderId" element={<LazyRoute><OrderDetailPage /></LazyRoute>} />
         <Route path="/applications" element={<LazyRoute><ApplicationsPage /></LazyRoute>} />
         {/* Legacy URL kept as a redirect for bookmarks. The merged detail page handles both upload and view. */}
         <Route path="/applications/upload" element={<Navigate to="/applications/detail" replace />} />

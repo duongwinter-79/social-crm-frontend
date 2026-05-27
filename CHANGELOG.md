@@ -2,6 +2,21 @@
 
 ## 2026-05-27
 
+### Orders and confirmation UX
+
+- split `/orders` into a paginated catalog list plus dedicated `/orders/new` and `/orders/:orderId` detail screens for create, view, and edit
+- removed the duplicated create action from the Orders list and kept a single `New order` entry point
+- added a reusable CRM confirmation dialog and replaced current browser confirmation boxes across application deletion, training-finance deletion, import apply/cancel, and extract apply
+- changed application delete copy to `Delete record` / `Xóa bản ghi`
+- disabled application row `Save` by default until the operator changes status, interview date, or reason
+
+### Dashboard operations redesign
+
+- replaced the old lead-window dashboard with an operations control surface backed by global dashboard aggregates and the pipeline API
+- added attention cards for intake, form-ready leads, active applications, document blockers, and departure gaps
+- added role queue summaries and a priority action table that links operators to the right lead, application, form, or training-finance workspace
+- fixed dashboard status handling to work with lowercase backend status values instead of stale uppercase checks
+
 ### Admin correction controls
 
 - added admin-only delete controls to the Applications table for records created by mistake

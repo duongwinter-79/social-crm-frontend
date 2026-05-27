@@ -22,6 +22,7 @@ import {
 import { useI18n } from "@/i18n";
 import type { ApplicationRecord, CandidateRef, FormStandardRegisterRow } from "@social-crm/api";
 import { ApplicationContextNav } from "./application-context-nav";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 const DOC_STATUSES = ["", "pending", "submitted", "verified", "rejected", "expired"] as const;
 const APPLICATION_STATUSES = [
@@ -47,6 +48,12 @@ type ApplicationDraft = {
   interviewDate: string;
   rejectReason: string;
 };
+
+type DeleteTarget = {
+  id: string;
+  candidate: string;
+  order: string;
+} | null;
 
 const APPLICATION_STATUS_TRANSITIONS: Record<ApplicationStatusValue, ApplicationStatusValue[]> = {
   matching: ["referred", "rejected", "withdrawn"],
@@ -125,6 +132,23 @@ function toDateInputValue(value?: string | null) {
   return value.slice(0, 10);
 }
 
+function applicationToDraft(application: ApplicationRecord): ApplicationDraft {
+  return {
+    status: application.status,
+    interviewDate: toDateInputValue(application.interviewDate),
+    rejectReason: application.rejectReason ?? "",
+  };
+}
+
+function isDraftDirty(application: ApplicationRecord, draft: ApplicationDraft) {
+  const saved = applicationToDraft(application);
+  return (
+    draft.status !== saved.status ||
+    draft.interviewDate !== saved.interviewDate ||
+    draft.rejectReason.trim() !== saved.rejectReason.trim()
+  );
+}
+
 function requiresInterviewDate(status: string) {
   return status === "interview_scheduled";
 }
@@ -163,6 +187,7 @@ export function ApplicationsPage() {
   const [selectedCandidateId, setSelectedCandidateId] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState("");
   const [drafts, setDrafts] = useState<Record<string, ApplicationDraft>>({});
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -280,18 +305,14 @@ export function ApplicationsPage() {
   }
 
   function readDraft(application: ApplicationRecord): ApplicationDraft {
-    return drafts[application.id] ?? {
-      status: application.status,
-      interviewDate: toDateInputValue(application.interviewDate),
-      rejectReason: application.rejectReason ?? "",
-    };
+    return drafts[application.id] ?? applicationToDraft(application);
   }
 
-  function setDraft(applicationId: string, patch: Partial<ApplicationDraft>) {
+  function setDraft(application: ApplicationRecord, patch: Partial<ApplicationDraft>) {
     setDrafts((current) => ({
       ...current,
-      [applicationId]: {
-        ...(current[applicationId] ?? { status: "", interviewDate: "", rejectReason: "" }),
+      [application.id]: {
+        ...(current[application.id] ?? applicationToDraft(application)),
         ...patch,
       },
     }));
@@ -316,31 +337,38 @@ export function ApplicationsPage() {
   function submitApplicationUpdate(application: ApplicationRecord) {
     if (!canManageRecruitment) return;
     const draft = readDraft(application);
+    if (!isDraftDirty(application, draft)) return;
     if (requiresInterviewDate(draft.status) && !draft.interviewDate) return;
     if (requiresRejectReason(draft.status) && !draft.rejectReason.trim()) return;
 
-    updateApplication.mutate({
-      id: application.id,
-      patch: {
-        status: draft.status,
-        interviewDate: draft.interviewDate || undefined,
-        rejectReason: draft.rejectReason.trim() || undefined,
+    updateApplication.mutate(
+      {
+        id: application.id,
+        patch: {
+          status: draft.status,
+          interviewDate: draft.interviewDate || undefined,
+          rejectReason: draft.rejectReason.trim() || undefined,
+        },
       },
-    });
+      {
+        onSuccess: () => {
+          setDrafts((current) => {
+            const next = { ...current };
+            delete next[application.id];
+            return next;
+          });
+        },
+      },
+    );
   }
 
   function submitApplicationDelete(application: ApplicationRecord) {
     if (!isAdmin) return;
-    const candidate = applicationCandidateLabel(application);
-    const order = application.order?.name ?? application.order_id;
-    const confirmed = window.confirm(
-      copy({
-        en: `Delete this application record?\n\nCandidate: ${candidate}\nOrder: ${order}\n\nUse this only when the record was created by mistake. Linked training-finance records must be corrected first.`,
-        vi: `Xoá bản ghi ứng tuyển này?\n\nỨng viên: ${candidate}\nĐơn hàng: ${order}\n\nChỉ dùng khi bản ghi được tạo nhầm. Nếu đã liên kết đào tạo/tài chính, cần xử lý bản ghi đó trước.`,
-      }),
-    );
-    if (!confirmed) return;
-    deleteApplication.mutate(application.id);
+    setDeleteTarget({
+      id: application.id,
+      candidate: applicationCandidateLabel(application),
+      order: application.order?.name ?? application.order_id,
+    });
   }
 
   return (
@@ -568,6 +596,7 @@ export function ApplicationsPage() {
                       const hasNextStatus = hasApplicationNextStatus(application.status);
                       const missingInterviewDate = requiresInterviewDate(draft.status) && !draft.interviewDate;
                       const missingRejectReason = requiresRejectReason(draft.status) && !draft.rejectReason.trim();
+                      const draftDirty = isDraftDirty(application, draft);
                       return (
                         <tr key={application.id} className="border-t border-slate-100 align-top hover:bg-slate-50/60">
                           <td className="px-3 py-3">
@@ -594,7 +623,7 @@ export function ApplicationsPage() {
                             <Select
                               label=""
                               value={draft.status}
-                              onChange={(event) => setDraft(application.id, { status: event.target.value })}
+                              onChange={(event) => setDraft(application, { status: event.target.value })}
                               disabled={!canManageRecruitment || !hasNextStatus}
                             >
                               {statusOptions.map((status) => (
@@ -626,13 +655,13 @@ export function ApplicationsPage() {
                               <input
                                 type="date"
                                 value={draft.interviewDate}
-                                onChange={(event) => setDraft(application.id, { interviewDate: event.target.value })}
+                                onChange={(event) => setDraft(application, { interviewDate: event.target.value })}
                                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                               />
                               <input
                                 type="text"
                                 value={draft.rejectReason}
-                                onChange={(event) => setDraft(application.id, { rejectReason: event.target.value })}
+                                onChange={(event) => setDraft(application, { rejectReason: event.target.value })}
                                 placeholder={copy({ en: "Reject / withdrawal reason", vi: "Lý do rớt / từ chối / rút" })}
                                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
                               />
@@ -651,7 +680,7 @@ export function ApplicationsPage() {
                             <Button
                               size="sm"
                               onClick={() => submitApplicationUpdate(application)}
-                              disabled={!canManageRecruitment || updateApplication.isPending || missingInterviewDate || missingRejectReason}
+                              disabled={!canManageRecruitment || !draftDirty || updateApplication.isPending || missingInterviewDate || missingRejectReason}
                             >
                               {updateApplication.isPending
                                 ? copy({ en: "Saving...", vi: "Đang lưu..." })
@@ -666,7 +695,7 @@ export function ApplicationsPage() {
                               >
                                 {deleteApplication.isPending
                                   ? copy({ en: "Deleting...", vi: "Đang xoá..." })
-                                  : copy({ en: "Delete wrong record", vi: "Xoá bản ghi nhầm" })}
+                                  : copy({ en: "Delete record", vi: "Xóa bản ghi" })}
                               </Button>
                             ) : null}
                             </div>
@@ -717,6 +746,33 @@ export function ApplicationsPage() {
           formatApplicationStatus={formatApplicationStatus}
         />
       )}
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title={copy({ en: "Delete application record?", vi: "Xóa bản ghi ứng tuyển?" })}
+        description={copy({
+          en: "This removes only the application record. Use it for admin corrections when the record was created by mistake.",
+          vi: "Thao tác này chỉ xóa bản ghi ứng tuyển. Chỉ dùng để hiệu chỉnh admin khi bản ghi được tạo nhầm.",
+        })}
+        details={deleteTarget ? [
+          { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: deleteTarget.candidate },
+          { label: copy({ en: "Order", vi: "Đơn hàng" }), value: deleteTarget.order },
+        ] : []}
+        warning={copy({
+          en: "If this application has linked training-finance records, correct those records first before deleting.",
+          vi: "Nếu ứng tuyển này đã liên kết đào tạo/tài chính, hãy xử lý bản ghi đó trước khi xóa.",
+        })}
+        confirmLabel={copy({ en: "Delete record", vi: "Xóa bản ghi" })}
+        pendingLabel={copy({ en: "Deleting...", vi: "Đang xóa..." })}
+        cancelLabel={copy({ en: "Cancel", vi: "Hủy" })}
+        isPending={deleteApplication.isPending}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteApplication.mutate(deleteTarget.id, {
+            onSuccess: () => setDeleteTarget(null),
+          });
+        }}
+      />
     </div>
   );
 }
