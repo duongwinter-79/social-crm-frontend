@@ -18,6 +18,8 @@ import {
 import {
   useApplicationsQuery,
   useCreateTrainingFinanceMutation,
+  useDeleteTrainingFinanceMutation,
+  usePermissions,
   useTrainingFinanceQuery,
   useUpdateTrainingFinanceMutation
 } from "@social-crm/api";
@@ -62,6 +64,7 @@ function departureApplicationGate(departureDate: string, application?: Applicati
 
 export function TrainingFinancePage() {
   const { copy, formatApplicationStatus, formatTrainingMilestone } = useI18n();
+  const { canManageFinance, isAdmin } = usePermissions();
   const [filters, setFilters] = useState({
     leadId: "",
     orderId: "",
@@ -101,6 +104,7 @@ export function TrainingFinancePage() {
   });
   const createTrainingFinance = useCreateTrainingFinanceMutation();
   const updateTrainingFinance = useUpdateTrainingFinanceMutation();
+  const deleteTrainingFinance = useDeleteTrainingFinanceMutation();
   const createApplicationsQuery = useApplicationsQuery(
     { offset: 0, limit: 50, leadId: createForm.leadId || undefined },
     { enabled: Boolean(createForm.leadId) },
@@ -150,6 +154,20 @@ export function TrainingFinancePage() {
       applicationId,
       orderId: application?.order_id ?? state.orderId,
     }));
+  }
+
+  function submitTrainingFinanceDelete(record: TrainingFinanceRecord) {
+    if (!isAdmin) return;
+    const confirmed = window.confirm(
+      copy({
+        en: `Delete this training-finance record?\n\nLead: ${record.lead ? getLeadDisplayName(record.lead) : record.lead_id}\nApplication: ${record.application ? applicationLabel(record.application, formatApplicationStatus) : "Not linked"}\n\nUse this only when the record was created by mistake.`,
+        vi: `Xoá bản ghi đào tạo/tài chính này?\n\nỨng viên: ${record.lead ? getLeadDisplayName(record.lead) : record.lead_id}\nỨng tuyển: ${record.application ? applicationLabel(record.application, formatApplicationStatus) : "Chưa liên kết"}\n\nChỉ dùng khi bản ghi được tạo nhầm.`,
+      }),
+    );
+    if (!confirmed) return;
+    deleteTrainingFinance.mutate(record.id, {
+      onSuccess: () => setSelectedId(""),
+    });
   }
 
   return (
@@ -275,6 +293,14 @@ export function TrainingFinancePage() {
             })}
           >
             <div className="space-y-4">
+              {!canManageFinance ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  {copy({
+                    en: "Finance role required to create or update milestone records.",
+                    vi: "Cần quyền tài chính để tạo hoặc cập nhật bản ghi mốc tiến độ.",
+                  })}
+                </div>
+              ) : null}
               <Input label={copy({ en: "Lead ID", vi: "Mã ứng viên" })} value={createForm.leadId} onChange={(e) => setCreateForm((s) => ({ ...s, leadId: e.target.value }))} />
               <Select
                 label={copy({ en: "Linked application", vi: "Ứng tuyển liên kết" })}
@@ -320,7 +346,7 @@ export function TrainingFinancePage() {
                     departureDate: createForm.departureDate || undefined
                   })
                 }
-                disabled={!createForm.leadId || !createDepartureGate.ok || createTrainingFinance.isPending}
+                disabled={!canManageFinance || !createForm.leadId || !createDepartureGate.ok || createTrainingFinance.isPending}
               >
                 {createTrainingFinance.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create milestone record", vi: "Tạo bản ghi mốc tiến độ" })}
               </Button>
@@ -336,6 +362,14 @@ export function TrainingFinancePage() {
           >
             {selected ? (
               <div className="space-y-4">
+                {isAdmin ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900">
+                    {copy({
+                      en: "Admin correction: delete only records created by mistake. Fix the linked application first when the order or departure gate is wrong.",
+                      vi: "Hiệu chỉnh admin: chỉ xoá bản ghi tạo nhầm. Nếu sai đơn hàng hoặc điều kiện xuất cảnh, hãy chỉnh ứng tuyển liên kết trước.",
+                    })}
+                  </div>
+                ) : null}
                 <DescriptionList
                   items={[
                     { label: copy({ en: "Record ID", vi: "Record ID" }), value: selected.id },
@@ -391,10 +425,21 @@ export function TrainingFinancePage() {
                       }
                     })
                   }
-                  disabled={!editDepartureGate.ok || updateTrainingFinance.isPending}
+                  disabled={!canManageFinance || !editDepartureGate.ok || updateTrainingFinance.isPending}
                 >
                   {updateTrainingFinance.isPending ? copy({ en: "Saving...", vi: "Đang lưu..." }) : copy({ en: "Save milestone update", vi: "Lưu cập nhật mốc tiến độ" })}
                 </Button>
+                {isAdmin ? (
+                  <Button
+                    variant="danger"
+                    onClick={() => submitTrainingFinanceDelete(selected)}
+                    disabled={deleteTrainingFinance.isPending}
+                  >
+                    {deleteTrainingFinance.isPending
+                      ? copy({ en: "Deleting...", vi: "Đang xoá..." })
+                      : copy({ en: "Delete wrong record", vi: "Xoá bản ghi nhầm" })}
+                  </Button>
+                ) : null}
               </div>
             ) : (
               <EmptyState

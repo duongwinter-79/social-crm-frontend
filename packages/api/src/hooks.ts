@@ -619,6 +619,19 @@ export function useUpdateApplicationMutation() {
   });
 }
 
+export function useDeleteApplicationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.deleteApplication(id),
+    onSuccess: (_result, id) => {
+      queryClient.removeQueries({ queryKey: ["application", id] });
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["training-finance"] });
+    },
+    meta: { successMessage: { en: "Application deleted", vi: "Đã xoá hồ sơ ứng tuyển" } }
+  });
+}
+
 export function useCreateApplicationMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -810,6 +823,18 @@ export function useUpdateTrainingFinanceMutation() {
       queryClient.invalidateQueries({ queryKey: ["training-finance", "lead", record.lead_id] });
     },
     meta: { successMessage: { en: "Training/finance record updated", vi: "Đã cập nhật hồ sơ đào tạo/tài chính" } }
+  });
+}
+
+export function useDeleteTrainingFinanceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.deleteTrainingFinance(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-finance"] });
+      queryClient.invalidateQueries({ queryKey: ["lead"] });
+    },
+    meta: { successMessage: { en: "Training/finance record deleted", vi: "Đã xoá hồ sơ đào tạo/tài chính" } }
   });
 }
 

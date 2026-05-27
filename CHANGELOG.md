@@ -2,6 +2,13 @@
 
 ## 2026-05-27
 
+### Admin correction controls
+
+- added admin-only delete controls to the Applications table for records created by mistake
+- added admin-only delete controls to the Training & Finance selected-record panel
+- added correction guidance copy so normal status progression remains separate from destructive admin cleanup
+- hid training-finance create/update submission from users without the finance role, matching the backend permission gate
+
 ### Training-finance application link
 
 - added linked-application selection to training-finance create/edit forms and auto-filled the order from the selected application

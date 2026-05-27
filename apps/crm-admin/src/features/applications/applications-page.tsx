@@ -13,6 +13,7 @@ import {
   useApplicationsQuery,
   useCandidatesQuery,
   useCreateApplicationMutation,
+  useDeleteApplicationMutation,
   useFormStandardRegisterQuery,
   useOrdersQuery,
   useUpdateApplicationMutation,
@@ -146,7 +147,7 @@ function hasVerifiedForm(row?: FormStandardRegisterRow | null) {
 
 export function ApplicationsPage() {
   const { copy, formatDocumentStatus, formatApplicationStatus, formatLeadStatus } = useI18n();
-  const { canManageRecruitment } = usePermissions();
+  const { canManageRecruitment, isAdmin } = usePermissions();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const contextLeadId = searchParams.get("leadId") ?? "";
@@ -190,6 +191,7 @@ export function ApplicationsPage() {
   const ordersQuery = useOrdersQuery();
   const createApplication = useCreateApplicationMutation();
   const updateApplication = useUpdateApplicationMutation();
+  const deleteApplication = useDeleteApplicationMutation();
 
   const candidates = candidatesQuery.data?.data ?? [];
   const orders = ordersQuery.data ?? [];
@@ -325,6 +327,20 @@ export function ApplicationsPage() {
         rejectReason: draft.rejectReason.trim() || undefined,
       },
     });
+  }
+
+  function submitApplicationDelete(application: ApplicationRecord) {
+    if (!isAdmin) return;
+    const candidate = applicationCandidateLabel(application);
+    const order = application.order?.name ?? application.order_id;
+    const confirmed = window.confirm(
+      copy({
+        en: `Delete this application record?\n\nCandidate: ${candidate}\nOrder: ${order}\n\nUse this only when the record was created by mistake. Linked training-finance records must be corrected first.`,
+        vi: `Xoá bản ghi ứng tuyển này?\n\nỨng viên: ${candidate}\nĐơn hàng: ${order}\n\nChỉ dùng khi bản ghi được tạo nhầm. Nếu đã liên kết đào tạo/tài chính, cần xử lý bản ghi đó trước.`,
+      }),
+    );
+    if (!confirmed) return;
+    deleteApplication.mutate(application.id);
   }
 
   return (
@@ -500,6 +516,14 @@ export function ApplicationsPage() {
               vi: "Đây là các bản ghi ứng viên ứng tuyển vào đơn hàng được lưu trong bảng applications.",
             })}
           >
+            {isAdmin ? (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                {copy({
+                  en: "Admin correction: delete only records created by mistake. Status changes still follow the application workflow; linked training-finance rows must be fixed before deletion.",
+                  vi: "Hiệu chỉnh admin: chỉ xoá bản ghi tạo nhầm. Đổi trạng thái vẫn đi theo quy trình ứng tuyển; bản ghi đào tạo/tài chính liên kết cần được xử lý trước khi xoá.",
+                })}
+              </div>
+            ) : null}
             <div className="mb-4 grid gap-4 md:grid-cols-[minmax(220px,320px)_1fr]">
               <Select
                 label={copy({ en: "Application status", vi: "Trạng thái ứng tuyển" })}
@@ -623,6 +647,7 @@ export function ApplicationsPage() {
                           </td>
                           <td className="px-3 py-3 text-slate-600">{formatDateTime(application.updatedAt)}</td>
                           <td className="px-3 py-3">
+                            <div className="flex flex-col gap-2">
                             <Button
                               size="sm"
                               onClick={() => submitApplicationUpdate(application)}
@@ -632,6 +657,19 @@ export function ApplicationsPage() {
                                 ? copy({ en: "Saving...", vi: "Đang lưu..." })
                                 : copy({ en: "Save", vi: "Lưu" })}
                             </Button>
+                            {isAdmin ? (
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => submitApplicationDelete(application)}
+                                disabled={deleteApplication.isPending}
+                              >
+                                {deleteApplication.isPending
+                                  ? copy({ en: "Deleting...", vi: "Đang xoá..." })
+                                  : copy({ en: "Delete wrong record", vi: "Xoá bản ghi nhầm" })}
+                              </Button>
+                            ) : null}
+                            </div>
                           </td>
                         </tr>
                       );

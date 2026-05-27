@@ -543,6 +543,11 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async deleteApplication(id: string) {
+    const response = await this.http.delete<ApiEnvelope<{ deleted: boolean; id: string }> | { deleted: boolean; id: string }>(`/applications/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
   async createApplication(payload: { candidateId: string; orderId: string; status?: string; interviewDate?: string; interviewResult?: string; rejectReason?: string }) {
     const response = await this.http.post<ApiEnvelope<ApplicationRecord> | ApplicationRecord>("/applications", payload);
     return unwrapEnvelope(response.data);
@@ -790,6 +795,11 @@ export class SocialCrmApiClient {
 
   async updateTrainingFinance(id: string, patch: Record<string, unknown>) {
     const response = await this.http.patch<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>(`/training-finance/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async deleteTrainingFinance(id: string) {
+    const response = await this.http.delete<ApiEnvelope<{ deleted: boolean; id: string }> | { deleted: boolean; id: string }>(`/training-finance/${id}`);
     return unwrapEnvelope(response.data);
   }
 
