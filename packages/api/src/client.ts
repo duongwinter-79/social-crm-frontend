@@ -783,6 +783,11 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async getTrainingFinance(id: string) {
+    const response = await this.http.get<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>(`/training-finance/${id}`);
+    return unwrapEnvelope(response.data);
+  }
+
   async getTrainingFinanceByLead(leadId: string) {
     const response = await this.http.get<ApiEnvelope<TrainingFinanceRecord[]> | TrainingFinanceRecord[]>(`/training-finance/lead/${leadId}`);
     return unwrapEnvelope(response.data);

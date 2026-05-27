@@ -2,6 +2,14 @@
 
 ## 2026-05-27
 
+### Training-finance workspace refactor
+
+- split `/training-finance` into a dedicated milestone ledger plus `/training-finance/new` and `/training-finance/:recordId` create/edit detail screens
+- moved the old inline `Create milestone record` panel out of the list page so the ledger stays focused on scanning records
+- added a frontend API detail hook for the existing `GET /training-finance/:id` backend endpoint
+- improved training-finance list metrics, filters, table readability, and application/order consistency guidance
+- kept departure-date gating in the detail screen: departure still requires a linked application marked `ready_to_depart`
+
 ### Orders and confirmation UX
 
 - split `/orders` into a paginated catalog list plus dedicated `/orders/new` and `/orders/:orderId` detail screens for create, view, and edit

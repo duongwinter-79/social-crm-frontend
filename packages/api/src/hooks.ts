@@ -374,6 +374,14 @@ export function useTrainingFinanceQuery(params: { offset: number; limit: number;
   });
 }
 
+export function useTrainingFinanceDetailQuery(id?: string) {
+  return useQuery({
+    queryKey: ["training-finance", "detail", id],
+    queryFn: () => apiClient.getTrainingFinance(id as string),
+    enabled: Boolean(id)
+  });
+}
+
 export function useTrainingFinanceByLeadQuery(leadId?: string) {
   return useQuery({
     queryKey: ["training-finance", "lead", leadId],

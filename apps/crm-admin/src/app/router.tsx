@@ -19,6 +19,7 @@ const ApplicationsPage = lazy(() => import("@/features/applications/applications
 const ApplicationDetailPage = lazy(() => import("@/features/applications/application-detail-page").then((m) => ({ default: m.ApplicationDetailPage })));
 const FormEditorPage = lazy(() => import("@/features/applications/form-editor-page").then((m) => ({ default: m.FormEditorPage })));
 const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
+const TrainingFinanceDetailPage = lazy(() => import("@/features/training-finance/training-finance-detail-page").then((m) => ({ default: m.TrainingFinanceDetailPage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
 const ExtractPage = lazy(() => import("@/features/imports/extract-page").then((m) => ({ default: m.ExtractPage })));
@@ -366,6 +367,7 @@ export function AppRouter() {
         <Route path="/applications/:leadId/edit" element={<LazyRoute><FormEditorPage /></LazyRoute>} />
         <Route path="/documents" element={<Navigate to="/applications" replace />} />
         <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
+        <Route path="/training-finance/:recordId" element={<LazyRoute><TrainingFinanceDetailPage /></LazyRoute>} />
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
