@@ -16,6 +16,7 @@ import {
   useFormStandardRegisterQuery,
   useOrdersQuery,
   useUpdateApplicationMutation,
+  usePermissions,
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import type { ApplicationRecord, CandidateRef, FormStandardRegisterRow } from "@social-crm/api";
@@ -38,12 +39,42 @@ const APPLICATION_PAGE_SIZE = 20;
 const DOCUMENT_PAGE_SIZE = 25;
 
 type TabKey = "applications" | "forms";
+type ApplicationStatusValue = Exclude<(typeof APPLICATION_STATUSES)[number], "">;
 
 type ApplicationDraft = {
   status: string;
   interviewDate: string;
   rejectReason: string;
 };
+
+const APPLICATION_STATUS_TRANSITIONS: Record<ApplicationStatusValue, ApplicationStatusValue[]> = {
+  matching: ["referred", "rejected", "withdrawn"],
+  referred: ["interview_scheduled", "rejected", "withdrawn"],
+  interview_scheduled: ["interview_passed", "interview_failed", "rejected", "withdrawn"],
+  interview_passed: ["signing", "rejected", "withdrawn"],
+  signing: ["ready_to_depart", "rejected", "withdrawn"],
+  interview_failed: [],
+  ready_to_depart: [],
+  rejected: [],
+  withdrawn: [],
+};
+
+function isApplicationStatus(value: string): value is ApplicationStatusValue {
+  return value !== "" && APPLICATION_STATUSES.includes(value as (typeof APPLICATION_STATUSES)[number]);
+}
+
+function applicationStatusOptions(currentStatus: string) {
+  const options = new Set<string>();
+  if (currentStatus) options.add(currentStatus);
+  if (isApplicationStatus(currentStatus)) {
+    APPLICATION_STATUS_TRANSITIONS[currentStatus].forEach((status) => options.add(status));
+  }
+  return Array.from(options);
+}
+
+function hasApplicationNextStatus(currentStatus: string) {
+  return isApplicationStatus(currentStatus) && APPLICATION_STATUS_TRANSITIONS[currentStatus].length > 0;
+}
 
 function toneForDocStatus(status: string) {
   if (status === "verified") return "success" as const;
@@ -115,6 +146,7 @@ function hasVerifiedForm(row?: FormStandardRegisterRow | null) {
 
 export function ApplicationsPage() {
   const { copy, formatDocumentStatus, formatApplicationStatus, formatLeadStatus } = useI18n();
+  const { canManageRecruitment } = usePermissions();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const contextLeadId = searchParams.get("leadId") ?? "";
@@ -271,6 +303,7 @@ export function ApplicationsPage() {
   }
 
   function submitCreateApplication() {
+    if (!canManageRecruitment) return;
     if (!createGate.ok || !selectedCandidateId || !selectedOrderId) return;
     createApplication.mutate(
       { candidateId: selectedCandidateId, orderId: selectedOrderId },
@@ -279,6 +312,7 @@ export function ApplicationsPage() {
   }
 
   function submitApplicationUpdate(application: ApplicationRecord) {
+    if (!canManageRecruitment) return;
     const draft = readDraft(application);
     if (requiresInterviewDate(draft.status) && !draft.interviewDate) return;
     if (requiresRejectReason(draft.status) && !draft.rejectReason.trim()) return;
@@ -317,7 +351,7 @@ export function ApplicationsPage() {
                   {copy({ en: "Clear lead filter", vi: "Bỏ lọc lead" })}
                 </Button>
               ) : null}
-              <Button onClick={() => { setActiveTab("applications"); setCreateOpen(true); }}>
+              <Button onClick={() => { setActiveTab("applications"); setCreateOpen(true); }} disabled={!canManageRecruitment}>
                 {copy({ en: "Create application", vi: "Tạo ứng tuyển" })}
               </Button>
             </div>
@@ -441,7 +475,15 @@ export function ApplicationsPage() {
                   <div className={`rounded-xl border px-3 py-2 text-sm ${createGate.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
                     {createGate.message}
                   </div>
-                  <Button className="w-full" onClick={submitCreateApplication} disabled={!createGate.ok || createApplication.isPending}>
+                  {!canManageRecruitment ? (
+                    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                      {copy({
+                        en: "Only recruitment staff can create application records.",
+                        vi: "Chỉ nhân sự tuyển dụng mới có thể tạo ứng tuyển.",
+                      })}
+                    </div>
+                  ) : null}
+                  <Button className="w-full" onClick={submitCreateApplication} disabled={!canManageRecruitment || !createGate.ok || createApplication.isPending}>
                     {createApplication.isPending
                       ? copy({ en: "Creating...", vi: "Đang tạo..." })
                       : copy({ en: "Create application", vi: "Tạo ứng tuyển" })}
@@ -494,7 +536,12 @@ export function ApplicationsPage() {
                   </thead>
                   <tbody>
                     {applications.map((application) => {
-                      const draft = readDraft(application);
+                      const rawDraft = readDraft(application);
+                      const statusOptions = applicationStatusOptions(application.status);
+                      const draft = statusOptions.includes(rawDraft.status)
+                        ? rawDraft
+                        : { ...rawDraft, status: application.status };
+                      const hasNextStatus = hasApplicationNextStatus(application.status);
                       const missingInterviewDate = requiresInterviewDate(draft.status) && !draft.interviewDate;
                       const missingRejectReason = requiresRejectReason(draft.status) && !draft.rejectReason.trim();
                       return (
@@ -524,14 +571,31 @@ export function ApplicationsPage() {
                               label=""
                               value={draft.status}
                               onChange={(event) => setDraft(application.id, { status: event.target.value })}
+                              disabled={!canManageRecruitment || !hasNextStatus}
                             >
-                              {APPLICATION_STATUSES.filter(Boolean).map((status) => (
+                              {statusOptions.map((status) => (
                                 <option key={status} value={status}>{formatApplicationStatus(status)}</option>
                               ))}
                             </Select>
-                            <div className="mt-2">
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
                               <Badge tone={toneForApplicationStatus(application.status)}>{formatApplicationStatus(application.status)}</Badge>
+                              {!hasNextStatus ? (
+                                <Badge tone="neutral">{copy({ en: "Terminal", vi: "Kết thúc" })}</Badge>
+                              ) : null}
                             </div>
+                            {!canManageRecruitment ? (
+                              <div className="mt-2 text-xs text-slate-500">
+                                {copy({ en: "Recruitment role required to change status.", vi: "Cần quyền tuyển dụng để đổi trạng thái." })}
+                              </div>
+                            ) : hasNextStatus ? (
+                              <div className="mt-2 text-xs text-slate-500">
+                                {copy({ en: "Only valid next statuses are shown.", vi: "Chỉ hiển thị các trạng thái kế tiếp hợp lệ." })}
+                              </div>
+                            ) : (
+                              <div className="mt-2 text-xs text-slate-500">
+                                {copy({ en: "No further status changes are allowed.", vi: "Không cho phép đổi sang trạng thái khác." })}
+                              </div>
+                            )}
                           </td>
                           <td className="px-3 py-3">
                             <div className="space-y-2">
@@ -562,7 +626,7 @@ export function ApplicationsPage() {
                             <Button
                               size="sm"
                               onClick={() => submitApplicationUpdate(application)}
-                              disabled={updateApplication.isPending || missingInterviewDate || missingRejectReason}
+                              disabled={!canManageRecruitment || updateApplication.isPending || missingInterviewDate || missingRejectReason}
                             >
                               {updateApplication.isPending
                                 ? copy({ en: "Saving...", vi: "Đang lưu..." })

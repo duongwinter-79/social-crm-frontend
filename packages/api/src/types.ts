@@ -755,6 +755,7 @@ export interface TrainingFinanceRecord {
   id: string;
   lead_id: string;
   order_id?: string | null;
+  application_id?: string | null;
   orderType?: string | null;
   depositStatus?: string | null;
   amountPaid?: number | null;
@@ -766,6 +767,7 @@ export interface TrainingFinanceRecord {
   updatedAt?: string;
   lead?: Lead;
   order?: Order | null;
+  application?: ApplicationRecord | null;
 }
 
 export interface TrainingFinanceListResponse {

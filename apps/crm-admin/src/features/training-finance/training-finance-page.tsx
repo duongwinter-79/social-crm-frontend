@@ -11,15 +11,17 @@ import {
   PaginationFooter,
   Panel,
   SectionHeader,
+  Select,
   Toolbar,
   ToolbarActions
 } from "@social-crm/ui";
 import {
+  useApplicationsQuery,
   useCreateTrainingFinanceMutation,
   useTrainingFinanceQuery,
   useUpdateTrainingFinanceMutation
 } from "@social-crm/api";
-import type { TrainingFinanceRecord } from "@social-crm/api";
+import type { ApplicationRecord, TrainingFinanceRecord } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 import { getLeadDisplayName } from "@/lib/lead-display";
 
@@ -41,8 +43,25 @@ function milestoneLabel(record: TrainingFinanceRecord) {
   return "not started";
 }
 
+function applicationLabel(application: ApplicationRecord, formatApplicationStatus: (value: string) => string) {
+  const orderName = application.order?.name ?? application.order_id;
+  return `${orderName} · ${formatApplicationStatus(application.status)}`;
+}
+
+function findApplication(applications: ApplicationRecord[], applicationId?: string | null) {
+  if (!applicationId) return null;
+  return applications.find((application) => application.id === applicationId) ?? null;
+}
+
+function departureApplicationGate(departureDate: string, application?: ApplicationRecord | null) {
+  if (!departureDate) return { ok: true };
+  return {
+    ok: Boolean(application && application.status === "ready_to_depart"),
+  };
+}
+
 export function TrainingFinancePage() {
-  const { copy, formatTrainingMilestone } = useI18n();
+  const { copy, formatApplicationStatus, formatTrainingMilestone } = useI18n();
   const [filters, setFilters] = useState({
     leadId: "",
     orderId: "",
@@ -53,6 +72,7 @@ export function TrainingFinancePage() {
   const [createForm, setCreateForm] = useState({
     leadId: "",
     orderId: "",
+    applicationId: "",
     orderType: "",
     depositStatus: "",
     amountPaid: "",
@@ -63,6 +83,7 @@ export function TrainingFinancePage() {
   });
   const [editForm, setEditForm] = useState({
     orderId: "",
+    applicationId: "",
     orderType: "",
     depositStatus: "",
     amountPaid: "",
@@ -80,6 +101,10 @@ export function TrainingFinancePage() {
   });
   const createTrainingFinance = useCreateTrainingFinanceMutation();
   const updateTrainingFinance = useUpdateTrainingFinanceMutation();
+  const createApplicationsQuery = useApplicationsQuery(
+    { offset: 0, limit: 50, leadId: createForm.leadId || undefined },
+    { enabled: Boolean(createForm.leadId) },
+  );
 
   const records = recordsQuery.data?.data ?? [];
   const filteredRecords = useMemo(() => {
@@ -94,10 +119,38 @@ export function TrainingFinancePage() {
 
   const selected =
     filteredRecords.find((record: TrainingFinanceRecord) => record.id === selectedId) ?? filteredRecords[0] ?? null;
+  const editApplicationsQuery = useApplicationsQuery(
+    { offset: 0, limit: 50, leadId: selected?.lead_id || undefined },
+    { enabled: Boolean(selected?.lead_id) },
+  );
+  const createApplications = createApplicationsQuery.data?.data ?? [];
+  const editApplications = editApplicationsQuery.data?.data ?? [];
+  const selectedCreateApplication = findApplication(createApplications, createForm.applicationId);
+  const selectedEditApplication = findApplication(editApplications, editForm.applicationId);
+  const createDepartureGate = departureApplicationGate(createForm.departureDate, selectedCreateApplication);
+  const editDepartureGate = departureApplicationGate(editForm.departureDate, selectedEditApplication);
 
   useEffect(() => {
     setPage(0);
   }, [filters.leadId, filters.orderId, filters.search]);
+
+  function chooseCreateApplication(applicationId: string) {
+    const application = findApplication(createApplications, applicationId);
+    setCreateForm((state) => ({
+      ...state,
+      applicationId,
+      orderId: application?.order_id ?? state.orderId,
+    }));
+  }
+
+  function chooseEditApplication(applicationId: string) {
+    const application = findApplication(editApplications, applicationId);
+    setEditForm((state) => ({
+      ...state,
+      applicationId,
+      orderId: application?.order_id ?? state.orderId,
+    }));
+  }
 
   return (
     <div className="space-y-6">
@@ -156,6 +209,7 @@ export function TrainingFinancePage() {
                         setSelectedId(record.id);
                         setEditForm({
                           orderId: record.order_id ?? "",
+                          applicationId: record.application_id ?? "",
                           orderType: record.orderType ?? "",
                           depositStatus: record.depositStatus ?? "",
                           amountPaid: record.amountPaid != null ? String(record.amountPaid) : "",
@@ -176,7 +230,8 @@ export function TrainingFinancePage() {
                         </div>
                         <Badge tone={toneForMilestone(record)}>{formatTrainingMilestone(milestoneLabel(record))}</Badge>
                       </div>
-                      <div className="mt-3 grid gap-3 md:grid-cols-4">
+                      <div className="mt-3 grid gap-3 md:grid-cols-5">
+                        <InfoCard label={copy({ en: "Application", vi: "Ứng tuyển" })} value={record.application ? formatApplicationStatus(record.application.status) : copy({ en: "Not linked", vi: "Chưa liên kết" })} />
                         <InfoCard label={copy({ en: "Deposit", vi: "Đặt cọc" })} value={record.depositStatus || copy({ en: "Not set", vi: "Chưa cập nhật" })} />
                         <InfoCard label={copy({ en: "Amount paid", vi: "Đã thanh toán" })} value={record.amountPaid != null ? String(record.amountPaid) : "0"} />
                         <InfoCard label={copy({ en: "Visa", vi: "Visa" })} value={record.visaDate || copy({ en: "Pending", vi: "Chờ xử lý" })} />
@@ -221,6 +276,19 @@ export function TrainingFinancePage() {
           >
             <div className="space-y-4">
               <Input label={copy({ en: "Lead ID", vi: "Mã ứng viên" })} value={createForm.leadId} onChange={(e) => setCreateForm((s) => ({ ...s, leadId: e.target.value }))} />
+              <Select
+                label={copy({ en: "Linked application", vi: "Ứng tuyển liên kết" })}
+                value={createForm.applicationId}
+                onChange={(e) => chooseCreateApplication(e.target.value)}
+                disabled={!createForm.leadId || createApplicationsQuery.isLoading}
+              >
+                <option value="">{copy({ en: "Choose application", vi: "Chọn ứng tuyển" })}</option>
+                {createApplications.map((application) => (
+                  <option key={application.id} value={application.id}>
+                    {applicationLabel(application, formatApplicationStatus)}
+                  </option>
+                ))}
+              </Select>
               <Input label={copy({ en: "Order ID", vi: "Order ID" })} value={createForm.orderId} onChange={(e) => setCreateForm((s) => ({ ...s, orderId: e.target.value }))} />
               <Input label={copy({ en: "Order type", vi: "Loại đơn hàng" })} value={createForm.orderType} onChange={(e) => setCreateForm((s) => ({ ...s, orderType: e.target.value }))} />
               <Input label={copy({ en: "Deposit status", vi: "Trạng thái đặt cọc" })} value={createForm.depositStatus} onChange={(e) => setCreateForm((s) => ({ ...s, depositStatus: e.target.value }))} />
@@ -229,11 +297,20 @@ export function TrainingFinancePage() {
               <Input label={copy({ en: "Training progress", vi: "Tiến độ đào tạo" })} value={createForm.trainingProgress} onChange={(e) => setCreateForm((s) => ({ ...s, trainingProgress: e.target.value }))} />
               <Input label={copy({ en: "Visa date", vi: "Ngày visa" })} type="date" value={createForm.visaDate} onChange={(e) => setCreateForm((s) => ({ ...s, visaDate: e.target.value }))} />
               <Input label={copy({ en: "Departure date", vi: "Ngày xuất cảnh" })} type="date" value={createForm.departureDate} onChange={(e) => setCreateForm((s) => ({ ...s, departureDate: e.target.value }))} />
+              {!createDepartureGate.ok ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  {copy({
+                    en: "Departure date requires a linked application marked Ready to depart.",
+                    vi: "Ngày xuất cảnh cần ứng tuyển liên kết ở trạng thái Sẵn sàng xuất cảnh.",
+                  })}
+                </div>
+              ) : null}
               <Button
                 onClick={() =>
                   createTrainingFinance.mutate({
                     leadId: createForm.leadId,
                     orderId: createForm.orderId || undefined,
+                    applicationId: createForm.applicationId || undefined,
                     orderType: createForm.orderType || undefined,
                     depositStatus: createForm.depositStatus || undefined,
                     amountPaid: createForm.amountPaid ? Number(createForm.amountPaid) : undefined,
@@ -243,7 +320,7 @@ export function TrainingFinancePage() {
                     departureDate: createForm.departureDate || undefined
                   })
                 }
-                disabled={!createForm.leadId || createTrainingFinance.isPending}
+                disabled={!createForm.leadId || !createDepartureGate.ok || createTrainingFinance.isPending}
               >
                 {createTrainingFinance.isPending ? copy({ en: "Creating...", vi: "Đang tạo..." }) : copy({ en: "Create milestone record", vi: "Tạo bản ghi mốc tiến độ" })}
               </Button>
@@ -263,10 +340,24 @@ export function TrainingFinancePage() {
                   items={[
                     { label: copy({ en: "Record ID", vi: "Record ID" }), value: selected.id },
                     { label: copy({ en: "Lead", vi: "Ứng viên" }), value: selected.lead ? getLeadDisplayName(selected.lead) : selected.lead_id },
+                    { label: copy({ en: "Application", vi: "Ứng tuyển" }), value: selected.application ? applicationLabel(selected.application, formatApplicationStatus) : copy({ en: "Not linked", vi: "Chưa liên kết" }) },
                     { label: copy({ en: "Order", vi: "Đơn hàng" }), value: selected.order?.name || selected.order_id || copy({ en: "No order", vi: "Không có đơn hàng" }) },
                     { label: copy({ en: "Updated", vi: "Cập nhật" }), value: selected.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
                   ]}
                 />
+                <Select
+                  label={copy({ en: "Linked application", vi: "Ứng tuyển liên kết" })}
+                  value={editForm.applicationId}
+                  onChange={(e) => chooseEditApplication(e.target.value)}
+                  disabled={editApplicationsQuery.isLoading}
+                >
+                  <option value="">{copy({ en: "Choose application", vi: "Chọn ứng tuyển" })}</option>
+                  {editApplications.map((application) => (
+                    <option key={application.id} value={application.id}>
+                      {applicationLabel(application, formatApplicationStatus)}
+                    </option>
+                  ))}
+                </Select>
                 <Input label={copy({ en: "Order ID", vi: "Order ID" })} value={editForm.orderId} onChange={(e) => setEditForm((s) => ({ ...s, orderId: e.target.value }))} />
                 <Input label={copy({ en: "Order type", vi: "Loại đơn hàng" })} value={editForm.orderType} onChange={(e) => setEditForm((s) => ({ ...s, orderType: e.target.value }))} />
                 <Input label={copy({ en: "Deposit status", vi: "Trạng thái đặt cọc" })} value={editForm.depositStatus} onChange={(e) => setEditForm((s) => ({ ...s, depositStatus: e.target.value }))} />
@@ -275,12 +366,21 @@ export function TrainingFinancePage() {
                 <Input label={copy({ en: "Training progress", vi: "Tiến độ đào tạo" })} value={editForm.trainingProgress} onChange={(e) => setEditForm((s) => ({ ...s, trainingProgress: e.target.value }))} />
                 <Input label={copy({ en: "Visa date", vi: "Ngày visa" })} type="date" value={editForm.visaDate} onChange={(e) => setEditForm((s) => ({ ...s, visaDate: e.target.value }))} />
                 <Input label={copy({ en: "Departure date", vi: "Ngày xuất cảnh" })} type="date" value={editForm.departureDate} onChange={(e) => setEditForm((s) => ({ ...s, departureDate: e.target.value }))} />
+                {!editDepartureGate.ok ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    {copy({
+                      en: "Departure date requires a linked application marked Ready to depart.",
+                      vi: "Ngày xuất cảnh cần ứng tuyển liên kết ở trạng thái Sẵn sàng xuất cảnh.",
+                    })}
+                  </div>
+                ) : null}
                 <Button
                   onClick={() =>
                     updateTrainingFinance.mutate({
                       id: selected.id,
                       patch: {
                         orderId: editForm.orderId || null,
+                        applicationId: editForm.applicationId || null,
                         orderType: editForm.orderType || null,
                         depositStatus: editForm.depositStatus || null,
                         amountPaid: editForm.amountPaid ? Number(editForm.amountPaid) : null,
@@ -291,7 +391,7 @@ export function TrainingFinancePage() {
                       }
                     })
                   }
-                  disabled={updateTrainingFinance.isPending}
+                  disabled={!editDepartureGate.ok || updateTrainingFinance.isPending}
                 >
                   {updateTrainingFinance.isPending ? copy({ en: "Saving...", vi: "Đang lưu..." }) : copy({ en: "Save milestone update", vi: "Lưu cập nhật mốc tiến độ" })}
                 </Button>

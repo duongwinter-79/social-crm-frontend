@@ -367,7 +367,7 @@ export function useFormStandardRegisterQuery(
   });
 }
 
-export function useTrainingFinanceQuery(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {
+export function useTrainingFinanceQuery(params: { offset: number; limit: number; leadId?: string; orderId?: string; applicationId?: string }) {
   return useQuery({
     queryKey: ["training-finance", params],
     queryFn: () => apiClient.listTrainingFinance(params)
@@ -791,7 +791,7 @@ export function useVerifyDocumentMutation() {
 export function useCreateTrainingFinanceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { leadId: string; orderId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) =>
+    mutationFn: (payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) =>
       apiClient.createTrainingFinance(payload),
     onSuccess: (record) => {
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });

@@ -773,7 +773,7 @@ export class SocialCrmApiClient {
     return { blob: response.data, filename };
   }
 
-  async listTrainingFinance(params: { offset: number; limit: number; leadId?: string; orderId?: string }) {
+  async listTrainingFinance(params: { offset: number; limit: number; leadId?: string; orderId?: string; applicationId?: string }) {
     const response = await this.http.get<ApiEnvelope<TrainingFinanceListResponse> | TrainingFinanceListResponse>("/training-finance", { params });
     return unwrapEnvelope(response.data);
   }
@@ -783,7 +783,7 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async createTrainingFinance(payload: { leadId: string; orderId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) {
+  async createTrainingFinance(payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) {
     const response = await this.http.post<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>("/training-finance", payload);
     return unwrapEnvelope(response.data);
   }

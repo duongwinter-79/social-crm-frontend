@@ -2,6 +2,18 @@
 
 ## 2026-05-27
 
+### Training-finance application link
+
+- added linked-application selection to training-finance create/edit forms and auto-filled the order from the selected application
+- showed linked application status in the milestone ledger and selected-record summary
+- blocked departure-date saves in the UI unless the linked application is `ready_to_depart`, matching the backend gate
+
+### Application status transition UI
+
+- limited each application row editor to the current status plus backend-valid next statuses, preventing operators from selecting invalid jumps like `matching -> ready_to_depart`
+- marked terminal application statuses as read-only in the Applications table
+- gated application create/update controls behind `manage_recruitment`, matching the backend role scope
+
 ### Ready-to-depart application status
 
 - added `ready_to_depart` to the Applications table status filter and row editor
