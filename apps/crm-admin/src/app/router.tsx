@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, Link } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation, useParams, Link } from "react-router-dom";
 import { Badge, ShellFrame } from "@social-crm/ui";
 import { apiClient, startSessionLifecycle, useHealthQuery, useSessionStore } from "@social-crm/api";
 import { LoginPage } from "@/features/auth/login-page";
@@ -9,16 +9,12 @@ import "./admin-shell.css";
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
 const LeadsPage = lazy(() => import("@/features/leads/leads-page").then((m) => ({ default: m.LeadsPage })));
 const ConversationsPage = lazy(() => import("@/features/conversations/conversations-page").then((m) => ({ default: m.ConversationsPage })));
-const PipelinePage = lazy(() => import("@/features/pipeline/pipeline-page").then((m) => ({ default: m.PipelinePage })));
+const JourneyPage = lazy(() => import("@/features/journey/journey-page").then((m) => ({ default: m.JourneyPage })));
+const JourneyWorkbenchPage = lazy(() => import("@/features/journey/journey-workbench-page").then((m) => ({ default: m.JourneyWorkbenchPage })));
 const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-page").then((m) => ({ default: m.LeadWorkbenchPage })));
 const CandidateDossierPage = lazy(() => import("@/features/leads/candidate-dossier-page").then((m) => ({ default: m.CandidateDossierPage })));
-const MatchingPage = lazy(() => import("@/features/matching/matching-page").then((m) => ({ default: m.MatchingPage })));
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
 const OrderDetailPage = lazy(() => import("@/features/orders/order-detail-page").then((m) => ({ default: m.OrderDetailPage })));
-const ApplicationsPage = lazy(() => import("@/features/applications/applications-page").then((m) => ({ default: m.ApplicationsPage })));
-const ApplicationDetailPage = lazy(() => import("@/features/applications/application-detail-page").then((m) => ({ default: m.ApplicationDetailPage })));
-const FormEditorPage = lazy(() => import("@/features/applications/form-editor-page").then((m) => ({ default: m.FormEditorPage })));
-const TrainingFinancePage = lazy(() => import("@/features/training-finance/training-finance-page").then((m) => ({ default: m.TrainingFinancePage })));
 const TrainingFinanceDetailPage = lazy(() => import("@/features/training-finance/training-finance-detail-page").then((m) => ({ default: m.TrainingFinanceDetailPage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
@@ -28,12 +24,10 @@ type IconName =
   | "dashboard"
   | "leads"
   | "conversations"
-  | "pipeline"
+  | "journey"
   | "matching"
   | "orders"
-  | "applications"
   | "documents"
-  | "training"
   | "import"
   | "extract"
   | "admin"
@@ -51,11 +45,8 @@ const navItems: NavItem[] = [
   { to: "/dashboard", icon: "dashboard", label: { en: "Dashboard", vi: "Tổng quan" }, hint: { en: "Overview and triage", vi: "Tổng quan và sàng lọc" } },
   { to: "/leads", icon: "leads", label: { en: "Leads", vi: "Ứng viên tiềm năng" }, hint: { en: "Inbox and workbench", vi: "Hộp tiếp nhận và xử lý hồ sơ" } },
   { to: "/conversations", icon: "conversations", label: { en: "Conversations", vi: "Hội thoại" }, hint: { en: "Zalo threads and messages", vi: "Luồng và tin nhắn Zalo" } },
-  { to: "/pipeline", icon: "pipeline", label: { en: "Pipeline", vi: "Tiến trình hồ sơ" }, hint: { en: "Cross-stage flow", vi: "Luồng xử lý xuất cảnh" } },
-  { to: "/matching", icon: "matching", label: { en: "Matching", vi: "Ghép đơn" }, hint: { en: "Rules and fit", vi: "Quy tắc xét phù hợp" } },
-  { to: "/orders", icon: "orders", label: { en: "Orders", vi: "Đơn hàng" }, hint: { en: "Demand catalog", vi: "Danh mục nhu cầu" } },
-  { to: "/applications", icon: "applications", label: { en: "Applications", vi: "Hồ sơ ứng tuyển" }, hint: { en: "Worker files & forms", vi: "Form lao động & hồ sơ" } },
-  { to: "/training-finance", icon: "training", label: { en: "Training & Finance", vi: "Đào tạo & tài chính" }, hint: { en: "Deposits and visa", vi: "Đặt cọc và visa" } },
+  { to: "/journey", icon: "journey", label: { en: "Journey", vi: "Hành trình" }, hint: { en: "Form, application, training & departure", vi: "Form, ứng tuyển, đào tạo & xuất cảnh" } },
+  { to: "/orders", icon: "orders", label: { en: "Orders", vi: "Đơn hàng" }, hint: { en: "Demand & order-first matching", vi: "Đơn hàng & ghép ứng viên" } },
   { to: "/import", icon: "import", label: { en: "Import", vi: "Nhập dữ liệu" }, hint: { en: "Bulk import from XLSX", vi: "Nhập hàng loạt từ XLSX" } },
   { to: "/extract", icon: "extract", label: { en: "Extract notes", vi: "Trích xuất ghi chú" }, hint: { en: "Operator-gated AI extraction", vi: "AI trích xuất, nhân sự duyệt" } },
   { to: "/admin", icon: "admin", label: { en: "Admin", vi: "Quản trị" }, hint: { en: "System controls", vi: "Điều khiển hệ thống" } }
@@ -77,18 +68,14 @@ function NavIcon(props: { name: IconName }) {
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" {...common} /><circle cx="10" cy="8" r="3" {...common} /><path d="M20 19v-1a3 3 0 0 0-2-2.82" {...common} /><path d="M15 5.2a3 3 0 0 1 0 5.6" {...common} /></svg>;
     case "conversations":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v4A3.5 3.5 0 0 1 15.5 14H11l-4 3v-3A3.5 3.5 0 0 1 5 10.5z" {...common} /><path d="M9 8h6M9 11h3" {...common} /><path d="M8 18h7l3 3v-3a3 3 0 0 0 3-3v-2" {...common} /></svg>;
-    case "pipeline":
-      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h5v10H5zM14 4h5v16h-5z" {...common} /><path d="M10 12h4" {...common} /></svg>;
+    case "journey":
+      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17h16" {...common} /><circle cx="5" cy="17" r="1.6" fill="currentColor" stroke="none" /><circle cx="12" cy="17" r="1.6" fill="currentColor" stroke="none" /><circle cx="19" cy="17" r="1.6" {...common} /><path d="M5 13V8M12 13V6M19 13v-3" {...common} /></svg>;
     case "matching":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h4v4H7zM13 13h4v4h-4z" {...common} /><path d="M11 9h2l2 2v2" {...common} /><path d="M9 13H7v4h4v-2" {...common} /></svg>;
     case "orders":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h13l-1.5 8h-10z" {...common} /><path d="M7 7 6 4H3" {...common} /><circle cx="10" cy="19" r="1.2" fill="currentColor" stroke="none" /><circle cx="17" cy="19" r="1.2" fill="currentColor" stroke="none" /></svg>;
-    case "applications":
-      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l4 4v12H4V4z" {...common} /><path d="M12 4v5h5" {...common} /><path d="M8 13h8M8 17h6" {...common} /></svg>;
     case "documents":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l4 4v12H4V4z" {...common} /><path d="M12 4v5h5" {...common} /><path d="M8 12h8M8 16h8" {...common} /></svg>;
-    case "training":
-      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16" {...common} /><path d="M7 18V8l5-3 5 3v10" {...common} /><path d="M12 11v7" {...common} /></svg>;
     case "import":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10" {...common} /><path d="m8 10 4 4 4-4" {...common} /><path d="M5 17h14" {...common} /></svg>;
     case "extract":
@@ -117,6 +104,8 @@ function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: {
 }
 
 function titleForPath(pathname: string, copy: (value: { en: string; vi: string }) => string) {
+  if (pathname.match(/^\/journey\/[^/]+$/)) return copy({ en: "Candidate journey", vi: "Hành trình ứng viên" });
+  if (pathname === "/journey") return copy({ en: "Journey", vi: "Hành trình ứng viên" });
   if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   if (pathname === "/applications/detail") return copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" });
@@ -301,6 +290,11 @@ function RequireAdmin(props: { children: ReactNode }) {
   return user?.roles?.includes("admin") ? <>{props.children}</> : <Navigate to="/dashboard" replace />;
 }
 
+function RedirectToJourney() {
+  const { leadId } = useParams();
+  return <Navigate to={leadId ? `/journey/${leadId}` : "/journey"} replace />;
+}
+
 function RouteFallback() {
   const { copy } = useI18n();
   return (
@@ -356,17 +350,26 @@ export function AppRouter() {
         <Route path="/leads/:leadId/dossier" element={<LazyRoute><CandidateDossierPage /></LazyRoute>} />
         <Route path="/leads/:leadId" element={<LazyRoute><LeadWorkbenchPage /></LazyRoute>} />
         <Route path="/conversations" element={<LazyRoute><ConversationsPage /></LazyRoute>} />
-        <Route path="/pipeline" element={<LazyRoute><PipelinePage /></LazyRoute>} />
-        <Route path="/matching" element={<LazyRoute><MatchingPage /></LazyRoute>} />
+        {/* Pipeline list is subsumed by the Journey board. */}
+        <Route path="/pipeline" element={<Navigate to="/journey" replace />} />
+        <Route path="/journey" element={<LazyRoute><JourneyPage /></LazyRoute>} />
+        <Route path="/journey/:leadId" element={<LazyRoute><JourneyWorkbenchPage /></LazyRoute>} />
+        {/* Standalone matching console retired — order-first matching lives on
+            the Orders page, candidate-first inside the Journey workbench. */}
+        <Route path="/matching" element={<Navigate to="/orders" replace />} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
         <Route path="/orders/:orderId" element={<LazyRoute><OrderDetailPage /></LazyRoute>} />
-        <Route path="/applications" element={<LazyRoute><ApplicationsPage /></LazyRoute>} />
-        {/* Legacy URL kept as a redirect for bookmarks. The merged detail page handles both upload and view. */}
-        <Route path="/applications/upload" element={<Navigate to="/applications/detail" replace />} />
-        <Route path="/applications/detail" element={<LazyRoute><ApplicationDetailPage /></LazyRoute>} />
-        <Route path="/applications/:leadId/edit" element={<LazyRoute><FormEditorPage /></LazyRoute>} />
-        <Route path="/documents" element={<Navigate to="/applications" replace />} />
-        <Route path="/training-finance" element={<LazyRoute><TrainingFinancePage /></LazyRoute>} />
+        {/* Applications list, standalone form-intake, and the form-editor are
+            all subsumed by the Journey workbench (form intake is the §1 modal,
+            field editing lives in the workbench). Redirect legacy URLs. */}
+        <Route path="/applications" element={<Navigate to="/journey" replace />} />
+        <Route path="/applications/upload" element={<Navigate to="/journey" replace />} />
+        <Route path="/applications/detail" element={<Navigate to="/journey" replace />} />
+        <Route path="/applications/:leadId/edit" element={<RedirectToJourney />} />
+        <Route path="/documents" element={<Navigate to="/journey" replace />} />
+        {/* Training-finance ledger is subsumed by the Journey board; the
+            per-record detail stays reachable and is embedded inside Journey §4. */}
+        <Route path="/training-finance" element={<Navigate to="/journey" replace />} />
         <Route path="/training-finance/:recordId" element={<LazyRoute><TrainingFinanceDetailPage /></LazyRoute>} />
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />

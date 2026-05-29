@@ -239,6 +239,17 @@ export function useLeadAiSuggestionsQuery(leadId?: string) {
   });
 }
 
+export function useDismissLeadAiSuggestionMutation(leadId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (fieldName: string) => apiClient.dismissLeadAiSuggestion(leadId, fieldName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId, "ai-suggestions"] });
+    },
+    meta: { successMessage: { en: "Suggestion dismissed", vi: "Đã bỏ gợi ý" } }
+  });
+}
+
 /**
  * Lead-stage order suggestions — top-N orders ranked by the triage engine.
  * Available immediately at screening stage; does not require a candidate.
@@ -248,6 +259,14 @@ export function useLeadOrderSuggestionsQuery(leadId?: string, limit = 5) {
     queryKey: ["lead", leadId, "order-suggestions", limit],
     queryFn: () => apiClient.suggestOrdersForLead(leadId as string, { limit }),
     enabled: Boolean(leadId)
+  });
+}
+
+export function useOrderSuggestedCandidatesQuery(orderId?: string, limit = 10) {
+  return useQuery({
+    queryKey: ["order", orderId, "suggested-candidates", limit],
+    queryFn: () => apiClient.suggestCandidatesForOrder(orderId as string, { limit }),
+    enabled: Boolean(orderId)
   });
 }
 

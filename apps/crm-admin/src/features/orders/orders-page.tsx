@@ -5,13 +5,18 @@ import {
   apiClient,
   triggerBlobDownload,
   useLeadsQuery,
+  useOrderSuggestedCandidatesQuery,
   useOrdersQuery,
   useSessionStore,
   type Order,
+  type OrderSuggestedCandidate,
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { JourneyWorkbenchModal } from "@/features/journey/journey-workbench-modal";
 
 const ORDER_PAGE_SIZE = 10;
+
+type LinkTarget = { leadId: string; orderId: string };
 
 export function OrdersPage() {
   const { copy, lang } = useI18n();
@@ -20,6 +25,7 @@ export function OrdersPage() {
   const leadsQuery = useLeadsQuery({ offset: 0, limit: 50 });
   const [page, setPage] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+  const [linkTarget, setLinkTarget] = useState<LinkTarget | null>(null);
   const isAdmin = user?.roles?.includes("admin") ?? false;
 
   const orders = ordersQuery.data ?? [];
@@ -113,7 +119,13 @@ export function OrdersPage() {
             </thead>
             <tbody>
               {visibleOrders.map((order) => (
-                <OrderRow key={order.id} order={order} copy={copy} canEdit={isAdmin} />
+                <OrderRow
+                  key={order.id}
+                  order={order}
+                  copy={copy}
+                  canEdit={isAdmin}
+                  onOpenLink={(leadId, orderId) => setLinkTarget({ leadId, orderId })}
+                />
               ))}
             </tbody>
           </table>
@@ -139,54 +151,189 @@ export function OrdersPage() {
           })}
         />
       )}
+
+      {linkTarget ? (
+        <JourneyWorkbenchModal
+          leadId={linkTarget.leadId}
+          orderId={linkTarget.orderId}
+          onClose={() => setLinkTarget(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function OrderRow(props: { order: Order; copy: (value: { en: string; vi: string }) => string; canEdit: boolean }) {
+function conclusionTone(conclusion: string) {
+  if (conclusion === "high_priority") return "success" as const;
+  if (conclusion === "conditional") return "warning" as const;
+  if (conclusion === "limited") return "neutral" as const;
+  return "danger" as const;
+}
+
+function OrderRow(props: {
+  order: Order;
+  copy: (value: { en: string; vi: string }) => string;
+  canEdit: boolean;
+  onOpenLink: (leadId: string, orderId: string) => void;
+}) {
   const { order, copy } = props;
+  const [expanded, setExpanded] = useState(false);
   const age = order.ageRange ? `${order.ageRange.min}-${order.ageRange.max}` : copy({ en: "Any age", vi: "Không giới hạn tuổi" });
   const height = order.heightMin ? `${order.heightMin} cm+` : copy({ en: "No minimum", vi: "Không yêu cầu" });
 
   return (
-    <tr className="border-t border-slate-100 align-top transition-colors hover:bg-slate-50/70">
-      <td className="px-4 py-4">
-        <Link to={`/orders/${order.id}`} className="font-semibold text-indigo-700 hover:underline">
-          {order.name}
-        </Link>
-        <div className="mt-1 line-clamp-2 max-w-md text-xs leading-5 text-slate-500">
-          {order.description || copy({ en: "No description provided.", vi: "Chưa có mô tả." })}
-        </div>
-      </td>
-      <td className="px-4 py-4">
-        <div className="font-medium text-slate-900">{order.region || copy({ en: "No region", vi: "Chưa có khu vực" })}</div>
-        <div className="mt-1 text-xs text-slate-500">{order.industry || copy({ en: "No industry", vi: "Chưa có ngành" })}</div>
-      </td>
-      <td className="px-4 py-4">
-        <div className="flex flex-wrap gap-2">
-          <Badge tone="accent">{order.genderRequired}</Badge>
-          <Badge tone={order.experienceRequired ? "warning" : "neutral"}>
-            {order.experienceRequired ? copy({ en: "Experience", vi: "Kinh nghiệm" }) : copy({ en: "No experience gate", vi: "Không chặn KN" })}
-          </Badge>
-          <Badge tone={order.acceptsReturnees ? "success" : "neutral"}>
-            {order.acceptsReturnees ? copy({ en: "Returnees OK", vi: "Nhận LĐ về" }) : copy({ en: "Returnees unset", vi: "Chưa đặt LĐ về" })}
-          </Badge>
-        </div>
-        <div className="mt-2 text-xs text-slate-500">{age} · {height}</div>
-      </td>
-      <td className="px-4 py-4 text-slate-700">
-        {order.salaryRange || copy({ en: "Not set", vi: "Chưa đặt" })}
-      </td>
-      <td className="px-4 py-4">
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to={`/orders/${order.id}`}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 no-underline transition-colors hover:border-slate-300 hover:bg-slate-50"
-          >
-            {props.canEdit ? copy({ en: "View / edit", vi: "Xem / sửa" }) : copy({ en: "View details", vi: "Xem chi tiết" })}
+    <>
+      <tr className="border-t border-slate-100 align-top transition-colors hover:bg-slate-50/70">
+        <td className="px-4 py-4">
+          <Link to={`/orders/${order.id}`} className="font-semibold text-indigo-700 hover:underline">
+            {order.name}
           </Link>
+          <div className="mt-1 line-clamp-2 max-w-md text-xs leading-5 text-slate-500">
+            {order.description || copy({ en: "No description provided.", vi: "Chưa có mô tả." })}
+          </div>
+        </td>
+        <td className="px-4 py-4">
+          <div className="font-medium text-slate-900">{order.region || copy({ en: "No region", vi: "Chưa có khu vực" })}</div>
+          <div className="mt-1 text-xs text-slate-500">{order.industry || copy({ en: "No industry", vi: "Chưa có ngành" })}</div>
+        </td>
+        <td className="px-4 py-4">
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="accent">{order.genderRequired}</Badge>
+            <Badge tone={order.experienceRequired ? "warning" : "neutral"}>
+              {order.experienceRequired ? copy({ en: "Experience", vi: "Kinh nghiệm" }) : copy({ en: "No experience gate", vi: "Không chặn KN" })}
+            </Badge>
+            <Badge tone={order.acceptsReturnees ? "success" : "neutral"}>
+              {order.acceptsReturnees ? copy({ en: "Returnees OK", vi: "Nhận LĐ về" }) : copy({ en: "Returnees unset", vi: "Chưa đặt LĐ về" })}
+            </Badge>
+          </div>
+          <div className="mt-2 text-xs text-slate-500">{age} · {height}</div>
+        </td>
+        <td className="px-4 py-4 text-slate-700">
+          {order.salaryRange || copy({ en: "Not set", vi: "Chưa đặt" })}
+        </td>
+        <td className="px-4 py-4">
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                expanded
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50/60"
+              }`}
+            >
+              {copy({ en: "Suggested candidates", vi: "Ứng viên gợi ý" })}
+              <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+            </button>
+            <Link
+              to={`/orders/${order.id}`}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 no-underline transition-colors hover:border-slate-300 hover:bg-slate-50"
+            >
+              {props.canEdit ? copy({ en: "View / edit", vi: "Xem / sửa" }) : copy({ en: "View details", vi: "Xem chi tiết" })}
+            </Link>
+          </div>
+        </td>
+      </tr>
+      {expanded ? (
+        <tr className="bg-slate-50/70">
+          <td colSpan={5} className="px-4 py-4">
+            <OrderSuggestedCandidates orderId={order.id} copy={copy} onOpenLink={props.onOpenLink} />
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+function OrderSuggestedCandidates(props: {
+  orderId: string;
+  copy: (value: { en: string; vi: string }) => string;
+  onOpenLink: (leadId: string, orderId: string) => void;
+}) {
+  const { orderId, copy } = props;
+  const query = useOrderSuggestedCandidatesQuery(orderId, 8);
+  const candidates = query.data ?? [];
+
+  if (query.isLoading) {
+    return <div className="text-sm text-slate-500">{copy({ en: "Ranking candidates…", vi: "Đang xếp hạng ứng viên…" })}</div>;
+  }
+
+  if (!candidates.length) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">
+        {copy({
+          en: "No matching candidates yet. Candidates appear once they have a verified standard form.",
+          vi: "Chưa có ứng viên phù hợp. Ứng viên xuất hiện khi đã có form lao động chuẩn được xác minh.",
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+        {copy({ en: `Suggested candidates (${candidates.length})`, vi: `Ứng viên gợi ý (${candidates.length})` })}
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {candidates.map((candidate) => (
+          <SuggestedCandidateCard
+            key={candidate.candidateId}
+            candidate={candidate}
+            copy={copy}
+            onOpen={() => props.onOpenLink(candidate.leadId, orderId)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SuggestedCandidateCard(props: {
+  candidate: OrderSuggestedCandidate;
+  copy: (value: { en: string; vi: string }) => string;
+  onOpen: () => void;
+}) {
+  const { candidate, copy } = props;
+  const meta = [
+    candidate.age ? `${candidate.age}${copy({ en: "y", vi: "t" })}` : null,
+    candidate.gender,
+    candidate.height ? `${candidate.height}cm` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div
+      className={`flex items-start justify-between gap-3 rounded-xl border bg-white p-4 transition-colors ${
+        candidate.isEligible ? "border-slate-200 hover:border-indigo-300" : "border-rose-200/70 bg-rose-50/30"
+      }`}
+    >
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-slate-900">{candidate.name}</span>
+          <Badge tone={conclusionTone(candidate.conclusion)}>{candidate.matchScore} {copy({ en: "pts", vi: "điểm" })}</Badge>
+          {candidate.requiresManagerApproval ? (
+            <Badge tone="warning">{copy({ en: "Approval", vi: "Cần duyệt" })}</Badge>
+          ) : null}
         </div>
-      </td>
-    </tr>
+        <div className="mt-1 text-xs text-slate-500">
+          {candidate.candidateCode}
+          {meta ? ` · ${meta}` : ""}
+        </div>
+        {candidate.leadClassification ? (
+          <div className="mt-1 text-xs text-slate-500">{candidate.leadClassification}</div>
+        ) : null}
+        {!candidate.isEligible && candidate.rejectReason ? (
+          <div className="mt-1.5 text-xs text-rose-600">{candidate.rejectReason}</div>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        onClick={props.onOpen}
+        className="inline-flex shrink-0 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
+      >
+        {copy({ en: "Open & link", vi: "Mở & ghép" })}
+      </button>
+    </div>
   );
 }

@@ -182,13 +182,21 @@ function openPendingGoogleDocsTab(): Window | null {
   return tab;
 }
 
-export function ApplicationDetailPage() {
+export function ApplicationDetailPage(props: { embeddedLeadId?: string; embeddedOnViewDossier?: () => void } = {}) {
   const { copy, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Embedded mode: the Journey workbench mounts this component for one fixed
+  // lead. The lead picker, back button, and context nav are hidden, and URL
+  // search-param syncing is suppressed so /journey/:leadId is not clobbered.
+  const embedded = Boolean(props.embeddedLeadId);
   const leadIdFromUrl = searchParams.get("leadId") ?? "";
-  const [selectedLeadId, setSelectedLeadId] = useState(leadIdFromUrl);
+  const [selectedLeadId, setSelectedLeadId] = useState(props.embeddedLeadId ?? leadIdFromUrl);
+
+  useEffect(() => {
+    if (props.embeddedLeadId) setSelectedLeadId(props.embeddedLeadId);
+  }, [props.embeddedLeadId]);
 
   // Staging session state
   const [pending, setPending] = useState<FormStandardStageResult | null>(null);
@@ -264,6 +272,7 @@ export function ApplicationDetailPage() {
     setSelectedLeadId(id);
     setConfirmUnlink(false);
     setFileActionError("");
+    if (embedded) return;
     if (id) setSearchParams({ leadId: id }, { replace: true });
     else setSearchParams({}, { replace: true });
   }
@@ -471,7 +480,7 @@ export function ApplicationDetailPage() {
         onSuccess: () => {
           resetStagingState();
           setSelectedLeadId(leadId);
-          setSearchParams({ leadId }, { replace: true });
+          if (!embedded) setSearchParams({ leadId }, { replace: true });
         },
         onError: (err: unknown) => {
           setStageError(
@@ -515,7 +524,7 @@ export function ApplicationDetailPage() {
           resetStagingState();
           if (newLeadId) {
             setSelectedLeadId(newLeadId);
-            setSearchParams({ leadId: newLeadId }, { replace: true });
+            if (!embedded) setSearchParams({ leadId: newLeadId }, { replace: true });
           }
         },
         onError: (err: unknown) => {
@@ -543,7 +552,6 @@ export function ApplicationDetailPage() {
   // ── Derived view state ──────────────────────────────────────────────────
 
   const ext = fileExtension(selectedRow?.fileUrl);
-  const isWordCommitted = ext === ".docx" || ext === ".doc";
   const stagedExt = fileExtension(pending?.originalFilename);
   const canEditInDocs = stagedExt === ".docx" || stagedExt === ".doc";
   const isStaging = stageMutation.isPending;
@@ -571,47 +579,49 @@ export function ApplicationDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
-            <Button
-              variant="secondary"
-              onClick={() => navigate("/applications")}
-              className="shrink-0"
-            >
-              ← {copy({ en: "Back to list", vi: "Quay lại danh sách" })}
-            </Button>
-            <div className="min-w-0 flex-1 sm:max-w-xl">
-              <LeadPicker
-                label={copy({ en: "Select candidate", vi: "Chọn ứng viên" })}
-                placeholder={copy({
-                  en: "Search name, phone, or lead ID",
-                  vi: "Tìm tên, SĐT hoặc mã lead",
-                })}
-                value={selectedLeadId}
-                onChange={handleLeadChange}
-              />
+      {/* Header — hidden in embedded (Journey workbench) mode. */}
+      {!embedded ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
+              <Button
+                variant="secondary"
+                onClick={() => navigate("/applications")}
+                className="shrink-0"
+              >
+                ← {copy({ en: "Back to list", vi: "Quay lại danh sách" })}
+              </Button>
+              <div className="min-w-0 flex-1 sm:max-w-xl">
+                <LeadPicker
+                  label={copy({ en: "Select candidate", vi: "Chọn ứng viên" })}
+                  placeholder={copy({
+                    en: "Search name, phone, or lead ID",
+                    vi: "Tìm tên, SĐT hoặc mã lead",
+                  })}
+                  value={selectedLeadId}
+                  onChange={handleLeadChange}
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {pageState === "COMMITTED" && selectedRow ? (
+                <>
+                  <Badge tone={toneForDocStatus(selectedRow.documentStatus)}>
+                    {formatDocumentStatus(selectedRow.documentStatus)}
+                  </Badge>
+                  <Badge tone="success">{copy({ en: "File uploaded", vi: "Có file" })}</Badge>
+                </>
+              ) : pageState === "STAGED" ? (
+                <Badge tone="neutral">{copy({ en: "Staged — not yet verified", vi: "Đã tải lên — chưa xác nhận" })}</Badge>
+              ) : pageState === "VERIFIED" ? (
+                <Badge tone="warning">{copy({ en: "Step 3 — Confirm", vi: "Bước 3 — Xác nhận" })}</Badge>
+              ) : null}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 lg:justify-end">
-            {pageState === "COMMITTED" && selectedRow ? (
-              <>
-                <Badge tone={toneForDocStatus(selectedRow.documentStatus)}>
-                  {formatDocumentStatus(selectedRow.documentStatus)}
-                </Badge>
-                <Badge tone="success">{copy({ en: "File uploaded", vi: "Có file" })}</Badge>
-              </>
-            ) : pageState === "STAGED" ? (
-              <Badge tone="neutral">{copy({ en: "Staged — not yet verified", vi: "Đã tải lên — chưa xác nhận" })}</Badge>
-            ) : pageState === "VERIFIED" ? (
-              <Badge tone="warning">{copy({ en: "Step 3 — Confirm", vi: "Bước 3 — Xác nhận" })}</Badge>
-            ) : null}
-          </div>
         </div>
-      </div>
+      ) : null}
 
-      <ApplicationContextNav leadId={selectedLeadId || undefined} active="form" />
+      {!embedded ? <ApplicationContextNav leadId={selectedLeadId || undefined} active="form" /> : null}
 
       {pageState === "EMPTY" ? renderEmpty()
         : pageState === "STAGED" ? renderStaged()
@@ -870,8 +880,9 @@ export function ApplicationDetailPage() {
     const skipSuggestions = Boolean(selectedLeadId); // Fork 2
 
     return (
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className="flex flex-col gap-6">
         <Panel
+          className="order-2"
           title={copy({ en: "Confirm the dossier fields", vi: "Xác nhận hồ sơ ứng viên" })}
           subtitle={copy({
             en: "Per field: keep current value, use form value, or override. Form wins by default when the form has a value. Writes land on the candidate dossier — not the lead.",
@@ -891,111 +902,106 @@ export function ApplicationDetailPage() {
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {copy(SECTION_LABELS[section])}
                 </div>
-                <div className="overflow-hidden rounded-xl border border-slate-200">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                      <tr>
-                        <th className="px-3 py-2 text-left">{copy({ en: "Field", vi: "Trường" })}</th>
-                        <th className="px-3 py-2 text-left">{copy({ en: "Current in dossier", vi: "Trong hồ sơ hiện tại" })}</th>
-                        <th className="px-3 py-2 text-left">{copy({ en: "From form", vi: "Từ form" })}</th>
-                        <th className="px-3 py-2 text-left">{copy({ en: "Decision", vi: "Quyết định" })}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sectionFields.map((field) => {
-                        const formVal = readFieldValue(verifyResult.extracted, verifyResult.extractedSoft, field);
-                        const currVal = readFieldValue(verifyResult.current, verifyResult.currentSoft, field);
-                        const choice = choices[field.key] ?? "current";
-                        const override = overrides[field.key] ?? "";
-                        const formHasValue = isNonEmpty(formVal);
-                        const currentHasValue = isNonEmpty(currVal);
-                        return (
-                          <tr key={field.key} className="border-t border-slate-100 align-top">
-                            <td className="px-3 py-2 font-medium text-slate-700">{copy(field)}</td>
-                            <td className={`px-3 py-2 ${currentHasValue ? "text-slate-700" : "text-slate-300"}`}>
-                              {displayValue(currVal)}
-                            </td>
-                            <td className={`px-3 py-2 ${formHasValue ? "font-medium text-indigo-700" : "text-slate-300"}`}>
-                              {displayValue(formVal)}
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <label className="inline-flex items-center gap-1 text-xs">
-                                  <input
-                                    type="radio"
-                                    name={`choice-${field.key}`}
-                                    checked={choice === "current"}
-                                    onChange={() => setChoice(field.key, "current")}
-                                    className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
-                                  />
-                                  {copy({ en: "Keep", vi: "Giữ" })}
-                                </label>
-                                <label className="inline-flex items-center gap-1 text-xs">
-                                  <input
-                                    type="radio"
-                                    name={`choice-${field.key}`}
-                                    checked={choice === "form"}
-                                    disabled={!formHasValue}
-                                    onChange={() => setChoice(field.key, "form")}
-                                    className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
-                                  />
-                                  {copy({ en: "Use form", vi: "Dùng form" })}
-                                </label>
-                                <label className="inline-flex items-center gap-1 text-xs">
-                                  <input
-                                    type="radio"
-                                    name={`choice-${field.key}`}
-                                    checked={choice === "override"}
-                                    onChange={() => setChoice(field.key, "override")}
-                                    className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
-                                  />
-                                  {copy({ en: "Edit", vi: "Sửa" })}
-                                </label>
-                                {choice === "override" ? (
-                                  field.input === "select-gender" ? (
-                                    <select
-                                      value={override}
-                                      onChange={(e) => setOverride(field.key, e.target.value)}
-                                      className="ml-2 rounded-md border border-slate-200 px-2 py-1 text-xs"
-                                    >
-                                      <option value="">—</option>
-                                      <option value="male">{copy({ en: "Male", vi: "Nam" })}</option>
-                                      <option value="female">{copy({ en: "Female", vi: "Nữ" })}</option>
-                                    </select>
-                                  ) : field.input === "select-yes-no" ? (
-                                    <select
-                                      value={override}
-                                      onChange={(e) => setOverride(field.key, e.target.value)}
-                                      className="ml-2 rounded-md border border-slate-200 px-2 py-1 text-xs"
-                                    >
-                                      <option value="">—</option>
-                                      <option value="true">{copy({ en: "Yes", vi: "Rồi" })}</option>
-                                      <option value="false">{copy({ en: "No", vi: "Chưa" })}</option>
-                                    </select>
-                                  ) : (
-                                    <input
-                                      type={field.input === "number" ? "number" : "text"}
-                                      value={override}
-                                      onChange={(e) => setOverride(field.key, e.target.value)}
-                                      placeholder={String(displayValue(formVal))}
-                                      className="ml-2 w-32 rounded-md border border-slate-200 px-2 py-1 text-xs"
-                                    />
-                                  )
-                                ) : null}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                {/* Multi-column card grid (was a long vertical table). The verify
+                    panel is full-width now, so fan the compact cards out to up to
+                    3 columns to keep the modal short. */}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {sectionFields.map((field) => {
+                    const formVal = readFieldValue(verifyResult.extracted, verifyResult.extractedSoft, field);
+                    const currVal = readFieldValue(verifyResult.current, verifyResult.currentSoft, field);
+                    const choice = choices[field.key] ?? "current";
+                    const override = overrides[field.key] ?? "";
+                    const formHasValue = isNonEmpty(formVal);
+                    const currentHasValue = isNonEmpty(currVal);
+                    return (
+                      <div key={field.key} className="rounded-xl border border-slate-200 p-3">
+                        <div className="text-sm font-medium text-slate-700">{copy(field)}</div>
+                        <div className="mt-1.5 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wide text-slate-400">{copy({ en: "Current", vi: "Hiện tại" })}</div>
+                            <div className={currentHasValue ? "text-slate-700" : "text-slate-300"}>{displayValue(currVal)}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wide text-slate-400">{copy({ en: "From form", vi: "Từ form" })}</div>
+                            <div className={formHasValue ? "font-medium text-indigo-700" : "text-slate-300"}>{displayValue(formVal)}</div>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-100 pt-2">
+                          <label className="inline-flex items-center gap-1 text-xs">
+                            <input
+                              type="radio"
+                              name={`choice-${field.key}`}
+                              checked={choice === "current"}
+                              onChange={() => setChoice(field.key, "current")}
+                              className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            {copy({ en: "Keep", vi: "Giữ" })}
+                          </label>
+                          <label className="inline-flex items-center gap-1 text-xs">
+                            <input
+                              type="radio"
+                              name={`choice-${field.key}`}
+                              checked={choice === "form"}
+                              disabled={!formHasValue}
+                              onChange={() => setChoice(field.key, "form")}
+                              className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
+                            />
+                            {copy({ en: "Use form", vi: "Dùng form" })}
+                          </label>
+                          <label className="inline-flex items-center gap-1 text-xs">
+                            <input
+                              type="radio"
+                              name={`choice-${field.key}`}
+                              checked={choice === "override"}
+                              onChange={() => setChoice(field.key, "override")}
+                              className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            {copy({ en: "Edit", vi: "Sửa" })}
+                          </label>
+                        </div>
+                        {choice === "override" ? (
+                          <div className="mt-2">
+                            {field.input === "select-gender" ? (
+                              <select
+                                value={override}
+                                onChange={(e) => setOverride(field.key, e.target.value)}
+                                className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs"
+                              >
+                                <option value="">—</option>
+                                <option value="male">{copy({ en: "Male", vi: "Nam" })}</option>
+                                <option value="female">{copy({ en: "Female", vi: "Nữ" })}</option>
+                              </select>
+                            ) : field.input === "select-yes-no" ? (
+                              <select
+                                value={override}
+                                onChange={(e) => setOverride(field.key, e.target.value)}
+                                className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs"
+                              >
+                                <option value="">—</option>
+                                <option value="true">{copy({ en: "Yes", vi: "Rồi" })}</option>
+                                <option value="false">{copy({ en: "No", vi: "Chưa" })}</option>
+                              </select>
+                            ) : (
+                              <input
+                                type={field.input === "number" ? "number" : "text"}
+                                value={override}
+                                onChange={(e) => setOverride(field.key, e.target.value)}
+                                placeholder={String(displayValue(formVal))}
+                                className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs"
+                              />
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </Panel>
 
-        <div className="space-y-6">
+        <div className="order-1 space-y-6">
           {!skipSuggestions ? (
             <>
               <Panel
@@ -1116,28 +1122,47 @@ export function ApplicationDetailPage() {
         subtitle={selectedRowMeta}
       >
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {copy({ en: "Current file", vi: "File hiện tại" })}
-                </div>
-                <div className="mt-1 text-sm text-slate-600">
-                  {isWordCommitted
-                    ? copy({ en: "Preview or download. To change anything, remove and upload a fresh form.", vi: "Xem hoặc tải xuống. Để chỉnh sửa, xoá rồi tải hồ sơ mới." })
-                    : copy({ en: "Preview or download. To change anything, remove and upload a fresh form.", vi: "Xem hoặc tải xuống. Để chỉnh sửa, xoá rồi tải hồ sơ mới." })}
+          {(() => {
+            const isVerified = selectedRow.documentStatus === "verified";
+            const fileType = ext ? ext.replace(/^\./, "").toUpperCase() : copy({ en: "File", vi: "File" });
+            return (
+              <div className={`rounded-2xl border px-4 py-4 ${isVerified ? "border-emerald-200 bg-emerald-50/60" : "border-slate-200 bg-slate-50"}`}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ${isVerified ? "bg-white text-emerald-600 ring-emerald-200" : "bg-white text-slate-500 ring-slate-200"}`}>
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 3h6l4 4v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+                        <path d="M14 3v5h5" />
+                      </svg>
+                      {isVerified ? (
+                        <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white ring-2 ring-white">✓</span>
+                      ) : null}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {copy({ en: "Current file", vi: "File hiện tại" })}
+                        </span>
+                        <Badge tone={toneForDocStatus(selectedRow.documentStatus)}>{formatDocumentStatus(selectedRow.documentStatus)}</Badge>
+                        <Badge tone="neutral">{fileType}</Badge>
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">
+                        {copy({ en: "Preview or download. To change anything, remove and upload a fresh form.", vi: "Xem hoặc tải xuống. Để chỉnh sửa, xoá rồi tải hồ sơ mới." })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => openFile(selectedRow.documentId, "preview")}>
+                      {copy({ en: "View", vi: "Xem" })}
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={() => openFile(selectedRow.documentId, "download")}>
+                      {copy({ en: "Download", vi: "Tải xuống" })}
+                    </Button>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" size="sm" onClick={() => openFile(selectedRow.documentId, "preview")}>
-                  {copy({ en: "View", vi: "Xem" })}
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => openFile(selectedRow.documentId, "download")}>
-                  {copy({ en: "Download", vi: "Tải xuống" })}
-                </Button>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Hand-off to the lead workbench where the operator picks an order
               and clicks Create placement — the manual "ghép đơn" step. */}
@@ -1155,16 +1180,24 @@ export function ApplicationDetailPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-indigo-900">
                 {copy({
-                  en: "Form on file. The candidate is now ready to be matched to an order.",
-                  vi: "Đã có hồ sơ. Ứng viên đã sẵn sàng để ghép đơn.",
+                  en: "Form on file. Review the dossier extracted from it next.",
+                  vi: "Đã có hồ sơ. Tiếp tục xem dữ liệu hồ sơ ứng viên trích từ form.",
                 })}
               </div>
               <Button
                 size="sm"
-                onClick={() => navigate(`/leads/${selectedLeadId}`)}
+                onClick={() => {
+                  if (embedded && props.embeddedOnViewDossier) {
+                    props.embeddedOnViewDossier();
+                  } else {
+                    navigate(`/leads/${selectedLeadId}`);
+                  }
+                }}
                 className="shrink-0"
               >
-                {copy({ en: "Open candidate to ghép đơn →", vi: "Mở ứng viên để ghép đơn →" })}
+                {embedded
+                  ? copy({ en: "View candidate dossier →", vi: "Xem hồ sơ ứng viên →" })
+                  : copy({ en: "Open candidate to ghép đơn →", vi: "Mở ứng viên để ghép đơn →" })}
               </Button>
             </div>
           </div>

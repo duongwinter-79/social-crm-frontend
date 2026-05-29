@@ -11,6 +11,7 @@ import type {
   AiQueryResult,
   AiSuggestion,
   LeadOrderSuggestion,
+  OrderSuggestedCandidate,
   AdminUser,
   AdminAuditLogListResponse,
   CnvConnectionStatus,
@@ -476,6 +477,14 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async dismissLeadAiSuggestion(leadId: string, fieldName: string) {
+    const response = await this.http.post<ApiEnvelope<{ dismissed: boolean; fieldName: string }> | { dismissed: boolean; fieldName: string }>(
+      `/leads/${leadId}/ai-suggestions/${encodeURIComponent(fieldName)}/dismiss`,
+      {},
+    );
+    return unwrapEnvelope(response.data);
+  }
+
   async updateLeadQualification(leadId: string, patch: Record<string, unknown>) {
     const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${leadId}/qualification`, patch);
     return unwrapEnvelope(response.data);
@@ -618,6 +627,18 @@ export class SocialCrmApiClient {
   async suggestOrdersForLead(leadId: string, params: { limit?: number } = {}) {
     const response = await this.http.get<ApiEnvelope<LeadOrderSuggestion[]> | LeadOrderSuggestion[]>(
       `/matching/suggest-for-lead/${leadId}`,
+      { params }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Order-first matching. Returns top-N candidates ranked by the formal
+   * matching engine for a given order. The inverse of suggestOrdersForLead.
+   */
+  async suggestCandidatesForOrder(orderId: string, params: { limit?: number } = {}) {
+    const response = await this.http.get<ApiEnvelope<OrderSuggestedCandidate[]> | OrderSuggestedCandidate[]>(
+      `/matching/suggest-candidates/${orderId}`,
       { params }
     );
     return unwrapEnvelope(response.data);

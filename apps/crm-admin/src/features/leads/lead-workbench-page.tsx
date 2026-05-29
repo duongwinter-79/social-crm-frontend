@@ -20,8 +20,8 @@ import {
   useAiQueryMutation,
   useCandidateByLeadQuery,
   useLeadAiSuggestionsQuery,
+  useDismissLeadAiSuggestionMutation,
   useLeadDetailQuery,
-  useLeadOrderSuggestionsQuery,
   useLeadQualificationQuery,
   useLeadTransitionsQuery,
   useProcessThreadExtractionMutation,
@@ -30,7 +30,9 @@ import {
   useUpdateLeadQualificationMutation,
   usePermissions
 } from "@social-crm/api";
-import type { LeadOrderSuggestion } from "@social-crm/api";
+import { LeadStatusLine } from "./lead-status-line";
+import { CandidateWorkbench } from "@/features/candidate-workbench/candidate-workbench";
+import { DossierModal } from "./dossier-modal";
 import { useI18n } from "../../i18n";
 import { type NavigationReturnState, resolveReturnState } from "@/app/navigation-state";
 import {
@@ -108,10 +110,10 @@ export function LeadWorkbenchPage() {
   const transitionsQuery = useLeadTransitionsQuery(leadId);
   const qualificationQuery = useLeadQualificationQuery(leadId);
   const suggestionsQuery = useLeadAiSuggestionsQuery(leadId);
-  const leadOrderSuggestionsQuery = useLeadOrderSuggestionsQuery(leadId, 5);
   const updateLead = useUpdateLeadMutation();
   const restoreLead = useRestoreLeadMutation();
   const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
+  const dismissSuggestion = useDismissLeadAiSuggestionMutation(leadId);
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
   const { canEditLeads, isAdmin } = usePermissions();
@@ -123,8 +125,13 @@ export function LeadWorkbenchPage() {
 
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
   const [conversationVisible, setConversationVisible] = useState(false);
+  const [dossierOpen, setDossierOpen] = useState(false);
+  // Editable identity (Lead channel fields). Staff can correct fullName/phone
+  // directly here — important because the deterministic extractor can suggest
+  // wrong values (e.g. a company name) and those suggestions aren't rejectable.
+  const [identityForm, setIdentityForm] = useState({ fullName: "", displayName: "", phone: "", region: "" });
   const [qualificationForm, setQualificationForm] = useState({
-    age: "",
+    birthYear: "",
     gender: "",
     hasPassport: "",
     height: "",
@@ -151,10 +158,25 @@ export function LeadWorkbenchPage() {
   });
 
   useEffect(() => {
+    if (!leadQuery.data) return;
+    setIdentityForm({
+      fullName: leadQuery.data.fullName ?? "",
+      displayName: leadQuery.data.displayName ?? "",
+      phone: leadQuery.data.phone ?? "",
+      region: leadQuery.data.region ?? "",
+    });
+  }, [leadQuery.data]);
+
+  useEffect(() => {
     if (!qualificationQuery.data) return;
     const verified = qualificationQuery.data.verifiedData ?? {};
     setQualificationForm({
-      age: readString(verified.age),
+      // Prefer canonical `birthYear`; fall back to deriving from legacy `age`
+      // (= currentYear - age) so older saved verified blobs still pre-fill the
+      // form correctly. Operator can type a 4-digit year here.
+      birthYear: readString(
+        verified.birthYear ?? (typeof verified.age === 'number' ? new Date().getFullYear() - verified.age : undefined),
+      ),
       gender: readString(verified.gender),
       hasPassport: readBooleanString(verified.hasPassport),
       height: readString(verified.height),
@@ -217,6 +239,10 @@ export function LeadWorkbenchPage() {
           `${lead.source.toUpperCase()} · ${lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" })} · ${lead.region || copy({ en: "No region", vi: "Chưa có khu vực" })}`,
         ].filter(Boolean).join(" · ")}
       />
+
+      <div className="rounded-2xl border border-slate-200 bg-white px-6 pt-4 shadow-sm">
+        <LeadStatusLine status={lead.status} />
+      </div>
 
       {phoneMergeConflictId ? (
         <InfoStrip className="border-rose-300 bg-rose-50 text-rose-900">
@@ -422,6 +448,14 @@ export function LeadWorkbenchPage() {
         </div>
       </InfoStrip>
 
+      <CandidateWorkbench
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        defaultSection="basic"
+        sections={[
+          {
+            key: "extraction",
+            content: (
+              <div className="space-y-6">
       <LeadAiSnapshotCard
         lead={lead}
         suggestions={suggestionsQuery.data ?? []}
@@ -432,53 +466,14 @@ export function LeadWorkbenchPage() {
             runExtraction.mutate({ leadId, threadId: selectedThreadId, scanMode });
           }
         }}
+        onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+        isDismissing={dismissSuggestion.isPending}
         isVerifyAllPending={qualificationMutation.isPending}
         isRerunPending={runExtraction.isPending}
         extractionStatus={runExtraction.backgroundStatus}
         className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
       />
 
-      <Panel
-        title={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}
-        subtitle={copy({
-          en: "Full form-derived candidate data now lives on its own page, linked to the verified document record.",
-          vi: "Dữ liệu ứng viên từ form đã được tách sang trang riêng và liên kết với hồ sơ đã xác minh."
-        })}
-      >
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1 text-sm text-slate-600">
-            <div>
-              <span className="font-semibold text-slate-800">{copy({ en: "Candidate:", vi: "Ứng viên:" })}</span>{" "}
-              {candidate?.code ?? candidate?.id ?? copy({ en: "Not created yet", vi: "Chưa tạo" })}
-            </div>
-            <div>
-              {candidate?.profile
-                ? copy({ en: "Open the dossier to review form fields and document evidence.", vi: "Mở hồ sơ để xem dữ liệu từ form và bằng chứng tài liệu." })
-                : copy({ en: "Upload and verify the standard worker form to create the candidate dossier.", vi: "Tải lên và xác minh form lao động chuẩn để tạo hồ sơ ứng viên." })}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/leads/${lead.id}/dossier`)}
-              disabled={!candidate?.profile}
-            >
-              {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
-            </Button>
-            {canEditLeads && !candidate?.profile ? (
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/applications/detail?leadId=${lead.id}`)}
-              >
-                {copy({ en: "Upload form", vi: "Tải form" })}
-              </Button>
-            ) : null}
-          </div>
-        </div>
-      </Panel>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
-        <div className="space-y-6">
           <Panel
             title={copy({ en: "Conversation", vi: "Hội thoại" })}
             subtitle={copy({
@@ -563,20 +558,72 @@ export function LeadWorkbenchPage() {
               {aiMutation.data ? renderAiQueryResult(aiMutation.data.result, copy) : null}
             </div>
           </Panel>
+              </div>
+            ),
+          },
+          {
+            key: "basic",
+            content: (
+              <div className="space-y-6">
+          <Panel
+            title={copy({ en: "Identity", vi: "Thông tin nhận dạng" })}
+            subtitle={copy({
+              en: "Core lead identity. Edit to correct values — including ones suggested by extraction that can't be rejected.",
+              vi: "Thông tin nhận dạng cốt lõi. Sửa để chỉnh lại giá trị — kể cả giá trị do trích xuất gợi ý mà không thể từ chối.",
+            })}
+          >
+            <FieldGroup columns={2}>
+              <Input label={copy({ en: "Full name", vi: "Họ và tên" })} value={identityForm.fullName} onChange={(e) => setIdentityForm((s) => ({ ...s, fullName: e.target.value }))} />
+              <Input label={copy({ en: "Display name (channel)", vi: "Tên hiển thị (kênh)" })} value={identityForm.displayName} onChange={(e) => setIdentityForm((s) => ({ ...s, displayName: e.target.value }))} />
+              <Input label={copy({ en: "Phone", vi: "Số điện thoại" })} value={identityForm.phone} onChange={(e) => setIdentityForm((s) => ({ ...s, phone: e.target.value }))} />
+              <Input label={copy({ en: "Region", vi: "Khu vực" })} value={identityForm.region} onChange={(e) => setIdentityForm((s) => ({ ...s, region: e.target.value }))} />
+            </FieldGroup>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="text-xs text-slate-500">
+                {copy({ en: "Source", vi: "Nguồn" })}: <Badge tone="neutral">{lead.source}</Badge>
+              </span>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {canEditLeads ? (
+                <Button
+                  onClick={() => updateLead.mutate({ id: leadId, patch: {
+                    fullName: identityForm.fullName.trim() || null,
+                    displayName: identityForm.displayName.trim() || null,
+                    phone: identityForm.phone.trim() || null,
+                    region: identityForm.region.trim() || null,
+                  } })}
+                  disabled={updateLead.isPending}
+                >
+                  {updateLead.isPending ? copy({ en: "Saving...", vi: "Đang lưu..." }) : copy({ en: "Save identity", vi: "Lưu thông tin" })}
+                </Button>
+              ) : (
+                <span className="text-xs italic text-slate-500">
+                  {copy({ en: "Read-only — requires edit_leads permission", vi: "Chỉ xem — cần quyền edit_leads để lưu" })}
+                </span>
+              )}
+              <span className="text-xs text-slate-400">
+                {copy({ en: "Phone must be unique; a duplicate will be rejected.", vi: "Số điện thoại phải duy nhất; trùng sẽ bị từ chối." })}
+              </span>
+            </div>
+          </Panel>
 
           <Panel title={copy({ en: "Qualification overlay", vi: "Lớp xác minh điều kiện" })} subtitle={copy({ en: "Staff-verified fields directly influence lead score and matching.", vi: "Các trường đã được nhân viên xác minh ảnh hưởng trực tiếp đến điểm ứng viên và kết quả ghép đơn." })}>
             <FieldGroup columns={2}>
               <FieldWithProvenance
-                fieldKey="age"
-                suggestion={suggestionsByField.age}
-                isVerified={isFieldVerified("age")}
-                currentValue={qualificationForm.age}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, age: v == null ? "" : String(v) }))}
+                fieldKey="birthYear"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
+                suggestion={suggestionsByField.birthYear ?? suggestionsByField.age}
+                isVerified={isFieldVerified("birthYear") || isFieldVerified("age")}
+                currentValue={qualificationForm.birthYear}
+                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, birthYear: v == null ? "" : String(v) }))}
               >
-                <Input label={copy({ en: "Verified age", vi: "Tuổi đã xác minh" })} value={qualificationForm.age} onChange={(e) => setQualificationForm((s) => ({ ...s, age: e.target.value }))} />
+                <Input label={copy({ en: "Verified birth year (YYYY)", vi: "Năm sinh đã xác minh (YYYY)" })} value={qualificationForm.birthYear} onChange={(e) => setQualificationForm((s) => ({ ...s, birthYear: e.target.value }))} />
               </FieldWithProvenance>
               <FieldWithProvenance
                 fieldKey="gender"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.gender}
                 isVerified={isFieldVerified("gender")}
                 currentValue={qualificationForm.gender}
@@ -591,6 +638,8 @@ export function LeadWorkbenchPage() {
               </FieldWithProvenance>
               <FieldWithProvenance
                 fieldKey="hasPassport"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.hasPassport}
                 isVerified={isFieldVerified("hasPassport")}
                 currentValue={qualificationForm.hasPassport}
@@ -603,6 +652,8 @@ export function LeadWorkbenchPage() {
               </FieldWithProvenance>
               <FieldWithProvenance
                 fieldKey="height"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.heightCm ?? suggestionsByField.height}
                 isVerified={isFieldVerified("height") || isFieldVerified("heightCm")}
                 currentValue={qualificationForm.height}
@@ -612,6 +663,8 @@ export function LeadWorkbenchPage() {
               </FieldWithProvenance>
               <FieldWithProvenance
                 fieldKey="weight"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.weightKg ?? suggestionsByField.weight}
                 isVerified={isFieldVerified("weight") || isFieldVerified("weightKg")}
                 currentValue={qualificationForm.weight}
@@ -622,6 +675,8 @@ export function LeadWorkbenchPage() {
               <Input label={copy({ en: "Experience years", vi: "Số năm kinh nghiệm" })} value={qualificationForm.experienceYears} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceYears: e.target.value }))} />
               <FieldWithProvenance
                 fieldKey="experienceField"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.experienceField}
                 isVerified={isFieldVerified("experienceField")}
                 currentValue={qualificationForm.experienceField}
@@ -631,6 +686,8 @@ export function LeadWorkbenchPage() {
               </FieldWithProvenance>
               <FieldWithProvenance
                 fieldKey="desiredIndustry"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.desiredIndustry}
                 isVerified={isFieldVerified("desiredIndustry")}
                 currentValue={qualificationForm.desiredIndustry}
@@ -641,6 +698,8 @@ export function LeadWorkbenchPage() {
               <Input label={copy({ en: "Ready to depart (months)", vi: "Sẵn sàng xuất cảnh (tháng)" })} value={qualificationForm.readyToDepartInMonths} onChange={(e) => setQualificationForm((s) => ({ ...s, readyToDepartInMonths: e.target.value }))} />
               <FieldWithProvenance
                 fieldKey="preferredRegion"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.preferredRegion ?? suggestionsByField.preferredRegions}
                 isVerified={isFieldVerified("preferredRegion") || isFieldVerified("preferredRegions")}
                 currentValue={qualificationForm.preferredRegion}
@@ -650,6 +709,8 @@ export function LeadWorkbenchPage() {
               </FieldWithProvenance>
               <FieldWithProvenance
                 fieldKey="desiredSalary"
+                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                isDismissing={dismissSuggestion.isPending}
                 suggestion={suggestionsByField.desiredSalary}
                 isVerified={isFieldVerified("desiredSalary")}
                 currentValue={qualificationForm.desiredSalary}
@@ -703,77 +764,139 @@ export function LeadWorkbenchPage() {
               )}
             </div>
           </Panel>
-        </div>
-
-        <div className="space-y-6">
-          <Panel title={copy({ en: "Lead summary", vi: "Tóm tắt ứng viên tiềm năng" })} subtitle={copy({ en: "Fast operator snapshot before taking action.", vi: "Thông tin nhanh để nhân sự quyết định bước xử lý tiếp theo." })}>
-            <DescriptionList
-              items={[
-                { label: copy({ en: "Lead ID", vi: "Mã ứng viên tiềm năng" }), value: lead.id },
-                { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: candidate?.code ?? candidate?.id ?? copy({ en: "Not created", vi: "Chưa tạo" }) },
-                { label: copy({ en: "Source", vi: "Nguồn" }), value: lead.source },
-                { label: copy({ en: "Phone", vi: "Điện thoại" }), value: lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" }) },
-                { label: copy({ en: "Region", vi: "Khu vực" }), value: lead.region || copy({ en: "No region", vi: "Chưa có khu vực" }) },
-                { label: copy({ en: "Created", vi: "Tạo lúc" }), value: lead.createdAt || copy({ en: "Unknown", vi: "Chưa rõ" }) },
-                { label: copy({ en: "Updated", vi: "Cập nhật lúc" }), value: lead.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
-              ]}
-            />
-          </Panel>
-
-          <Panel
-            title={copy({ en: "Lead-stage matching suggestions", vi: "Gợi ý ghép đơn sơ bộ" })}
-            subtitle={copy({
-              en: "Top orders ranked by the lead-triage engine. Available immediately — no candidate record required.",
-              vi: "Đơn hàng được xếp hạng từ dữ liệu sàng lọc sơ bộ. Có thể xem ngay từ giai đoạn tiếp nhận, chưa cần tạo hồ sơ ứng viên chính thức."
-            })}
-          >
-            {leadOrderSuggestionsQuery.isLoading ? (
-              <div className="text-sm text-slate-500">{copy({ en: "Ranking orders…", vi: "Đang xếp hạng đơn hàng…" })}</div>
-            ) : (leadOrderSuggestionsQuery.data ?? []).length === 0 ? (
-              <EmptyState
-                title={copy({ en: "No orders to rank", vi: "Chưa có đơn hàng để xếp hạng" })}
-                description={copy({
-                  en: "Add active orders in the Orders module; matches will appear here automatically.",
-                  vi: "Thêm đơn hàng đang hoạt động trong mục Đơn hàng, các đơn phù hợp sẽ tự động hiển thị tại đây."
-                })}
-              />
-            ) : (
-              <div className="space-y-3">
-                {(leadOrderSuggestionsQuery.data ?? []).map((sug) => renderLeadSuggestion(sug, copy, formatEnum))}
               </div>
-            )}
-          </Panel>
+            ),
+          },
+          {
+            key: "documents",
+            content: (
+              <div className="space-y-6">
+                <Panel
+                  title={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}
+                  subtitle={copy({
+                    en: "Full form-derived candidate data lives on its own page, linked to the verified document record.",
+                    vi: "Dữ liệu ứng viên từ form nằm ở trang riêng và liên kết với hồ sơ đã xác minh."
+                  })}
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-1 text-sm text-slate-600">
+                      <div>
+                        <span className="font-semibold text-slate-800">{copy({ en: "Candidate:", vi: "Ứng viên:" })}</span>{" "}
+                        {candidate?.code ?? candidate?.id ?? copy({ en: "Not created yet", vi: "Chưa tạo" })}
+                      </div>
+                      <div>
+                        {candidate?.profile
+                          ? copy({ en: "Open the dossier to review form fields and document evidence.", vi: "Mở hồ sơ để xem dữ liệu từ form và bằng chứng tài liệu." })
+                          : copy({ en: "Upload and verify the standard worker form to create the candidate dossier.", vi: "Tải lên và xác minh form lao động chuẩn để tạo hồ sơ ứng viên." })}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setDossierOpen(true)}
+                        disabled={!candidate?.profile}
+                      >
+                        {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
+                      </Button>
+                      {canEditLeads && !candidate?.profile ? (
+                        <Button
+                          variant="secondary"
+                          onClick={() => navigate(`/journey/${lead.id}`)}
+                        >
+                          {copy({ en: "Open journey", vi: "Mở hành trình" })}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                </Panel>
 
-          {canEditLeads ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
-              <div className="text-sm text-indigo-900">
-                {copy({
-                  en: "Standard worker form is required before the lead can advance to matching.",
-                  vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
-                })}
+                {canEditLeads ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
+                    <div className="text-sm text-indigo-900">
+                      {copy({
+                        en: "Standard worker form is required before the lead can advance to matching.",
+                        vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
+                      })}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => navigate(`/journey/${lead.id}`)}
+                    >
+                      {copy({ en: "Open journey →", vi: "Mở hành trình →" })}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/applications/detail?leadId=${lead.id}`)}
+            ),
+          },
+          {
+            key: "recruitment",
+            content: (
+              <Panel
+                title={copy({ en: "Recruitment", vi: "Tuyển dụng" })}
+                subtitle={copy({ en: "Advance the pipeline using the status controls at the top of this page.", vi: "Dùng các nút trạng thái ở đầu trang để đẩy tiến trình hồ sơ." })}
               >
-                {copy({ en: "Upload application file →", vi: "Tải hồ sơ ứng tuyển →" })}
-              </Button>
-            </div>
-          ) : null}
+                <p className="text-sm leading-6 text-slate-500">
+                  {copy({ en: "Interview scheduling and order linkage live in the candidate journey workbench.", vi: "Lên lịch phỏng vấn và ghép đơn nằm trong bàn xử lý hành trình ứng viên." })}
+                </p>
+              </Panel>
+            ),
+          },
+          {
+            key: "finance",
+            content: (
+              <Panel
+                title={copy({ en: "Finance", vi: "Tài chính" })}
+                subtitle={copy({ en: "Deposit, training, visa and departure milestones.", vi: "Các mốc đặt cọc, đào tạo, visa và xuất cảnh." })}
+              >
+                <p className="text-sm leading-6 text-slate-500">
+                  {copy({ en: "Tracked in the Journey workbench Training & Finance section.", vi: "Được theo dõi trong mục Đào tạo & tài chính của hành trình." })}
+                </p>
+              </Panel>
+            ),
+          },
+          {
+            key: "history",
+            content: (
+              <div className="space-y-6">
+                <Panel title={copy({ en: "Lead summary", vi: "Tóm tắt ứng viên tiềm năng" })} subtitle={copy({ en: "Fast operator snapshot before taking action.", vi: "Thông tin nhanh để nhân sự quyết định bước xử lý tiếp theo." })}>
+                  <DescriptionList
+                    items={[
+                      { label: copy({ en: "Lead ID", vi: "Mã ứng viên tiềm năng" }), value: lead.id },
+                      { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: candidate?.code ?? candidate?.id ?? copy({ en: "Not created", vi: "Chưa tạo" }) },
+                      { label: copy({ en: "Source", vi: "Nguồn" }), value: lead.source },
+                      { label: copy({ en: "Phone", vi: "Điện thoại" }), value: lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" }) },
+                      { label: copy({ en: "Region", vi: "Khu vực" }), value: lead.region || copy({ en: "No region", vi: "Chưa có khu vực" }) },
+                      { label: copy({ en: "Created", vi: "Tạo lúc" }), value: lead.createdAt || copy({ en: "Unknown", vi: "Chưa rõ" }) },
+                      { label: copy({ en: "Updated", vi: "Cập nhật lúc" }), value: lead.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
+                    ]}
+                  />
+                </Panel>
 
-          <Panel title={copy({ en: "Verified qualification snapshot", vi: "Dữ liệu xác minh đã lưu" })} subtitle={copy({ en: "Staff-confirmed fields used for scoring and matching.", vi: "Các trường nhân sự đã xác nhận để tính điểm và ghép đơn." })}>
-            <DescriptionList
-              items={[
-                { label: copy({ en: "Passport", vi: "Hộ chiếu" }), value: yesNoUnknown(qualificationForm.hasPassport) },
-                { label: copy({ en: "Worked abroad", vi: "Từng đi nước ngoài" }), value: yesNoUnknown(qualificationForm.hasWorkedAbroad) },
-                { label: copy({ en: "Health fit", vi: "Sức khỏe đạt yêu cầu" }), value: yesNoUnknown(qualificationForm.healthMeetsCriteria) },
-                { label: copy({ en: "Risk history", vi: "Lịch sử rủi ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chưa rõ" }) }
-              ]}
-            />
-            <pre className="mt-4 overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(qualificationQuery.data?.verifiedData ?? lead.verifiedProfileData ?? {}, null, 2)}</pre>
-          </Panel>
-        </div>
-      </div>
+                <Panel title={copy({ en: "Verified qualification snapshot", vi: "Dữ liệu xác minh đã lưu" })} subtitle={copy({ en: "Staff-confirmed fields used for scoring and matching.", vi: "Các trường nhân sự đã xác nhận để tính điểm và ghép đơn." })}>
+                  <DescriptionList
+                    items={[
+                      { label: copy({ en: "Passport", vi: "Hộ chiếu" }), value: yesNoUnknown(qualificationForm.hasPassport) },
+                      { label: copy({ en: "Worked abroad", vi: "Từng đi nước ngoài" }), value: yesNoUnknown(qualificationForm.hasWorkedAbroad) },
+                      { label: copy({ en: "Health fit", vi: "Sức khỏe đạt yêu cầu" }), value: yesNoUnknown(qualificationForm.healthMeetsCriteria) },
+                      { label: copy({ en: "Risk history", vi: "Lịch sử rủi ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chưa rõ" }) }
+                    ]}
+                  />
+                  <pre className="mt-4 overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(qualificationQuery.data?.verifiedData ?? lead.verifiedProfileData ?? {}, null, 2)}</pre>
+                </Panel>
+              </div>
+            ),
+          },
+        ]}
+      />
+
+      {dossierOpen ? (
+        <DossierModal
+          name={getLeadDisplayName(lead)}
+          profile={candidate?.profile}
+          onClose={() => setDossierOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -841,79 +964,6 @@ function pickStringField(obj: Record<string, unknown>, key: string): string | nu
   return typeof v === "string" && v.trim().length > 0 ? v : null;
 }
 
-function toneForConclusion(conclusion: string) {
-  if (conclusion === "high_priority") return "success" as const;
-  if (conclusion === "conditional") return "warning" as const;
-  if (conclusion === "limited") return "neutral" as const;
-  return "danger" as const;
-}
-
-function toneForFit(fit: LeadOrderSuggestion["preliminaryFit"]) {
-  if (fit === "promising") return "success" as const;
-  if (fit === "needs_review") return "warning" as const;
-  if (fit === "insufficient_data") return "neutral" as const;
-  return "danger" as const;
-}
-
-function renderLeadSuggestion(
-  sug: LeadOrderSuggestion,
-  copy: (value: { en: string; vi: string }) => string,
-  formatEnum: (value: string) => string,
-) {
-  return (
-    <div
-      key={sug.id}
-      className={`rounded-2xl border p-4 ${sug.isEligible ? "border-slate-200 bg-slate-50" : "border-rose-200 bg-rose-50/40"
-        }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="font-semibold text-slate-900">{sug.name}</div>
-            <Badge tone={toneForConclusion(sug.conclusion)}>{formatEnum(sug.conclusion)}</Badge>
-            <Badge tone={toneForFit(sug.preliminaryFit)}>{formatEnum(sug.preliminaryFit)}</Badge>
-            {sug.requiresManagerApproval ? (
-              <Badge tone="warning">{copy({ en: "Manager approval", vi: "Cần duyệt quản lý" })}</Badge>
-            ) : null}
-          </div>
-          <div className="mt-1 text-xs leading-5 text-slate-500">
-            {sug.region || copy({ en: "No region", vi: "Chưa có khu vực" })} ·{" "}
-            {sug.industry || copy({ en: "No industry", vi: "Chưa có ngành" })}
-            {sug.salaryRange ? ` · ${sug.salaryRange}` : ""}
-          </div>
-        </div>
-        <Badge tone={sug.isEligible ? "accent" : "danger"}>{sug.matchScore} pts</Badge>
-      </div>
-
-      {sug.rejectReason ? (
-        <div className="mt-2 text-xs text-rose-700">
-          <span className="font-semibold">
-            {copy({ en: "Order fit issue", vi: "Không hợp đơn này" })}:
-          </span>{" "}
-          {sug.rejectReason}
-        </div>
-      ) : null}
-
-      {sug.flags?.length ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {sug.flags.map((flag, idx) => (
-            <span key={idx} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
-              {flag}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      {sug.missingRequirements?.length ? (
-        <div className="mt-2 text-xs text-slate-500">
-          <span className="font-semibold">{copy({ en: "Missing", vi: "Còn thiếu" })}:</span>{" "}
-          {sug.missingRequirements.join(", ")}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function readString(value: unknown) {
   return value == null ? "" : String(value);
 }
@@ -939,7 +989,11 @@ function parseBoolean(value: string) {
 
 function buildQualificationPatch(form: Record<string, string>) {
   return {
-    age: parseNumber(form.age),
+    // Canonical key as of 2026-05-28 — backend resolver treats birthYear/age
+    // as semantic aliases; the form stops sending `age` so the lossy
+    // `currentYear - age` derivation in syncProfileFromVerifiedLeadData is
+    // skipped in favour of the operator's precise year.
+    birthYear: parseNumber(form.birthYear),
     gender: form.gender || undefined,
     hasPassport: parseBoolean(form.hasPassport),
     height: parseNumber(form.height),

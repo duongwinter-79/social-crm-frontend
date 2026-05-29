@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-05-30
+
+### Journey consolidation
+
+- collapsed the candidate lifecycle into a single **Journey** module: cohort board (`/journey`, one horizontal 5-phase track per candidate, fed by `/pipeline`) + single-candidate workbench (`/journey/:leadId`)
+- retired the standalone Pipeline, Applications (list/create/status), form-intake, and Training & Finance screens — routes now redirect into Journey; deleted `applications-page.tsx`, `form-editor-page.tsx`, `matching-page.tsx`
+- removed the standalone Matching console (`/matching` → `/orders`); matching is now order-first on Orders and candidate-first in Journey
+- sidebar is now: Dashboard · Leads · Conversations · Journey · Orders · Import · Extract · Admin
+- repointed dashboard + lead-workbench CTAs to `/journey/:leadId`
+
+### Journey workbench UX
+
+- workbench renders the five phases as an **accordion** — only the active phase shows its body, so the page no longer grows long; it opens on the candidate's current phase
+- §1 Form intake now opens in a **popup modal** (staged upload → verify → commit) instead of inline
+- §3 Application hosts the create-gate + status transitions inline (shared `application-logic` state machine); §4 embeds the training-finance milestone editor
+- application delete is hidden for advanced applications (mirrors the backend guard); use Withdraw/Reject to close
+- phase rail + shared candidate-workbench nav made responsive
+
+### Order-first matching
+
+- Orders rows gain an expandable **suggested candidates** panel (`GET /matching/suggest-candidates/:orderId` via `useOrderSuggestedCandidatesQuery`)
+- "Open & link" opens the **Journey workbench as a modal** (the same `JourneyWorkbench` component the page renders), pre-targeted to that order and opening on the Application phase — so form upload / dossier / linking all happen in-context. (The earlier bespoke candidate-link-modal was a partial duplicate and was removed.)
+
+### Lead workbench restructure
+
+- lead-workbench now renders inside the shared section-nav shell with a real pipeline **status line** (grounded in the actual 11-state lead machine)
+- removed the lead→orders suggestion panel from the workbench (backend engine kept, reused for order→candidates)
+- **Basic info** now opens with an editable **Identity** block (full name, display name, phone, region) saved via the lead update — staff can correct core fields directly (important because extraction suggestions can be wrong and weren't rejectable). Duplicate phone shows the backend's 409 conflict in a toast
+- **Open dossier / Xem hồ sơ** now opens a popup modal instead of navigating (in both lead-workbench and Journey §2)
+
+### Reject AI extraction suggestions
+
+- `FieldWithProvenance` and the AI snapshot card (`LeadAiSnapshotCard`) gain a **Reject / Từ chối** action next to Apply, calling `useDismissLeadAiSuggestionMutation` → `POST /leads/:id/ai-suggestions/:fieldName/dismiss`
+- dismissed suggestions stop resurfacing; a success toast confirms
+
+### Journey i18n
+
+- localized the pipeline next-action and blocker strings on the Journey cohort board (`formatPipelineNextAction` / `formatPipelineBlocker`), including doc-type tokens in "Missing docs: …"
+
+### Verify screen layout
+
+- the form-intake verify screen ("Xác nhận hồ sơ ứng viên") replaced the long vertical table with a multi-column card grid (up to 3 across on desktop)
+- the commit / match block (Ghi vào ứng viên đã chọn · Xác nhận & gắn hồ sơ · Huỷ và xoá file) now sits on top and the field-confirmation panel runs full width below it, so the cards have room and the modal scrolls far less
+
+### Form intake → dossier flow
+
+- in the form-intake modal's committed state, the action now opens the **dossier popup** ("Xem hồ sơ ứng viên →") instead of navigating to the lead workbench — the operator stays in the Journey flow
+
 ## 2026-05-27
 
 ### Training-finance workspace refactor

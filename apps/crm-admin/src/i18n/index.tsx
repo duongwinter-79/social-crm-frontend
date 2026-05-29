@@ -22,6 +22,8 @@ type I18nContextValue = {
   formatLeadStatus: (value: string) => string;
   formatPipelineStage: (value: string) => string;
   formatApplicationStatus: (value: string) => string;
+  formatPipelineNextAction: (value: string) => string;
+  formatPipelineBlocker: (value: string) => string;
   formatDocumentType: (value: string) => string;
   formatDocumentStatus: (value: string) => string;
   formatTrainingMilestone: (value: string) => string;
@@ -344,6 +346,39 @@ export function I18nProvider(props: PropsWithChildren) {
       formatApplicationStatus: (value) => fromMap(value),
       formatDocumentType: (value) => fromMap(value),
       formatDocumentStatus: (value) => fromMap(value),
+      // Backend `/pipeline` emits English next-action + blocker strings; localize
+      // them here (the set is fixed in pipeline.service.ts).
+      formatPipelineNextAction: (value) => {
+        const map: Record<string, Copy> = {
+          "Continue qualification": { en: "Continue qualification", vi: "Tiếp tục xác minh điều kiện" },
+          "Promote lead to candidate": { en: "Promote lead to candidate", vi: "Chuyển thành hồ sơ ứng viên" },
+          "Create application": { en: "Create application", vi: "Tạo ứng tuyển" },
+          "Complete required documents": { en: "Complete required documents", vi: "Hoàn thiện giấy tờ bắt buộc" },
+          "Create training-finance record": { en: "Create training-finance record", vi: "Tạo bản ghi đào tạo & tài chính" },
+          "Advance visa readiness": { en: "Advance visa readiness", vi: "Đẩy tiến độ visa" },
+          "Schedule departure": { en: "Schedule departure", vi: "Lên lịch xuất cảnh" },
+          "Monitor departure completion": { en: "Monitor departure completion", vi: "Theo dõi hoàn tất xuất cảnh" },
+        };
+        return map[value] ? map[value][lang] : value;
+      },
+      formatPipelineBlocker: (value) => {
+        if (value === "Candidate record missing") {
+          return copy({ en: "Candidate record missing", vi: "Chưa có hồ sơ ứng viên" });
+        }
+        const docList = (raw: string) =>
+          raw
+            .split(",")
+            .map((token) => fromMap(token.trim()))
+            .filter(Boolean)
+            .join(", ");
+        let m = value.match(/^Missing docs:\s*(.+)$/);
+        if (m) return `${copy({ en: "Missing docs", vi: "Thiếu giấy tờ" })}: ${docList(m[1])}`;
+        m = value.match(/^Expired docs:\s*(.+)$/);
+        if (m) return `${copy({ en: "Expired docs", vi: "Giấy tờ hết hạn" })}: ${docList(m[1])}`;
+        m = value.match(/^Application outcome:\s*(.+)$/);
+        if (m) return `${copy({ en: "Application outcome", vi: "Kết quả ứng tuyển" })}: ${fromMap(m[1].trim())}`;
+        return value;
+      },
       formatTrainingMilestone: (value) =>
         copy({
           en: formatEnumLabel(value),

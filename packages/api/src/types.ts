@@ -435,6 +435,30 @@ export interface LeadOrderSuggestion {
   requiresManagerApproval: boolean;
 }
 
+/**
+ * One ranked candidate for an order — the order-first matching result from
+ * `GET /matching/suggest-candidates/:orderId`. The inverse of
+ * LeadOrderSuggestion.
+ */
+export interface OrderSuggestedCandidate {
+  candidateId: string;
+  candidateCode: string;
+  leadId: string;
+  name: string;
+  phone: string | null;
+  gender: string | null;
+  age: number | null;
+  height: number | null;
+  leadScore: number | null;
+  leadClassification: string | null;
+  matchScore: number;
+  isEligible: boolean;
+  conclusion: string;
+  flags: string[];
+  rejectReason?: string;
+  requiresManagerApproval: boolean;
+}
+
 export interface Order {
   id: string;
   name: string;

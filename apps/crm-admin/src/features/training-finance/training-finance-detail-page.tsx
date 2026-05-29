@@ -116,11 +116,17 @@ function sameForm(a: MilestoneForm, b: MilestoneForm) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function TrainingFinanceDetailPage() {
-  const { recordId } = useParams();
+export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; embeddedLeadId?: string } = {}) {
+  const params = useParams();
   const navigate = useNavigate();
   const { copy, formatApplicationStatus } = useI18n();
   const { canManageFinance, isAdmin } = usePermissions();
+
+  // Embedded mode: the Journey workbench controls which record (or "new") is
+  // shown and locks the lead. Navigation is suppressed — the workbench's
+  // by-lead query invalidation swaps create↔edit automatically.
+  const embedded = props.embeddedRecordId !== undefined;
+  const recordId = props.embeddedRecordId ?? params.recordId;
   const isNew = recordId === "new";
   const detailQuery = useTrainingFinanceDetailQuery(isNew ? undefined : recordId);
   const createTrainingFinance = useCreateTrainingFinanceMutation();
@@ -131,13 +137,13 @@ export function TrainingFinanceDetailPage() {
 
   useEffect(() => {
     if (isNew) {
-      setForm(emptyForm);
+      setForm({ ...emptyForm, leadId: props.embeddedLeadId ?? "" });
       return;
     }
     if (detailQuery.data) {
       setForm(recordToForm(detailQuery.data));
     }
-  }, [detailQuery.data, isNew]);
+  }, [detailQuery.data, isNew, props.embeddedLeadId]);
 
   const applicationsQuery = useApplicationsQuery(
     { offset: 0, limit: 50, leadId: form.leadId || undefined },
@@ -165,7 +171,9 @@ export function TrainingFinanceDetailPage() {
     if (!canSave) return;
     if (isNew) {
       createTrainingFinance.mutate(buildPayload(form), {
-        onSuccess: (record) => navigate(`/training-finance/${record.id}`),
+        onSuccess: (record) => {
+          if (!embedded) navigate(`/training-finance/${record.id}`);
+        },
       });
       return;
     }
@@ -195,22 +203,24 @@ export function TrainingFinanceDetailPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        eyebrow={copy({ en: "Training & Finance", vi: "Đào tạo & tài chính" })}
-        title={isNew ? copy({ en: "New milestone record", vi: "Tạo bản ghi tiến độ" }) : copy({ en: "Milestone record detail", vi: "Chi tiết bản ghi tiến độ" })}
-        description={copy({
-          en: "Create or update the downstream record that tracks deposit, training, visa, and departure milestones for an application.",
-          vi: "Tạo hoặc cập nhật bản ghi hậu kỳ theo dõi đặt cọc, đào tạo, visa và xuất cảnh cho một ứng tuyển.",
-        })}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Link to="/training-finance" className="inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 no-underline hover:bg-slate-50">
-              {copy({ en: "Back to ledger", vi: "Về sổ tiến độ" })}
-            </Link>
-            {!canManageFinance ? <Badge tone="neutral">{copy({ en: "Read only", vi: "Chỉ xem" })}</Badge> : null}
-          </div>
-        }
-      />
+      {!embedded ? (
+        <SectionHeader
+          eyebrow={copy({ en: "Training & Finance", vi: "Đào tạo & tài chính" })}
+          title={isNew ? copy({ en: "New milestone record", vi: "Tạo bản ghi tiến độ" }) : copy({ en: "Milestone record detail", vi: "Chi tiết bản ghi tiến độ" })}
+          description={copy({
+            en: "Create or update the downstream record that tracks deposit, training, visa, and departure milestones for an application.",
+            vi: "Tạo hoặc cập nhật bản ghi hậu kỳ theo dõi đặt cọc, đào tạo, visa và xuất cảnh cho một ứng tuyển.",
+          })}
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/training-finance" className="inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 no-underline hover:bg-slate-50">
+                {copy({ en: "Back to ledger", vi: "Về sổ tiến độ" })}
+              </Link>
+              {!canManageFinance ? <Badge tone="neutral">{copy({ en: "Read only", vi: "Chỉ xem" })}</Badge> : null}
+            </div>
+          }
+        />
+      ) : null}
 
       <InfoStrip>
         {copy({
@@ -228,7 +238,7 @@ export function TrainingFinanceDetailPage() {
           })}
         >
           <FieldGroup columns={3}>
-            <Input label={copy({ en: "Lead ID", vi: "Mã lead" })} value={form.leadId} disabled={!isNew || !canManageFinance} onChange={(e) => setForm((s) => ({ ...s, leadId: e.target.value }))} />
+            <Input label={copy({ en: "Lead ID", vi: "Mã lead" })} value={form.leadId} disabled={!isNew || !canManageFinance || embedded} onChange={(e) => setForm((s) => ({ ...s, leadId: e.target.value }))} />
             <Select
               label={copy({ en: "Linked application", vi: "Ứng tuyển liên kết" })}
               value={form.applicationId}
@@ -355,7 +365,10 @@ export function TrainingFinanceDetailPage() {
         onConfirm={() => {
           if (!recordId || isNew) return;
           deleteTrainingFinance.mutate(recordId, {
-            onSuccess: () => navigate("/training-finance"),
+            onSuccess: () => {
+              setDeleteOpen(false);
+              if (!embedded) navigate("/training-finance");
+            },
           });
         }}
       />

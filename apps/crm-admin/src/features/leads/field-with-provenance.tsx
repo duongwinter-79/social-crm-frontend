@@ -30,6 +30,10 @@ export interface FieldWithProvenanceProps {
   currentValue: unknown;
   /** Optional click handler — receives suggestion.value to copy into the editor. */
   onApplySuggestion?: (value: unknown) => void;
+  /** Optional reject handler — receives the suggestion's fieldName to dismiss it. */
+  onDismissSuggestion?: (fieldName: string) => void;
+  /** True while a dismiss request is in flight (disables the Reject button). */
+  isDismissing?: boolean;
   /** Optional one-line note shown below the editor (e.g. merge_candidate hint). */
   hint?: ReactNode;
 }
@@ -95,6 +99,17 @@ export function FieldWithProvenance(props: FieldWithProvenanceProps) {
                 onClick={() => props.onApplySuggestion?.(sug.value)}
               >
                 {copy({ en: "Apply", vi: "Áp dụng" })}
+              </button>
+            ) : null}
+            {props.onDismissSuggestion ? (
+              <button
+                type="button"
+                disabled={props.isDismissing}
+                className="ml-2 text-rose-500 underline hover:text-rose-600 disabled:opacity-40"
+                onClick={() => props.onDismissSuggestion?.(sug.fieldName)}
+                title={copy({ en: "Reject this suggestion so it stops showing", vi: "Từ chối gợi ý để không hiển thị lại" })}
+              >
+                {copy({ en: "Reject", vi: "Từ chối" })}
               </button>
             ) : null}
           </span>

@@ -12,6 +12,9 @@ interface Props {
     qualification: LeadQualificationSnapshot | undefined;
     onVerifyAll: (patch: Record<string, unknown>) => void;
     onRerunExtraction: (scanMode: ScanMode) => void;
+    /** Reject/dismiss the active suggestion for a field so it stops resurfacing. */
+    onDismissSuggestion?: (fieldName: string) => void;
+    isDismissing?: boolean;
     isVerifyAllPending: boolean;
     isRerunPending: boolean;
     extractionStatus: BackgroundExtractionStatus;
@@ -468,7 +471,9 @@ function FieldRow({
     formatFieldLabel,
     formatFieldValue,
     formatConfidence,
-    formatExtractionSource
+    formatExtractionSource,
+    onDismiss,
+    isDismissing
 }: {
     row: RowState;
     verified: Record<string, unknown>;
@@ -477,6 +482,8 @@ function FieldRow({
     formatFieldValue: (key: string, value: unknown) => string;
     formatConfidence: (value: string) => string;
     formatExtractionSource: (value: string) => string;
+    onDismiss?: (fieldName: string) => void;
+    isDismissing?: boolean;
 }) {
     const suggestion = row.suggestion;
     const verifiedValue = row.isVerified ? verified[row.fieldName] : undefined;
@@ -543,6 +550,19 @@ function FieldRow({
                         {suggestion.reason.startsWith("merge_candidate:")
                             ? copy({ en: "Merge required", vi: "Cần gộp ứng viên" })
                             : suggestion.reason}
+                    </div>
+                ) : null}
+                {suggestion && !row.isVerified && onDismiss ? (
+                    <div className="pt-1">
+                        <button
+                            type="button"
+                            disabled={isDismissing}
+                            className="text-rose-500 underline hover:text-rose-600 disabled:opacity-40"
+                            onClick={() => onDismiss(row.fieldName)}
+                            title={copy({ en: "Reject this suggestion so it stops showing", vi: "Từ chối gợi ý để không hiển thị lại" })}
+                        >
+                            {copy({ en: "Reject", vi: "Từ chối" })}
+                        </button>
                     </div>
                 ) : null}
             </div>
@@ -873,6 +893,8 @@ export function LeadAiSnapshotCard(props: Props) {
                                             formatFieldValue={formatFieldValue}
                                             formatConfidence={formatConfidence}
                                             formatExtractionSource={formatExtractionSource}
+                                            onDismiss={props.onDismissSuggestion}
+                                            isDismissing={props.isDismissing}
                                         />
                                     ))}
                                 </div>
