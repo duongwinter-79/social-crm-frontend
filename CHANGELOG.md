@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-06-01
+
+### UI text overrides
+
+- added a controlled UI text override layer for approved CRM admin strings: frontend registry, runtime provider, API hooks, and an Admin -> UI Text editor
+- added session-local preview mode so admins can stage draft text, open affected screens, and exit preview before saving
+- moved the editor to a dedicated admin-protected `/ui-text-overrides` screen and added a navigation tile from `/admin`
+- polished the UI Text editor with clearer Vietnamese copy and route-based screen labels instead of technical component names
+- corrected the default Vietnamese text for UI override registry keys and dashboard workflow fallbacks
+- wired initial editable keys for app-shell navigation, selected Journey board labels, and dossier titles
+- documented how to register new editable keys in `docs/UI_TEXT_OVERRIDES.md`
+
 ## 2026-05-30
 
 ### Journey consolidation

@@ -13,6 +13,7 @@ import {
 import { usePipelineQuery } from "@social-crm/api";
 import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { useUiText } from "@/ui-text/ui-text-provider";
 import {
   currentPhaseKey,
   derivePhases,
@@ -106,11 +107,12 @@ function JourneyRow(props: {
   row: PipelineRow;
   phases: JourneyPhase[];
   copy: (value: { en: string; vi: string }) => string;
+  text: (key: string) => string;
   formatPipelineStage: (value: string) => string;
   formatPipelineNextAction: (value: string) => string;
   formatPipelineBlocker: (value: string) => string;
 }) {
-  const { row, phases, copy, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = props;
+  const { row, phases, copy, text, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = props;
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -144,7 +146,7 @@ function JourneyRow(props: {
             to={`/journey/${row.leadId}`}
             className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
           >
-            {copy({ en: "Open journey", vi: "Mở hành trình" })}
+            {text("journey.board.open.button")}
           </Link>
         </div>
       </div>
@@ -167,6 +169,7 @@ function JourneyRow(props: {
 
 export function JourneyPage() {
   const { copy, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = useI18n();
+  const { text } = useUiText();
   const [filters, setFilters] = useState({ stage: "", search: "" });
   const [phaseFilter, setPhaseFilter] = useState<PhaseKey | "">("");
   const [page, setPage] = useState(0);
@@ -215,7 +218,7 @@ export function JourneyPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Journey", vi: "Hành trình" })}
-        title={copy({ en: "Candidate journey board", vi: "Bảng hành trình ứng viên" })}
+        title={text("journey.board.title")}
         description={copy({
           en: "One continuous view of every candidate from form intake through dossier, application, training & finance, and departure — no module hopping.",
           vi: "Một góc nhìn liền mạch cho từng ứng viên: từ nhận form, hồ sơ, ứng tuyển, đào tạo & tài chính đến xuất cảnh — không cần nhảy qua nhiều màn hình.",
@@ -292,7 +295,7 @@ export function JourneyPage() {
       </div>
 
       <Panel
-        title={copy({ en: "Cohort", vi: "Danh sách ứng viên" })}
+        title={text("journey.board.cohort.title")}
         subtitle={copy({
           en: "Sorted by the active pipeline page. Open any candidate to act on their current phase.",
           vi: "Theo trang hiện tại của quy trình. Mở ứng viên để xử lý ngay giai đoạn họ đang ở.",
@@ -306,6 +309,7 @@ export function JourneyPage() {
                 row={row}
                 phases={phases}
                 copy={copy}
+                text={text}
                 formatPipelineStage={formatPipelineStage}
                 formatPipelineNextAction={formatPipelineNextAction}
                 formatPipelineBlocker={formatPipelineBlocker}

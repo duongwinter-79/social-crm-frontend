@@ -76,14 +76,14 @@ function linkForRow(row: PipelineRow) {
 
 function translateNextAction(action: string, copy: (value: { en: string; vi: string }) => string) {
   const actions: Record<string, { en: string; vi: string }> = {
-    "Promote lead to candidate": { en: "Promote lead to candidate", vi: "Tao ho so ung vien" },
-    "Create application": { en: "Create application", vi: "Tao ung tuyen" },
-    "Complete required documents": { en: "Complete required documents", vi: "Hoan tat ho so bat buoc" },
-    "Create training-finance record": { en: "Create training-finance record", vi: "Tao ban ghi dao tao/tai chinh" },
-    "Advance visa readiness": { en: "Advance visa readiness", vi: "Cap nhat san sang visa" },
-    "Schedule departure": { en: "Schedule departure", vi: "Len lich xuat canh" },
-    "Monitor departure completion": { en: "Monitor departure completion", vi: "Theo doi xuat canh" },
-    "Continue qualification": { en: "Continue qualification", vi: "Tiep tuc danh gia" },
+    "Promote lead to candidate": { en: "Promote lead to candidate", vi: "Tạo hồ sơ ứng viên" },
+    "Create application": { en: "Create application", vi: "Tạo ứng tuyển" },
+    "Complete required documents": { en: "Complete required documents", vi: "Hoàn tất hồ sơ bắt buộc" },
+    "Create training-finance record": { en: "Create training-finance record", vi: "Tạo bản ghi đào tạo/tài chính" },
+    "Advance visa readiness": { en: "Advance visa readiness", vi: "Cập nhật trạng thái sẵn sàng visa" },
+    "Schedule departure": { en: "Schedule departure", vi: "Lên lịch xuất cảnh" },
+    "Monitor departure completion": { en: "Monitor departure completion", vi: "Theo dõi xuất cảnh" },
+    "Continue qualification": { en: "Continue qualification", vi: "Tiếp tục đánh giá" },
   };
   return actions[action] ? copy(actions[action]) : action;
 }
@@ -95,19 +95,19 @@ function translateBlocker(
   formatApplicationStatus: (value: string) => string,
 ) {
   if (blocker === "Candidate record missing") {
-    return copy({ en: "Candidate record missing", vi: "Chua co ho so ung vien" });
+    return copy({ en: "Candidate record missing", vi: "Chưa có hồ sơ ứng viên" });
   }
   if (blocker.startsWith("Missing docs: ")) {
     const docs = blocker.replace("Missing docs: ", "").split(", ").map(formatDocumentType).join(", ");
-    return copy({ en: `Missing docs: ${docs}`, vi: `Thieu ho so: ${docs}` });
+    return copy({ en: `Missing docs: ${docs}`, vi: `Thiếu hồ sơ: ${docs}` });
   }
   if (blocker.startsWith("Expired docs: ")) {
     const docs = blocker.replace("Expired docs: ", "").split(", ").map(formatDocumentType).join(", ");
-    return copy({ en: `Expired docs: ${docs}`, vi: `Ho so het han: ${docs}` });
+    return copy({ en: `Expired docs: ${docs}`, vi: `Hồ sơ hết hạn: ${docs}` });
   }
   if (blocker.startsWith("Application outcome: ")) {
     const status = blocker.replace("Application outcome: ", "");
-    return copy({ en: `Application outcome: ${formatApplicationStatus(status)}`, vi: `Ket qua ung tuyen: ${formatApplicationStatus(status)}` });
+    return copy({ en: `Application outcome: ${formatApplicationStatus(status)}`, vi: `Kết quả ứng tuyển: ${formatApplicationStatus(status)}` });
   }
   return blocker;
 }

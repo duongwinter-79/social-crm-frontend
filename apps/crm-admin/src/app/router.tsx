@@ -4,6 +4,7 @@ import { Badge, ShellFrame } from "@social-crm/ui";
 import { apiClient, startSessionLifecycle, useHealthQuery, useSessionStore } from "@social-crm/api";
 import { LoginPage } from "@/features/auth/login-page";
 import { useI18n } from "@/i18n";
+import { useUiText } from "@/ui-text/ui-text-provider";
 import "./admin-shell.css";
 
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
@@ -17,6 +18,7 @@ const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) =
 const OrderDetailPage = lazy(() => import("@/features/orders/order-detail-page").then((m) => ({ default: m.OrderDetailPage })));
 const TrainingFinanceDetailPage = lazy(() => import("@/features/training-finance/training-finance-detail-page").then((m) => ({ default: m.TrainingFinanceDetailPage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
+const UiTextOverridesPage = lazy(() => import("@/features/admin/ui-text-overrides-page").then((m) => ({ default: m.UiTextOverridesPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
 const ExtractPage = lazy(() => import("@/features/imports/extract-page").then((m) => ({ default: m.ExtractPage })));
 
@@ -39,6 +41,8 @@ type NavItem = {
   icon: IconName;
   label: { en: string; vi: string };
   hint: { en: string; vi: string };
+  labelKey?: string;
+  hintKey?: string;
 };
 
 const navItems: NavItem[] = [
@@ -89,15 +93,24 @@ function NavIcon(props: { name: IconName }) {
   }
 }
 
-function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: { en: string; vi: string }) => string }) {
+const navTextKeys: Record<string, { label: string; hint: string }> = {
+  "/dashboard": { label: "shell.nav.dashboard.label", hint: "shell.nav.dashboard.hint" },
+  "/leads": { label: "shell.nav.leads.label", hint: "shell.nav.leads.hint" },
+  "/journey": { label: "shell.nav.journey.label", hint: "shell.nav.journey.hint" }
+};
+
+function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: { en: string; vi: string }) => string; text: (key: string) => string }) {
+  const keys = navTextKeys[props.item.to];
+  const label = keys ? props.text(keys.label) : props.copy(props.item.label);
+  const hint = keys ? props.text(keys.hint) : props.copy(props.item.hint);
   return (
     <Link to={props.item.to} className={`admin-shell-navitem ${props.active ? "is-active" : ""}`}>
       <span className="admin-shell-navicon" aria-hidden="true">
         <NavIcon name={props.item.icon} />
       </span>
       <span className="admin-shell-navcopy">
-        <span className="admin-shell-navtitle">{props.copy(props.item.label)}</span>
-        <span className="admin-shell-navhint">{props.copy(props.item.hint)}</span>
+        <span className="admin-shell-navtitle">{label}</span>
+        <span className="admin-shell-navhint">{hint}</span>
       </span>
     </Link>
   );
@@ -108,6 +121,7 @@ function titleForPath(pathname: string, copy: (value: { en: string; vi: string }
   if (pathname === "/journey") return copy({ en: "Journey", vi: "Hành trình ứng viên" });
   if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
+  if (pathname === "/ui-text-overrides") return copy({ en: "UI text overrides", vi: "Tùy chỉnh chữ hiển thị" });
   if (pathname === "/applications/detail") return copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" });
   if (pathname.match(/^\/applications\/[^/]+\/edit$/)) return copy({ en: "Form editor", vi: "Chỉnh sửa hồ sơ ứng tuyển" });
   return navItems.find((item) => pathname === item.to)?.label
@@ -120,6 +134,7 @@ function ProtectedLayout() {
   const { user } = useSessionStore();
   const health = useHealthQuery();
   const { lang, setLang, copy } = useI18n();
+  const { text, previewOverrides, isPreviewing, clearPreview } = useUiText();
   const pageTitle = titleForPath(location.pathname, copy);
   const visibleNavItems = navItems.filter((item) => {
     if (item.to === "/admin" || item.to === "/import" || item.to === "/extract") {
@@ -176,6 +191,7 @@ function ProtectedLayout() {
                   item={item}
                   active={location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)}
                   copy={copy}
+                  text={text}
                 />
               ))}
             </nav>
@@ -271,6 +287,18 @@ function ProtectedLayout() {
                 })}
               </strong>
             </div>
+            {isPreviewing ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <span>
+                  {copy({ en: "UI text preview is active.", vi: "Đang xem thử nội dung giao diện." })}{" "}
+                  <strong>{Object.keys(previewOverrides).length}</strong>{" "}
+                  {copy({ en: "draft override(s) are visible only in this browser session.", vi: "bản nháp chỉ hiển thị trong phiên trình duyệt này." })}
+                </span>
+                <button type="button" className="font-semibold text-amber-900 underline decoration-amber-400 underline-offset-4" onClick={clearPreview}>
+                  {copy({ en: "Exit preview", vi: "Thoát xem thử" })}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       }
@@ -374,6 +402,7 @@ export function AppRouter() {
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
+        <Route path="/ui-text-overrides" element={<RequireAdmin><LazyRoute><UiTextOverridesPage /></LazyRoute></RequireAdmin>} />
       </Route>
     </Routes>
   );
