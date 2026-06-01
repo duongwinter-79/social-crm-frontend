@@ -5,6 +5,7 @@ import { apiClient, startSessionLifecycle, useHealthQuery, useSessionStore } fro
 import { LoginPage } from "@/features/auth/login-page";
 import { useI18n } from "@/i18n";
 import { useUiText } from "@/ui-text/ui-text-provider";
+import { UiTextInlineEditor } from "@/ui-text/ui-text-inline-editor";
 import "./admin-shell.css";
 
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
@@ -134,8 +135,18 @@ function ProtectedLayout() {
   const { user } = useSessionStore();
   const health = useHealthQuery();
   const { lang, setLang, copy } = useI18n();
-  const { text, previewOverrides, isPreviewing, clearPreview } = useUiText();
+  const { text, previewOverrides, isPreviewing, clearPreview, isEditMode, setEditMode } = useUiText();
+  const isAdmin = Boolean(user?.roles?.includes("admin"));
   const pageTitle = titleForPath(location.pathname, copy);
+
+  useEffect(() => {
+    if (isEditMode && isAdmin) {
+      document.body.setAttribute("data-uitext-editing", "");
+    } else {
+      document.body.removeAttribute("data-uitext-editing");
+    }
+    return () => document.body.removeAttribute("data-uitext-editing");
+  }, [isEditMode, isAdmin]);
   const visibleNavItems = navItems.filter((item) => {
     if (item.to === "/admin" || item.to === "/import" || item.to === "/extract") {
       return user?.roles?.includes("admin");
@@ -258,6 +269,23 @@ function ProtectedLayout() {
                 <h1 className="admin-shell-header-title">{pageTitle}</h1>
               </div>
               <div className="admin-shell-header-meta">
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                      isEditMode
+                        ? "border-amber-300 bg-amber-50 text-amber-800"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                    }`}
+                    onClick={() => setEditMode(!isEditMode)}
+                    aria-pressed={isEditMode}
+                  >
+                    <span aria-hidden="true">✎</span>
+                    {isEditMode
+                      ? copy({ en: "Editing text", vi: "Đang sửa chữ" })
+                      : copy({ en: "Edit text", vi: "Sửa chữ" })}
+                  </button>
+                ) : null}
                 <div className="admin-shell-lang-toggle" role="group" aria-label={copy({ en: "Language", vi: "Ngôn ngữ" })}>
                   <button type="button" className={`admin-shell-lang-button ${lang === "en" ? "is-active" : ""}`} onClick={() => setLang("en")}>
                     EN
@@ -304,6 +332,7 @@ function ProtectedLayout() {
       }
     >
       <Outlet />
+      {isAdmin ? <UiTextInlineEditor /> : null}
     </ShellFrame>
   );
 }

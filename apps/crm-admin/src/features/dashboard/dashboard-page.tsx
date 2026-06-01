@@ -4,6 +4,7 @@ import { Badge, EmptyState, Panel, SectionHeader } from "@social-crm/ui";
 import { useDashboardStatsQuery, usePipelineQuery } from "@social-crm/api";
 import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import "./dashboard-page.css";
 
@@ -245,7 +246,7 @@ export function DashboardPage() {
       <div className="dashboard-grid">
         <Panel
           className="dashboard-module"
-          title={<span className="dashboard-panel-title">{copy({ en: "Role queues", vi: "Hàng đợi theo vai trò" })}</span>}
+          title={<span className="dashboard-panel-title"><UiText id="dashboard.role-queues.title" /></span>}
           subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Based on the visible pipeline rows and their blockers.", vi: "Dựa trên các hồ sơ pipeline đang hiển thị và điểm nghẽn của chúng." })}</span>}
         >
           <div className="dashboard-role-list">
@@ -263,7 +264,7 @@ export function DashboardPage() {
 
         <Panel
           className="dashboard-module"
-          title={<span className="dashboard-panel-title">{copy({ en: "Application health", vi: "Sức khoẻ ứng tuyển" })}</span>}
+          title={<span className="dashboard-panel-title"><UiText id="dashboard.application-health.title" /></span>}
           subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Global application status grouped into active, ready, and closed work.", vi: "Trạng thái ứng tuyển toàn hệ thống được gom theo đang xử lý, sẵn sàng và đã đóng." })}</span>}
         >
           {applicationChart.length ? (
@@ -296,7 +297,7 @@ export function DashboardPage() {
       <div className="dashboard-lower-grid">
         <Panel
           className="dashboard-module"
-          title={<span className="dashboard-panel-title">{copy({ en: "Pipeline distribution", vi: "Phân bổ pipeline" })}</span>}
+          title={<span className="dashboard-panel-title"><UiText id="dashboard.pipeline-distribution.title" /></span>}
           subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Global lead statuses from the backend aggregate.", vi: "Trạng thái lead toàn hệ thống từ thống kê backend." })}</span>}
         >
           {leadStatus && Object.keys(leadStatus).length ? (
@@ -318,7 +319,7 @@ export function DashboardPage() {
 
         <Panel
           className="dashboard-module"
-          title={<span className="dashboard-panel-title">{copy({ en: "Document status", vi: "Trạng thái hồ sơ" })}</span>}
+          title={<span className="dashboard-panel-title"><UiText id="dashboard.document-status.title" /></span>}
           subtitle={<span className="dashboard-panel-subtitle">{copy({ en: "Global document status counts, including computed expired documents.", vi: "Số lượng hồ sơ toàn hệ thống, bao gồm hồ sơ hết hạn được tính tự động." })}</span>}
         >
           {documentStatus && Object.keys(documentStatus).length ? (

@@ -14,6 +14,7 @@ import { usePipelineQuery } from "@social-crm/api";
 import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import { useUiText } from "@/ui-text/ui-text-provider";
+import { UiText } from "@/ui-text/ui-text";
 import {
   currentPhaseKey,
   derivePhases,
@@ -146,7 +147,7 @@ function JourneyRow(props: {
             to={`/journey/${row.leadId}`}
             className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
           >
-            {text("journey.board.open.button")}
+            <UiText id="journey.board.open.button" />
           </Link>
         </div>
       </div>
@@ -295,7 +296,7 @@ export function JourneyPage() {
       </div>
 
       <Panel
-        title={text("journey.board.cohort.title")}
+        title={<UiText id="journey.board.cohort.title" />}
         subtitle={copy({
           en: "Sorted by the active pipeline page. Open any candidate to act on their current phase.",
           vi: "Theo trang hiện tại của quy trình. Mở ứng viên để xử lý ngay giai đoạn họ đang ở.",

@@ -12,6 +12,7 @@ import { useCandidateByLeadQuery, useLeadDetailQuery } from "@social-crm/api";
 import { getLeadDisplayName, getLeadFullNameLabel } from "@/lib/lead-display";
 import { useI18n } from "@/i18n";
 import { useUiText } from "@/ui-text/ui-text-provider";
+import { UiText } from "@/ui-text/ui-text";
 import { CandidateDossierPanel } from "./candidate-dossier-panel";
 import { ApplicationContextNav } from "../applications/application-context-nav";
 
@@ -35,7 +36,7 @@ export function CandidateDossierPage() {
 
   if (!lead && leadQuery.isLoading) {
     return (
-      <Panel title={text("candidate.dossier.title")}>
+      <Panel title={<UiText id="candidate.dossier.title" />}>
         <div className="text-sm text-slate-500">{copy({ en: "Loading dossier...", vi: "Đang tải hồ sơ..." })}</div>
       </Panel>
     );
@@ -43,7 +44,7 @@ export function CandidateDossierPage() {
 
   if (!lead) {
     return (
-      <Panel title={text("candidate.dossier.title")}>
+      <Panel title={<UiText id="candidate.dossier.title" />}>
         <EmptyState
           title={copy({ en: "Lead not loaded", vi: "Chưa tải được lead" })}
           description={copy({ en: "The selected lead could not be loaded from the backend.", vi: "Không tải được hồ sơ đã chọn từ API." })}
@@ -110,7 +111,7 @@ export function CandidateDossierPage() {
       {candidate?.profile ? (
         <CandidateDossierPanel profile={candidate.profile} />
       ) : (
-        <Panel title={text("candidate.dossier.title")}>
+        <Panel title={<UiText id="candidate.dossier.title" />}>
           <EmptyState
             title={copy({ en: "No verified form dossier yet", vi: "Chưa có hồ sơ form đã xác minh" })}
             description={copy({

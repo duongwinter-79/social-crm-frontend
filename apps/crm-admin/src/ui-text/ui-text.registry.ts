@@ -79,6 +79,42 @@ export const uiTextRegistry = [
     description: "Main navigation hint for Journey."
   },
   {
+    key: "dashboard.role-queues.title",
+    namespace: "dashboard",
+    screen: "dashboard",
+    slot: "header",
+    defaultText: { en: "Role queues", vi: "Hàng đợi theo vai trò" },
+    maxLength: 60,
+    description: "Dashboard panel title for the per-role work queues."
+  },
+  {
+    key: "dashboard.application-health.title",
+    namespace: "dashboard",
+    screen: "dashboard",
+    slot: "header",
+    defaultText: { en: "Application health", vi: "Sức khoẻ ứng tuyển" },
+    maxLength: 60,
+    description: "Dashboard panel title for application status health."
+  },
+  {
+    key: "dashboard.pipeline-distribution.title",
+    namespace: "dashboard",
+    screen: "dashboard",
+    slot: "header",
+    defaultText: { en: "Pipeline distribution", vi: "Phân bổ pipeline" },
+    maxLength: 60,
+    description: "Dashboard panel title for the pipeline status distribution."
+  },
+  {
+    key: "dashboard.document-status.title",
+    namespace: "dashboard",
+    screen: "dashboard",
+    slot: "header",
+    defaultText: { en: "Document status", vi: "Trạng thái hồ sơ" },
+    maxLength: 60,
+    description: "Dashboard panel title for document status counts."
+  },
+  {
     key: "journey.board.title",
     namespace: "journey",
     screen: "journey-board",
@@ -125,7 +161,7 @@ export const uiTextRegistry = [
   }
 ] satisfies UiTextEntry[];
 
-export const uiTextByKey = new Map(uiTextRegistry.map((entry) => [entry.key, entry]));
+export const uiTextByKey = new Map<string, UiTextEntry>(uiTextRegistry.map((entry) => [entry.key, entry]));
 
 export const uiTextScreens = Array.from(new Set(uiTextRegistry.map((entry) => entry.screen))).sort();
 export const uiTextSlots = Array.from(new Set(uiTextRegistry.map((entry) => entry.slot))).sort();

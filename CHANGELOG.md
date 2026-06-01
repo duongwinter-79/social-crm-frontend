@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-06-02
+
+### UI text — in-context editing (v2)
+
+- added an admin-only **Edit text** mode (header toggle) that turns editable copy into clickable, highlighted spans on the real CRM screens, replacing the table-only editor as the primary surface
+- added `<UiText id="…">` as the editable render seam: renders a bare string in normal mode (zero wrapper / no layout shift), a highlighted gear-affordanced span in edit mode
+- added an anchored inline editor popover with EN/VI fields, a live word-level diff vs the code default, length + required-`{variable}` guards, and Preview / Save / Reset wired to the existing override mutations
+- added edit-mode highlight states: amber = unsaved draft, indigo = saved override, rose = stale/unknown key
+- extended `UiTextProvider` with `isEditMode`, `activeEditKey`/anchor, `openEditor`/`closeEditor`, and `statusFor` (session-persisted)
+- converted the first in-context nodes: Journey board "Open journey" button + cohort title, candidate dossier titles, lead workbench dossier title (string-prop usages like `SectionHeader` eyebrow stay on `text()`)
+- added a word-level diff utility with unit tests (word-boundary diff avoids Vietnamese diacritic noise)
+
 ## 2026-06-01
 
 ### UI text overrides

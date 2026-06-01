@@ -20,6 +20,8 @@ export type UiTextPreviewOverride = {
   isActive: boolean;
 };
 
+export type UiTextStatus = "default" | "overridden" | "preview" | "unknown";
+
 type UiTextContextValue = {
   text: (key: string, values?: UiTextValues) => string;
   overrides: Record<string, UiTextRuntimeOverride>;
@@ -30,10 +32,19 @@ type UiTextContextValue = {
   setPreviewOverride: (override: UiTextPreviewOverride) => void;
   clearPreviewOverride: (key: string) => void;
   clearPreview: () => void;
+  // In-context editing (v2)
+  isEditMode: boolean;
+  setEditMode: (on: boolean) => void;
+  activeEditKey: string | null;
+  activeEditAnchor: HTMLElement | null;
+  openEditor: (key: string, anchor?: HTMLElement | null) => void;
+  closeEditor: () => void;
+  statusFor: (key: string) => UiTextStatus;
 };
 
 const UiTextContext = createContext<UiTextContextValue | null>(null);
 const PREVIEW_STORAGE_KEY = "crm-admin-ui-text-preview";
+const EDIT_MODE_STORAGE_KEY = "crm-admin-ui-text-edit-mode";
 
 function interpolate(template: string, values: UiTextValues = {}) {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? `{${key}}`));
@@ -56,6 +67,11 @@ function getStoredPreviewOverrides(): Record<string, UiTextPreviewOverride> {
   }
 }
 
+function getStoredEditMode(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.sessionStorage.getItem(EDIT_MODE_STORAGE_KEY) === "1";
+}
+
 function resolvePreviewOverride(override: UiTextPreviewOverride | undefined, lang: Lang) {
   if (!override) return undefined;
   if (!override.isActive) return null;
@@ -69,6 +85,9 @@ export function UiTextProvider(props: PropsWithChildren) {
   const [overrides, setOverrides] = useState<Record<string, UiTextRuntimeOverride>>({});
   const [previewOverrides, setPreviewOverrides] = useState<Record<string, UiTextPreviewOverride>>(getStoredPreviewOverrides);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState<boolean>(getStoredEditMode);
+  const [activeEditKey, setActiveEditKey] = useState<string | null>(null);
+  const [activeEditAnchor, setActiveEditAnchor] = useState<HTMLElement | null>(null);
 
   const reload = useCallback(async () => {
     setIsLoading(true);
@@ -86,10 +105,20 @@ export function UiTextProvider(props: PropsWithChildren) {
     if (!accessToken) {
       setOverrides({});
       setPreviewOverrides({});
+      setIsEditMode(false);
+      setActiveEditKey(null);
       return;
     }
     void reload();
   }, [accessToken, reload]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      window.sessionStorage.setItem(EDIT_MODE_STORAGE_KEY, "1");
+    } else {
+      window.sessionStorage.removeItem(EDIT_MODE_STORAGE_KEY);
+    }
+  }, [isEditMode]);
 
   useEffect(() => {
     if (Object.keys(previewOverrides).length === 0) {
@@ -126,6 +155,27 @@ export function UiTextProvider(props: PropsWithChildren) {
       });
     };
     const clearPreview = () => setPreviewOverrides({});
+    const setEditMode = (on: boolean) => {
+      setIsEditMode(on);
+      if (!on) {
+        setActiveEditKey(null);
+        setActiveEditAnchor(null);
+      }
+    };
+    const openEditor = (key: string, anchor?: HTMLElement | null) => {
+      setActiveEditKey(key);
+      setActiveEditAnchor(anchor ?? null);
+    };
+    const closeEditor = () => {
+      setActiveEditKey(null);
+      setActiveEditAnchor(null);
+    };
+    const statusFor = (key: string): UiTextStatus => {
+      if (!uiTextByKey.has(key)) return "unknown";
+      if (previewOverrides[key]) return "preview";
+      if (resolveOverride(overrides[key], lang)) return "overridden";
+      return "default";
+    };
     return {
       text,
       overrides,
@@ -135,9 +185,16 @@ export function UiTextProvider(props: PropsWithChildren) {
       reload,
       setPreviewOverride,
       clearPreviewOverride,
-      clearPreview
+      clearPreview,
+      isEditMode,
+      setEditMode,
+      activeEditKey,
+      activeEditAnchor,
+      openEditor,
+      closeEditor,
+      statusFor
     };
-  }, [isLoading, lang, overrides, previewOverrides, reload]);
+  }, [activeEditAnchor, activeEditKey, isEditMode, isLoading, lang, overrides, previewOverrides, reload]);
 
   return <UiTextContext.Provider value={value}>{props.children}</UiTextContext.Provider>;
 }

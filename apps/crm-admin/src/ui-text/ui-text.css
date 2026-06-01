@@ -1,0 +1,96 @@
+/* In-context UI-text editing affordances.
+ *
+ * These styles only apply when the shell sets `data-uitext-editing` on <body>.
+ * In normal mode <UiText> renders a bare string with no wrapper, so none of
+ * this matches and there is zero visual/layout impact for regular users.
+ *
+ * Highlight states are never color-only: each pairs an underline/outline with
+ * a hue so they stay distinguishable for color-blind operators.
+ */
+
+.uitext {
+  /* Wrapper exists only in edit mode; keep it transparent to layout. */
+  position: relative;
+  display: inline;
+  cursor: text;
+  border-radius: 4px;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+body[data-uitext-editing] .uitext {
+  outline-offset: 2px;
+}
+
+/* Default (no override, no draft): recolor the text and give it a tinted
+ * pill the moment edit mode is on, so every editable string is obvious at a
+ * glance — not just an underline. Hover/focus deepens the tint to mark the
+ * active target. */
+body[data-uitext-editing] .uitext.is-default {
+  color: rgb(79 70 229); /* indigo-600 */
+  background-color: rgb(238 242 255); /* indigo-50 */
+  box-shadow: inset 0 0 0 1px rgb(199 210 254); /* indigo-200 ring */
+  padding: 0 3px;
+}
+
+body[data-uitext-editing] .uitext.is-default:hover,
+body[data-uitext-editing] .uitext.is-default:focus-within {
+  color: rgb(67 56 202); /* indigo-700 */
+  background-color: rgb(224 231 255); /* indigo-100 */
+  box-shadow: inset 0 0 0 1px rgb(129 140 248); /* indigo-400 ring */
+}
+
+/* Saved, active override is live on this string — green = "has a saved
+ * custom value", distinct from the indigo "editable default" tint. */
+body[data-uitext-editing] .uitext.is-overridden {
+  color: rgb(4 120 87); /* emerald-700 */
+  background-color: rgb(209 250 229); /* emerald-100 */
+  box-shadow: inset 0 0 0 1px rgb(110 231 183); /* emerald-300 ring */
+  padding: 0 3px;
+}
+
+/* Unsaved draft differs from what is live. */
+body[data-uitext-editing] .uitext.is-preview {
+  background-color: rgb(254 243 199); /* amber-100 */
+  box-shadow: 0 0 0 2px rgb(251 191 36); /* amber-400 */
+}
+
+/* <UiText> key not found in the registry — stale code reference. */
+body[data-uitext-editing] .uitext.is-unknown {
+  box-shadow: 0 0 0 2px rgb(244 63 94); /* rose-500 */
+  text-decoration: underline dotted rgb(244 63 94);
+}
+
+/* Gear trigger sits at the trailing edge; only revealed in edit mode. */
+.uitext-gear {
+  position: absolute;
+  top: -10px;
+  inset-inline-end: -10px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 9999px;
+  border: 1px solid rgb(203 213 225);
+  background: #fff;
+  color: rgb(71 85 105);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  z-index: 5;
+}
+
+body[data-uitext-editing] .uitext:hover > .uitext-gear,
+body[data-uitext-editing] .uitext:focus-within > .uitext-gear {
+  display: inline-flex;
+}
+
+.uitext-gear:hover {
+  border-color: rgb(99 102 241);
+  color: rgb(79 70 229);
+}
+
+.uitext-gear svg {
+  width: 11px;
+  height: 11px;
+}

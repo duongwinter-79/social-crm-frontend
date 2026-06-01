@@ -34,7 +34,7 @@ import { LeadStatusLine } from "./lead-status-line";
 import { CandidateWorkbench } from "@/features/candidate-workbench/candidate-workbench";
 import { DossierModal } from "./dossier-modal";
 import { useI18n } from "../../i18n";
-import { useUiText } from "@/ui-text/ui-text-provider";
+import { UiText } from "@/ui-text/ui-text";
 import { type NavigationReturnState, resolveReturnState } from "@/app/navigation-state";
 import {
   FieldWithProvenance,
@@ -98,7 +98,6 @@ function ReturnNavigation(props: {
 
 export function LeadWorkbenchPage() {
   const { copy, formatLeadStatus, formatEnum, yesNoUnknown } = useI18n();
-  const { text } = useUiText();
   const { leadId = "" } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -774,7 +773,7 @@ export function LeadWorkbenchPage() {
             content: (
               <div className="space-y-6">
                 <Panel
-                  title={text("lead.workbench.dossier.title")}
+                  title={<UiText id="lead.workbench.dossier.title" />}
                   subtitle={copy({
                     en: "Full form-derived candidate data lives on its own page, linked to the verified document record.",
                     vi: "Dữ liệu ứng viên từ form nằm ở trang riêng và liên kết với hồ sơ đã xác minh."
