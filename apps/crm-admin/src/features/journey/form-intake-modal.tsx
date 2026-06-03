@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { ApplicationDetailPage } from "../applications/application-detail-page";
 
 /**
@@ -34,7 +35,7 @@ export function FormIntakeModal(props: { leadId: string; onClose: () => void; on
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-900">
-            {copy({ en: "Form intake", vi: "Nhận form lao động" })}
+            <UiText id="modal.form-intake.title" />
           </h2>
           <button
             type="button"

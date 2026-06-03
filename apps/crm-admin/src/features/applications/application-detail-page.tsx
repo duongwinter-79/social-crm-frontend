@@ -20,6 +20,7 @@ import {
   useCreateLeadMutation,
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import type {
   FormStandardRegisterRow,
   FormStandardStageResult,
@@ -635,14 +636,8 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   function renderEmpty() {
     return (
       <Panel
-        title={copy({
-          en: selectedLeadId ? "Upload application form" : "Upload a form or choose a candidate",
-          vi: selectedLeadId ? "Tải hồ sơ ứng tuyển" : "Tải hồ sơ hoặc chọn ứng viên",
-        })}
-        subtitle={copy({
-          en: "Stage a PDF, DOC, or DOCX, then preview, edit, extract, and link it to the right candidate.",
-          vi: "Lưu tạm PDF, DOC hoặc DOCX, sau đó xem, chỉnh sửa, trích xuất và gắn vào đúng ứng viên.",
-        })}
+        title={selectedLeadId ? <UiText id="appdetail.upload.title.with-lead" /> : <UiText id="appdetail.upload.title.no-lead" />}
+        subtitle={<UiText id="appdetail.upload.subtitle" />}
       >
         <div className="grid gap-5 lg:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)]">
           <div className="border-b border-slate-100 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5">
@@ -783,7 +778,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   function renderStaged() {
     return (
       <Panel
-        title={copy({ en: "Staged file — preview and edit before verifying", vi: "File tạm — xem và chỉnh sửa trước khi xác nhận" })}
+        title={<UiText id="appdetail.staged.title" />}
         subtitle={pending?.originalFilename}
       >
         <div className="space-y-4">
@@ -883,11 +878,8 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
       <div className="flex flex-col gap-6">
         <Panel
           className="order-2"
-          title={copy({ en: "Confirm the dossier fields", vi: "Xác nhận hồ sơ ứng viên" })}
-          subtitle={copy({
-            en: "Per field: keep current value, use form value, or override. Form wins by default when the form has a value. Writes land on the candidate dossier — not the lead.",
-            vi: "Mỗi trường: giữ giá trị hiện tại, dùng giá trị từ form, hoặc nhập mới. Mặc định dùng form khi form có giá trị. Dữ liệu được ghi vào hồ sơ ứng viên — không ghi vào lead.",
-          })}
+          title={<UiText id="appdetail.confirm.title" />}
+          subtitle={<UiText id="appdetail.confirm.subtitle" />}
         >
           <div className="mb-3 flex items-center gap-3 text-sm">
             <button type="button" onClick={resetAllToFormWins} className="text-indigo-600 hover:underline">
@@ -1005,11 +997,11 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
           {!skipSuggestions ? (
             <>
               <Panel
-                title={copy({ en: "Phone match", vi: "Khớp số điện thoại" })}
+                title={<UiText id="appdetail.phone-match.title" />}
                 subtitle={
                   verifyResult.phoneMatch
-                    ? copy({ en: "Found one lead with this phone.", vi: "Tìm thấy ứng viên có cùng SĐT." })
-                    : copy({ en: "No lead matched the extracted phone.", vi: "Không có ứng viên trùng SĐT trích xuất." })
+                    ? <UiText id="appdetail.phone-match.subtitle.found" />
+                    : <UiText id="appdetail.phone-match.subtitle.none" />
                 }
               >
                 {verifyResult.phoneMatch ? (
@@ -1022,8 +1014,8 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
               </Panel>
 
               <Panel
-                title={copy({ en: "Name matches", vi: "Khớp theo tên" })}
-                subtitle={copy({ en: "Up to 10 candidates whose name resembles the extracted name.", vi: "Tối đa 10 ứng viên có tên tương tự." })}
+                title={<UiText id="appdetail.name-matches.title" />}
+                subtitle={<UiText id="appdetail.name-matches.subtitle" />}
               >
                 {verifyResult.nameMatches.length > 0 ? (
                   <ul className="space-y-2">
@@ -1045,11 +1037,8 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
               </Panel>
 
               <Panel
-                title={copy({ en: "Create a new lead", vi: "Tạo ứng viên mới" })}
-                subtitle={copy({
-                  en: "If none of the matches above are right, create a new lead and link the form in one step.",
-                  vi: "Nếu không có ứng viên phù hợp ở trên, tạo ứng viên mới và gắn hồ sơ trong một thao tác.",
-                })}
+                title={<UiText id="appdetail.new-lead.title" />}
+                subtitle={<UiText id="appdetail.new-lead.subtitle" />}
               >
                 <div className="space-y-3">
                   <FieldInput label={copy({ en: "Full name", vi: "Họ và tên" })} value={newLeadFullName} onChange={setNewLeadFullName} />
@@ -1079,11 +1068,8 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
             </>
           ) : (
             <Panel
-              title={copy({ en: "Apply to selected candidate", vi: "Ghi vào ứng viên đã chọn" })}
-              subtitle={copy({
-                en: "The form will be linked to the candidate selected above. Only checked fields will be written.",
-                vi: "Hồ sơ sẽ được gắn với ứng viên đã chọn phía trên. Chỉ các trường được tick mới được ghi.",
-              })}
+              title={<UiText id="appdetail.apply.title" />}
+              subtitle={<UiText id="appdetail.apply.subtitle" />}
             >
               <Button
                 onClick={() => handleConfirmWithExistingLead(selectedLeadId)}
@@ -1167,11 +1153,8 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
           {/* Hand-off to the lead workbench where the operator picks an order
               and clicks Create placement — the manual "ghép đơn" step. */}
           <Panel
-            title={copy({ en: "Replace form", vi: "Thay hồ sơ" })}
-            subtitle={copy({
-              en: "Use this when the uploaded form was wrong or needs correction. The current verified form stays active until the replacement is verified.",
-              vi: "Dùng khi hồ sơ đã tải lên bị sai hoặc cần chỉnh lại. Hồ sơ đã xác nhận hiện tại vẫn còn hiệu lực cho đến khi bản thay thế được xác nhận.",
-            })}
+            title={<UiText id="appdetail.replace.title" />}
+            subtitle={<UiText id="appdetail.replace.subtitle" />}
           >
             {renderUploadZone()}
           </Panel>

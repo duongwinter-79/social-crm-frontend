@@ -151,6 +151,198 @@ export const uiTextRegistry = [
     description: "Main navigation hint for extract."
   },
   {
+    key: "modal.form-intake.title",
+    namespace: "journey",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Form intake", vi: "Nhận form lao động" },
+    maxLength: 50,
+    description: "Form-intake modal header."
+  },
+  {
+    key: "modal.dossier.eyebrow",
+    namespace: "leads",
+    screen: "candidate-dossier",
+    slot: "subtitle",
+    defaultText: { en: "Candidate dossier", vi: "Hồ sơ ứng viên" },
+    maxLength: 50,
+    description: "Dossier modal eyebrow."
+  },
+  {
+    key: "appdetail.upload.title.with-lead",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Upload application form", vi: "Tải hồ sơ ứng tuyển" },
+    maxLength: 70,
+    description: "Form intake upload panel title (lead already selected)."
+  },
+  {
+    key: "appdetail.upload.title.no-lead",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Upload a form or choose a candidate", vi: "Tải hồ sơ hoặc chọn ứng viên" },
+    maxLength: 70,
+    description: "Form intake upload panel title (no lead selected)."
+  },
+  {
+    key: "appdetail.upload.subtitle",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: {
+      en: "Stage a PDF, DOC, or DOCX, then preview, edit, extract, and link it to the right candidate.",
+      vi: "Lưu tạm PDF, DOC hoặc DOCX, sau đó xem, chỉnh sửa, trích xuất và gắn vào đúng ứng viên."
+    },
+    maxLength: 200,
+    description: "Form intake upload panel subtitle."
+  },
+  {
+    key: "appdetail.staged.title",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: {
+      en: "Staged file — preview and edit before verifying",
+      vi: "File tạm — xem và chỉnh sửa trước khi xác nhận"
+    },
+    maxLength: 80,
+    description: "Form intake staged-file panel title."
+  },
+  {
+    key: "appdetail.confirm.title",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Confirm the dossier fields", vi: "Xác nhận hồ sơ ứng viên" },
+    maxLength: 70,
+    description: "Form intake confirm-fields panel title."
+  },
+  {
+    key: "appdetail.confirm.subtitle",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: {
+      en: "Per field: keep current value, use form value, or override. Form wins by default when the form has a value. Writes land on the candidate dossier — not the lead.",
+      vi: "Mỗi trường: giữ giá trị hiện tại, dùng giá trị từ form, hoặc nhập mới. Mặc định dùng form khi form có giá trị. Dữ liệu được ghi vào hồ sơ ứng viên — không ghi vào lead."
+    },
+    maxLength: 260,
+    description: "Form intake confirm-fields panel subtitle."
+  },
+  {
+    key: "appdetail.phone-match.title",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Phone match", vi: "Khớp số điện thoại" },
+    maxLength: 50,
+    description: "Form intake phone-match panel title."
+  },
+  {
+    key: "appdetail.phone-match.subtitle.found",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: { en: "Found one lead with this phone.", vi: "Tìm thấy ứng viên có cùng SĐT." },
+    maxLength: 120,
+    description: "Form intake phone-match subtitle (match found)."
+  },
+  {
+    key: "appdetail.phone-match.subtitle.none",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: { en: "No lead matched the extracted phone.", vi: "Không có ứng viên trùng SĐT trích xuất." },
+    maxLength: 120,
+    description: "Form intake phone-match subtitle (no match)."
+  },
+  {
+    key: "appdetail.name-matches.title",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Name matches", vi: "Khớp theo tên" },
+    maxLength: 50,
+    description: "Form intake name-matches panel title."
+  },
+  {
+    key: "appdetail.name-matches.subtitle",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: {
+      en: "Up to 10 candidates whose name resembles the extracted name.",
+      vi: "Tối đa 10 ứng viên có tên tương tự."
+    },
+    maxLength: 140,
+    description: "Form intake name-matches panel subtitle."
+  },
+  {
+    key: "appdetail.new-lead.title",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Create a new lead", vi: "Tạo ứng viên mới" },
+    maxLength: 50,
+    description: "Form intake create-new-lead panel title."
+  },
+  {
+    key: "appdetail.new-lead.subtitle",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: {
+      en: "If none of the matches above are right, create a new lead and link the form in one step.",
+      vi: "Nếu không có ứng viên phù hợp ở trên, tạo ứng viên mới và gắn hồ sơ trong một thao tác."
+    },
+    maxLength: 180,
+    description: "Form intake create-new-lead panel subtitle."
+  },
+  {
+    key: "appdetail.apply.title",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Apply to selected candidate", vi: "Ghi vào ứng viên đã chọn" },
+    maxLength: 60,
+    description: "Form intake apply-to-candidate panel title."
+  },
+  {
+    key: "appdetail.apply.subtitle",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: {
+      en: "The form will be linked to the candidate selected above. Only checked fields will be written.",
+      vi: "Hồ sơ sẽ được gắn với ứng viên đã chọn phía trên. Chỉ các trường được tick mới được ghi."
+    },
+    maxLength: 180,
+    description: "Form intake apply-to-candidate panel subtitle."
+  },
+  {
+    key: "appdetail.replace.title",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "header",
+    defaultText: { en: "Replace form", vi: "Thay hồ sơ" },
+    maxLength: 50,
+    description: "Form intake replace-form panel title."
+  },
+  {
+    key: "appdetail.replace.subtitle",
+    namespace: "applications",
+    screen: "form-intake",
+    slot: "subtitle",
+    defaultText: {
+      en: "Use this when the uploaded form was wrong or needs correction. The current verified form stays active until the replacement is verified.",
+      vi: "Dùng khi hồ sơ đã tải lên bị sai hoặc cần chỉnh lại. Hồ sơ đã xác nhận hiện tại vẫn còn hiệu lực cho đến khi bản thay thế được xác nhận."
+    },
+    maxLength: 240,
+    description: "Form intake replace-form panel subtitle."
+  },
+  {
     key: "import.eyebrow",
     namespace: "import",
     screen: "import",

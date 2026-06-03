@@ -16,7 +16,8 @@
 - made all primary sidebar nav labels + hints in-context editable (Dashboard, Leads, Conversations, Journey, Orders, Import, Extract)
 - widened `EmptyState` `title`/`description` to `ReactNode`
 - fully converted the Journey workbench as a template: panel title, form Manage/Upload buttons, View dossier, Close, both phase helper texts, the candidate-not-found empty state, and the workbench links — leaving data-bound values, dynamic counts, phase-nav labels, and `aria-label`s on `copy()` by design
-- expanded structural-text coverage across Conversations, Order detail, Orders list, Training-Finance detail, Leads inbox, and the full Lead workbench (page titles/eyebrows/descriptions, panel titles + subtitles, helper texts, empty/loading states) — registry now ~100 editable keys
+- expanded structural-text coverage across Conversations, Order detail, Orders list, Training-Finance detail, Leads inbox, and the full Lead workbench (page titles/eyebrows/descriptions, panel titles + subtitles, helper texts, empty/loading states)
+- converted Import + Extract admin screens and the core user-facing modals: form-intake modal header + the full form-intake content (ApplicationDetailPage panels: upload, staged file, confirm fields, phone/name matches, create/apply/replace) and the dossier modal eyebrow — registry now ~137 editable keys (confirmation dialogs intentionally excluded)
 
 ## 2026-06-01
 
