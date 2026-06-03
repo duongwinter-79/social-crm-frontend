@@ -19,6 +19,12 @@
 - expanded structural-text coverage across Conversations, Order detail, Orders list, Training-Finance detail, Leads inbox, and the full Lead workbench (page titles/eyebrows/descriptions, panel titles + subtitles, helper texts, empty/loading states)
 - converted Import + Extract admin screens and the core user-facing modals: form-intake modal header + the full form-intake content (ApplicationDetailPage panels: upload, staged file, confirm fields, phone/name matches, create/apply/replace) and the dossier modal eyebrow — registry now ~137 editable keys (confirmation dialogs intentionally excluded)
 
+### UI text — Phase 2 hardening
+
+- added registry guard tests (run under `npm test`): every `<UiText id>` / `text("key")` referenced in source must exist in the registry; no duplicate keys; non-empty EN+VI defaults; default text within its own maxLength; plus a warning for unreferenced keys
+- added a **Review drafts** sheet (opened from the preview strip) to see every staged draft with a per-language diff and Save all / Discard all in one step
+- repositioned the `/ui-text-overrides` admin page as the bulk "manage all / cleanup" view; in-context "Edit text" is now the primary editing path
+
 ## 2026-06-01
 
 ### UI text overrides

@@ -7,6 +7,7 @@ import { useI18n } from "@/i18n";
 import { useUiText } from "@/ui-text/ui-text-provider";
 import { UiText } from "@/ui-text/ui-text";
 import { UiTextInlineEditor } from "@/ui-text/ui-text-inline-editor";
+import { UiTextReviewDrafts } from "@/ui-text/ui-text-review-drafts";
 import "./admin-shell.css";
 
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
@@ -140,6 +141,7 @@ function ProtectedLayout() {
   const { lang, setLang, copy } = useI18n();
   const { previewOverrides, isPreviewing, clearPreview, isEditMode, setEditMode } = useUiText();
   const isAdmin = Boolean(user?.roles?.includes("admin"));
+  const [reviewOpen, setReviewOpen] = useState(false);
   const pageTitle = titleForPath(location.pathname, copy);
 
   useEffect(() => {
@@ -324,9 +326,14 @@ function ProtectedLayout() {
                   <strong>{Object.keys(previewOverrides).length}</strong>{" "}
                   {copy({ en: "draft override(s) are visible only in this browser session.", vi: "bản nháp chỉ hiển thị trong phiên trình duyệt này." })}
                 </span>
-                <button type="button" className="font-semibold text-amber-900 underline decoration-amber-400 underline-offset-4" onClick={clearPreview}>
-                  {copy({ en: "Exit preview", vi: "Thoát xem thử" })}
-                </button>
+                <span className="flex items-center gap-3">
+                  <button type="button" className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100" onClick={() => setReviewOpen(true)}>
+                    {copy({ en: "Review drafts", vi: "Xem lại bản nháp" })}
+                  </button>
+                  <button type="button" className="font-semibold text-amber-900 underline decoration-amber-400 underline-offset-4" onClick={clearPreview}>
+                    {copy({ en: "Exit preview", vi: "Thoát xem thử" })}
+                  </button>
+                </span>
               </div>
             ) : null}
           </div>
@@ -335,6 +342,7 @@ function ProtectedLayout() {
     >
       <Outlet />
       {isAdmin ? <UiTextInlineEditor /> : null}
+      {isAdmin ? <UiTextReviewDrafts open={reviewOpen} onClose={() => setReviewOpen(false)} /> : null}
     </ShellFrame>
   );
 }

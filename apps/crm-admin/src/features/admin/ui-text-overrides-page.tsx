@@ -10,10 +10,10 @@ export function UiTextOverridesPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Admin tool", vi: "Công cụ quản trị" })}
-        title={copy({ en: "UI text overrides", vi: "Tùy chỉnh chữ hiển thị" })}
+        title={copy({ en: "UI text — manage all", vi: "Chữ hiển thị — quản lý tất cả" })}
         description={copy({
-          en: "Review approved editable text, preview draft wording on the affected CRM screen, then save the override when it is ready.",
-          vi: "Xem các câu chữ được phép chỉnh, xem thử bản nháp trên màn hình CRM liên quan, rồi lưu khi nội dung đã ổn."
+          en: "Bulk view of every editable text key and its saved override. For everyday edits, use the “Edit text” toggle in the header to change wording directly on the screen where it appears.",
+          vi: "Danh sách toàn bộ câu chữ có thể chỉnh và nội dung đã lưu. Để chỉnh hằng ngày, hãy dùng nút “Sửa chữ” trên thanh tiêu đề để sửa ngay trên màn hình có câu chữ đó."
         })}
       />
 
@@ -21,8 +21,8 @@ export function UiTextOverridesPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span>
             {copy({
-              en: "This screen is separate from account administration so copy changes can be reviewed in context.",
-              vi: "Màn hình này được tách khỏi trang tài khoản để việc chỉnh câu chữ được xem xét đúng ngữ cảnh."
+              en: "Use this screen for search, bulk review, and cleaning up unknown/obsolete keys. In-context editing is the primary way to change wording.",
+              vi: "Dùng màn hình này để tìm kiếm, xem hàng loạt và dọn các mã cũ/không xác định. Sửa trực tiếp trên màn hình là cách chính để đổi câu chữ."
             })}
           </span>
           <Link
