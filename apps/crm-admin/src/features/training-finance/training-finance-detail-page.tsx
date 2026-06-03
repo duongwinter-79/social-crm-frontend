@@ -25,6 +25,7 @@ import {
 } from "@social-crm/api";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { getLeadDisplayName } from "@/lib/lead-display";
+import { UiText } from "@/ui-text/ui-text";
 import { useI18n } from "../../i18n";
 
 type MilestoneForm = {
@@ -184,7 +185,7 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
   if (!isNew && detailQuery.isLoading) {
     return (
       <div className="space-y-6">
-        <SectionHeader title={copy({ en: "Loading milestone record", vi: "Đang tải bản ghi tiến độ" })} />
+        <SectionHeader title={<UiText id="tf.detail.loading" />} />
       </div>
     );
   }
@@ -192,11 +193,8 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
   if (!isNew && !detailQuery.data) {
     return (
       <EmptyState
-        title={copy({ en: "Milestone record not found", vi: "Không tìm thấy bản ghi tiến độ" })}
-        description={copy({
-          en: "The record may have been deleted or the backend did not return it.",
-          vi: "Bản ghi có thể đã bị xóa hoặc backend không trả về dữ liệu.",
-        })}
+        title={<UiText id="tf.detail.not-found.title" />}
+        description={<UiText id="tf.detail.not-found.desc" />}
       />
     );
   }
@@ -205,16 +203,13 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
     <div className="space-y-6">
       {!embedded ? (
         <SectionHeader
-          eyebrow={copy({ en: "Training & Finance", vi: "Đào tạo & tài chính" })}
-          title={isNew ? copy({ en: "New milestone record", vi: "Tạo bản ghi tiến độ" }) : copy({ en: "Milestone record detail", vi: "Chi tiết bản ghi tiến độ" })}
-          description={copy({
-            en: "Create or update the downstream record that tracks deposit, training, visa, and departure milestones for an application.",
-            vi: "Tạo hoặc cập nhật bản ghi hậu kỳ theo dõi đặt cọc, đào tạo, visa và xuất cảnh cho một ứng tuyển.",
-          })}
+          eyebrow={<UiText id="tf.detail.eyebrow" />}
+          title={isNew ? <UiText id="tf.detail.new-title" /> : <UiText id="tf.detail.title" />}
+          description={<UiText id="tf.detail.desc" />}
           action={
             <div className="flex flex-wrap items-center gap-2">
               <Link to="/training-finance" className="inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 no-underline hover:bg-slate-50">
-                {copy({ en: "Back to ledger", vi: "Về sổ tiến độ" })}
+                <UiText id="tf.detail.back" />
               </Link>
               {!canManageFinance ? <Badge tone="neutral">{copy({ en: "Read only", vi: "Chỉ xem" })}</Badge> : null}
             </div>
@@ -223,19 +218,13 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
       ) : null}
 
       <InfoStrip>
-        {copy({
-          en: "Best practice: select the linked application first. The order is then inherited from that application to keep downstream records consistent.",
-          vi: "Nên chọn ứng tuyển liên kết trước. Đơn hàng sẽ được lấy theo ứng tuyển đó để giữ dữ liệu hậu kỳ nhất quán.",
-        })}
+        <UiText id="tf.detail.best-practice" />
       </InfoStrip>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Panel
-          title={copy({ en: "Milestone fields", vi: "Thông tin tiến độ" })}
-          subtitle={copy({
-            en: "Finance staff can update live operational milestones. Departure date still requires the linked application to be Ready to depart.",
-            vi: "Nhân sự tài chính cập nhật các mốc vận hành. Ngày xuất cảnh vẫn yêu cầu ứng tuyển liên kết ở trạng thái Sẵn sàng xuất cảnh.",
-          })}
+          title={<UiText id="tf.fields.title" />}
+          subtitle={<UiText id="tf.fields.subtitle" />}
         >
           <FieldGroup columns={3}>
             <Input label={copy({ en: "Lead ID", vi: "Mã lead" })} value={form.leadId} disabled={!isNew || !canManageFinance || embedded} onChange={(e) => setForm((s) => ({ ...s, leadId: e.target.value }))} />
@@ -297,11 +286,8 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
 
         <div className="space-y-6">
           <Panel
-            title={copy({ en: "Linked workflow", vi: "Luồng liên kết" })}
-            subtitle={copy({
-              en: "Shows how this milestone record connects to the parent application.",
-              vi: "Hiển thị cách bản ghi tiến độ liên kết với ứng tuyển cha.",
-            })}
+            title={<UiText id="tf.linked.title" />}
+            subtitle={<UiText id="tf.linked.subtitle" />}
           >
             <div className="space-y-3">
               <InfoCard label={copy({ en: "Lead", vi: "Lead" })} value={selectedLeadName || copy({ en: "Not selected", vi: "Chưa chọn" })} className="bg-slate-50" />

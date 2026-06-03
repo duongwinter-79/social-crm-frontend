@@ -214,6 +214,138 @@ export const uiTextRegistry = [
     description: "Orders page main title."
   },
   {
+    key: "tf.detail.loading",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "header",
+    defaultText: { en: "Loading milestone record", vi: "Đang tải bản ghi tiến độ" },
+    maxLength: 60,
+    description: "Training-finance detail loading-state title."
+  },
+  {
+    key: "tf.detail.not-found.title",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "empty_state",
+    defaultText: { en: "Milestone record not found", vi: "Không tìm thấy bản ghi tiến độ" },
+    maxLength: 60,
+    description: "Training-finance not-found title."
+  },
+  {
+    key: "tf.detail.not-found.desc",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "empty_state",
+    defaultText: {
+      en: "The record may have been deleted or the backend did not return it.",
+      vi: "Bản ghi có thể đã bị xóa hoặc backend không trả về dữ liệu."
+    },
+    maxLength: 160,
+    description: "Training-finance not-found description."
+  },
+  {
+    key: "tf.detail.eyebrow",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "subtitle",
+    defaultText: { en: "Training & Finance", vi: "Đào tạo & tài chính" },
+    maxLength: 50,
+    description: "Training-finance detail eyebrow."
+  },
+  {
+    key: "tf.detail.new-title",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "header",
+    defaultText: { en: "New milestone record", vi: "Tạo bản ghi tiến độ" },
+    maxLength: 60,
+    description: "Training-finance title when creating a record."
+  },
+  {
+    key: "tf.detail.title",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "header",
+    defaultText: { en: "Milestone record detail", vi: "Chi tiết bản ghi tiến độ" },
+    maxLength: 60,
+    description: "Training-finance detail title."
+  },
+  {
+    key: "tf.detail.desc",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "subtitle",
+    defaultText: {
+      en: "Create or update the downstream record that tracks deposit, training, visa, and departure milestones for an application.",
+      vi: "Tạo hoặc cập nhật bản ghi hậu kỳ theo dõi đặt cọc, đào tạo, visa và xuất cảnh cho một ứng tuyển."
+    },
+    maxLength: 220,
+    description: "Training-finance detail description."
+  },
+  {
+    key: "tf.detail.back",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "button",
+    defaultText: { en: "Back to ledger", vi: "Về sổ tiến độ" },
+    maxLength: 40,
+    description: "Training-finance back link."
+  },
+  {
+    key: "tf.detail.best-practice",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "helper",
+    defaultText: {
+      en: "Best practice: select the linked application first. The order is then inherited from that application to keep downstream records consistent.",
+      vi: "Nên chọn ứng tuyển liên kết trước. Đơn hàng sẽ được lấy theo ứng tuyển đó để giữ dữ liệu hậu kỳ nhất quán."
+    },
+    maxLength: 240,
+    description: "Training-finance best-practice info strip."
+  },
+  {
+    key: "tf.fields.title",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "header",
+    defaultText: { en: "Milestone fields", vi: "Thông tin tiến độ" },
+    maxLength: 60,
+    description: "Training-finance milestone-fields panel title."
+  },
+  {
+    key: "tf.fields.subtitle",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "subtitle",
+    defaultText: {
+      en: "Finance staff can update live operational milestones. Departure date still requires the linked application to be Ready to depart.",
+      vi: "Nhân sự tài chính cập nhật các mốc vận hành. Ngày xuất cảnh vẫn yêu cầu ứng tuyển liên kết ở trạng thái Sẵn sàng xuất cảnh."
+    },
+    maxLength: 240,
+    description: "Training-finance milestone-fields panel subtitle."
+  },
+  {
+    key: "tf.linked.title",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "header",
+    defaultText: { en: "Linked workflow", vi: "Luồng liên kết" },
+    maxLength: 60,
+    description: "Training-finance linked-workflow panel title."
+  },
+  {
+    key: "tf.linked.subtitle",
+    namespace: "training-finance",
+    screen: "training-finance",
+    slot: "subtitle",
+    defaultText: {
+      en: "Shows how this milestone record connects to the parent application.",
+      vi: "Hiển thị cách bản ghi tiến độ liên kết với ứng tuyển cha."
+    },
+    maxLength: 160,
+    description: "Training-finance linked-workflow panel subtitle."
+  },
+  {
     key: "orders.detail.loading",
     namespace: "orders",
     screen: "order-detail",
