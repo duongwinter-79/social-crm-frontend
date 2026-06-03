@@ -20,6 +20,7 @@ import { applySearchParamUpdates, readPageIndex, readStringOption, type SearchPa
 import { MessageImageAttachment } from "@/components/message-image-attachment";
 import { RefreshButton } from "@/components/refresh-button";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 
 const PAGE_SIZE = 20;
 const MESSAGE_LIMIT = 50;
@@ -328,11 +329,8 @@ function ConversationDetailPanel(props: {
       {!thread ? (
         <div className="mt-4">
           <EmptyState
-            title={props.copy({ en: "Select a conversation", vi: "Chọn một hội thoại" })}
-            description={props.copy({
-              en: "Conversation detail and messages will appear here.",
-              vi: "Chi tiết hội thoại và tin nhắn sẽ hiển thị tại đây."
-            })}
+            title={<UiText id="conversations.detail.empty.title" />}
+            description={<UiText id="conversations.detail.empty.desc" />}
           />
         </div>
       ) : props.expanded ? (
@@ -446,12 +444,9 @@ export function ConversationsPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Zalo OA operations", vi: "Vận hành Zalo OA" })}
-        title={copy({ en: "Conversation inbox", vi: "Hộp thư hội thoại" })}
-        description={copy({
-          en: "Inspect Zalo threads, recent messages, lead linkage, and extraction status from the CRM database.",
-          vi: "Theo dõi hội thoại Zalo, tin nhắn gần đây, ứng viên liên kết và trạng thái AI trong CRM."
-        })}
+        eyebrow={<UiText id="conversations.inbox.eyebrow" />}
+        title={<UiText id="conversations.inbox.title" />}
+        description={<UiText id="conversations.inbox.desc" />}
       />
 
       <FieldGroup columns={4}>
@@ -519,11 +514,8 @@ export function ConversationsPage() {
 
       <div className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
         <Panel
-          title={copy({ en: "Thread queue", vi: "Danh sách hội thoại" })}
-          subtitle={copy({
-            en: "Latest active conversations from interaction storage.",
-            vi: "Các hội thoại gần đây đã lưu trong CRM."
-          })}
+          title={<UiText id="conversations.threads.title" />}
+          subtitle={<UiText id="conversations.threads.subtitle" />}
           action={
             <div className="flex items-center gap-2">
               {threadsQuery.isFetching ? (
@@ -552,11 +544,8 @@ export function ConversationsPage() {
               ))
             ) : (
               <EmptyState
-                title={copy({ en: "No conversations found", vi: "Chưa tìm thấy hội thoại" })}
-                description={copy({
-                  en: "Change filters or wait for new Zalo OA webhook messages to arrive.",
-                  vi: "Đổi bộ lọc hoặc chờ tin nhắn webhook mới từ Zalo OA."
-                })}
+                title={<UiText id="conversations.threads.empty.title" />}
+                description={<UiText id="conversations.threads.empty.desc" />}
               />
             )}
           </div>
@@ -591,11 +580,8 @@ export function ConversationsPage() {
           />
 
           <Panel
-            title={copy({ en: "Recent messages", vi: "Tin nhắn gần đây" })}
-            subtitle={copy({
-              en: "Messages are loaded from the database, not from live Zalo history.",
-              vi: "Tin nhắn được tải từ dữ liệu đã lưu trong CRM, không phải lịch sử trực tiếp từ Zalo."
-            })}
+            title={<UiText id="conversations.messages.title" />}
+            subtitle={<UiText id="conversations.messages.subtitle" />}
             action={messagesQuery.isFetching ? <Badge tone="warning">{copy({ en: "Loading", vi: "Đang tải" })}</Badge> : null}
           >
             <div className="max-h-[min(620px,calc(100vh-18rem))] space-y-3 overflow-y-auto rounded-[24px] border border-slate-200 bg-slate-50 p-4 pr-2">

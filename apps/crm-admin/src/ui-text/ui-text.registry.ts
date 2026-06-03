@@ -214,6 +214,240 @@ export const uiTextRegistry = [
     description: "Orders page main title."
   },
   {
+    key: "orders.detail.loading",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "header",
+    defaultText: { en: "Loading order", vi: "Đang tải đơn hàng" },
+    maxLength: 50,
+    description: "Order detail loading-state title."
+  },
+  {
+    key: "orders.detail.not-found.title",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "empty_state",
+    defaultText: { en: "Order not found", vi: "Không tìm thấy đơn hàng" },
+    maxLength: 60,
+    description: "Order detail not-found title."
+  },
+  {
+    key: "orders.detail.not-found.desc",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "empty_state",
+    defaultText: {
+      en: "The order may have been removed or the backend did not return it.",
+      vi: "Đơn hàng có thể đã bị xoá hoặc backend không trả về dữ liệu."
+    },
+    maxLength: 160,
+    description: "Order detail not-found description."
+  },
+  {
+    key: "orders.detail.eyebrow",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "subtitle",
+    defaultText: { en: "Order detail", vi: "Chi tiết đơn hàng" },
+    maxLength: 50,
+    description: "Order detail page eyebrow."
+  },
+  {
+    key: "orders.detail.new-title",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "header",
+    defaultText: { en: "New order", vi: "Tạo đơn hàng" },
+    maxLength: 50,
+    description: "Order detail title when creating a new order."
+  },
+  {
+    key: "orders.detail.desc",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "subtitle",
+    defaultText: {
+      en: "View and maintain the requirement profile used by matching and application creation.",
+      vi: "Xem và chỉnh hồ sơ yêu cầu dùng cho ghép đơn và tạo ứng tuyển."
+    },
+    maxLength: 180,
+    description: "Order detail page description."
+  },
+  {
+    key: "orders.detail.back",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "button",
+    defaultText: { en: "Back to orders", vi: "Về danh sách đơn" },
+    maxLength: 40,
+    description: "Order detail back link."
+  },
+  {
+    key: "orders.requirement.title",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "header",
+    defaultText: { en: "Requirement profile", vi: "Hồ sơ yêu cầu" },
+    maxLength: 60,
+    description: "Order requirement-profile panel title."
+  },
+  {
+    key: "orders.requirement.subtitle",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "subtitle",
+    defaultText: {
+      en: "Keep this page focused on real order data. Empty fields are saved as unset.",
+      vi: "Màn hình này chỉ chỉnh dữ liệu thật của đơn hàng. Trường trống sẽ được lưu là chưa đặt."
+    },
+    maxLength: 180,
+    description: "Order requirement-profile panel subtitle."
+  },
+  {
+    key: "orders.summary.title",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "header",
+    defaultText: { en: "Order summary", vi: "Tóm tắt đơn hàng" },
+    maxLength: 60,
+    description: "Order summary panel title."
+  },
+  {
+    key: "orders.summary.subtitle",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "subtitle",
+    defaultText: {
+      en: "Fast read-only view of the fields that matter during matching.",
+      vi: "Tóm tắt nhanh các trường quan trọng khi ghép đơn."
+    },
+    maxLength: 160,
+    description: "Order summary panel subtitle."
+  },
+  {
+    key: "orders.stored-record.title",
+    namespace: "orders",
+    screen: "order-detail",
+    slot: "header",
+    defaultText: { en: "Stored record", vi: "Bản ghi đã lưu" },
+    maxLength: 60,
+    description: "Order stored-record (metadata) panel title."
+  },
+  {
+    key: "conversations.inbox.eyebrow",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "subtitle",
+    defaultText: { en: "Zalo OA operations", vi: "Vận hành Zalo OA" },
+    maxLength: 60,
+    description: "Conversations page eyebrow."
+  },
+  {
+    key: "conversations.inbox.title",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "header",
+    defaultText: { en: "Conversation inbox", vi: "Hộp thư hội thoại" },
+    maxLength: 60,
+    description: "Conversations page main title."
+  },
+  {
+    key: "conversations.inbox.desc",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "subtitle",
+    defaultText: {
+      en: "Inspect Zalo threads, recent messages, lead linkage, and extraction status from the CRM database.",
+      vi: "Theo dõi hội thoại Zalo, tin nhắn gần đây, ứng viên liên kết và trạng thái AI trong CRM."
+    },
+    maxLength: 200,
+    description: "Conversations page description."
+  },
+  {
+    key: "conversations.threads.title",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "header",
+    defaultText: { en: "Thread queue", vi: "Danh sách hội thoại" },
+    maxLength: 60,
+    description: "Conversations thread-list panel title."
+  },
+  {
+    key: "conversations.threads.subtitle",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "subtitle",
+    defaultText: {
+      en: "Latest active conversations from interaction storage.",
+      vi: "Các hội thoại gần đây đã lưu trong CRM."
+    },
+    maxLength: 140,
+    description: "Conversations thread-list panel subtitle."
+  },
+  {
+    key: "conversations.threads.empty.title",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "empty_state",
+    defaultText: { en: "No conversations found", vi: "Chưa tìm thấy hội thoại" },
+    maxLength: 60,
+    description: "Empty state when no threads match."
+  },
+  {
+    key: "conversations.threads.empty.desc",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "empty_state",
+    defaultText: {
+      en: "Change filters or wait for new Zalo OA webhook messages to arrive.",
+      vi: "Đổi bộ lọc hoặc chờ tin nhắn webhook mới từ Zalo OA."
+    },
+    maxLength: 160,
+    description: "Empty-state description when no threads match."
+  },
+  {
+    key: "conversations.detail.empty.title",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "empty_state",
+    defaultText: { en: "Select a conversation", vi: "Chọn một hội thoại" },
+    maxLength: 60,
+    description: "Empty state before a thread is selected."
+  },
+  {
+    key: "conversations.detail.empty.desc",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "empty_state",
+    defaultText: {
+      en: "Conversation detail and messages will appear here.",
+      vi: "Chi tiết hội thoại và tin nhắn sẽ hiển thị tại đây."
+    },
+    maxLength: 160,
+    description: "Empty-state description before a thread is selected."
+  },
+  {
+    key: "conversations.messages.title",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "header",
+    defaultText: { en: "Recent messages", vi: "Tin nhắn gần đây" },
+    maxLength: 60,
+    description: "Conversations recent-messages panel title."
+  },
+  {
+    key: "conversations.messages.subtitle",
+    namespace: "conversations",
+    screen: "conversations",
+    slot: "subtitle",
+    defaultText: {
+      en: "Messages are loaded from the database, not from live Zalo history.",
+      vi: "Tin nhắn được tải từ dữ liệu đã lưu trong CRM, không phải lịch sử trực tiếp từ Zalo."
+    },
+    maxLength: 180,
+    description: "Conversations recent-messages panel subtitle."
+  },
+  {
     key: "journey.board.title",
     namespace: "journey",
     screen: "journey-board",

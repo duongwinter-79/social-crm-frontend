@@ -10,6 +10,7 @@ import {
   type OrderMutationPayload,
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 
 type OrderFormState = {
   name: string;
@@ -85,7 +86,7 @@ export function OrderDetailPage() {
   if (!isNew && orderQuery.isLoading) {
     return (
       <div className="space-y-6">
-        <SectionHeader title={copy({ en: "Loading order", vi: "Đang tải đơn hàng" })} />
+        <SectionHeader title={<UiText id="orders.detail.loading" />} />
       </div>
     );
   }
@@ -93,11 +94,8 @@ export function OrderDetailPage() {
   if (!isNew && !orderQuery.data) {
     return (
       <EmptyState
-        title={copy({ en: "Order not found", vi: "Không tìm thấy đơn hàng" })}
-        description={copy({
-          en: "The order may have been removed or the backend did not return it.",
-          vi: "Đơn hàng có thể đã bị xoá hoặc backend không trả về dữ liệu.",
-        })}
+        title={<UiText id="orders.detail.not-found.title" />}
+        description={<UiText id="orders.detail.not-found.desc" />}
       />
     );
   }
@@ -105,16 +103,13 @@ export function OrderDetailPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Order detail", vi: "Chi tiết đơn hàng" })}
-        title={isNew ? copy({ en: "New order", vi: "Tạo đơn hàng" }) : form.name || copy({ en: "Order detail", vi: "Chi tiết đơn hàng" })}
-        description={copy({
-          en: "View and maintain the requirement profile used by matching and application creation.",
-          vi: "Xem và chỉnh hồ sơ yêu cầu dùng cho ghép đơn và tạo ứng tuyển.",
-        })}
+        eyebrow={<UiText id="orders.detail.eyebrow" />}
+        title={isNew ? <UiText id="orders.detail.new-title" /> : form.name || <UiText id="orders.detail.eyebrow" />}
+        description={<UiText id="orders.detail.desc" />}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/orders" className="inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 no-underline hover:bg-slate-50">
-              {copy({ en: "Back to orders", vi: "Về danh sách đơn" })}
+              <UiText id="orders.detail.back" />
             </Link>
             {!isAdmin ? <Badge tone="neutral">{copy({ en: "Read only", vi: "Chỉ xem" })}</Badge> : null}
           </div>
@@ -123,11 +118,8 @@ export function OrderDetailPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Panel
-          title={copy({ en: "Requirement profile", vi: "Hồ sơ yêu cầu" })}
-          subtitle={copy({
-            en: "Keep this page focused on real order data. Empty fields are saved as unset.",
-            vi: "Màn hình này chỉ chỉnh dữ liệu thật của đơn hàng. Trường trống sẽ được lưu là chưa đặt.",
-          })}
+          title={<UiText id="orders.requirement.title" />}
+          subtitle={<UiText id="orders.requirement.subtitle" />}
         >
           <FieldGroup columns={3}>
             <Input label={copy({ en: "Order name", vi: "Tên đơn" })} value={form.name} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} />
@@ -177,11 +169,8 @@ export function OrderDetailPage() {
 
         <div className="space-y-6">
           <Panel
-            title={copy({ en: "Order summary", vi: "Tóm tắt đơn hàng" })}
-            subtitle={copy({
-              en: "Fast read-only view of the fields that matter during matching.",
-              vi: "Tóm tắt nhanh các trường quan trọng khi ghép đơn.",
-            })}
+            title={<UiText id="orders.summary.title" />}
+            subtitle={<UiText id="orders.summary.subtitle" />}
           >
             <div className="space-y-3">
               <InfoCard label={copy({ en: "Region", vi: "Khu vực" })} value={form.region || copy({ en: "Not set", vi: "Chưa đặt" })} className="bg-slate-50" />
@@ -200,7 +189,7 @@ export function OrderDetailPage() {
 
 function ReadOnlyMetadata(props: { order: Order; copy: (value: { en: string; vi: string }) => string }) {
   return (
-    <Panel title={props.copy({ en: "Stored record", vi: "Bản ghi đã lưu" })}>
+    <Panel title={<UiText id="orders.stored-record.title" />}>
       <DescriptionList
         items={[
           { label: props.copy({ en: "Order ID", vi: "Order ID" }), value: props.order.id },
