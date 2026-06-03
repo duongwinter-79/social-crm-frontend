@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { CandidateDossierPanel } from "./candidate-dossier-panel";
 
 /**
@@ -37,7 +38,7 @@ export function DossierModal(props: {
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <div className="min-w-0">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-              {copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}
+              <UiText id="modal.dossier.eyebrow" />
             </div>
             <h2 className="truncate text-lg font-semibold text-slate-900">{props.name}</h2>
           </div>

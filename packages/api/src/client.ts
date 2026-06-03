@@ -19,6 +19,8 @@ import type {
   CnvResourceListResponse,
   AdminSessionListResponse,
   AdminSystemStatus,
+  AdminUiTextOverride,
+  AdminUiTextOverrideListResponse,
   AdminUserListResponse,
   ApplicationListResponse,
   ApplicationRecord,
@@ -56,7 +58,9 @@ import type {
   ThreadListResponse,
   ThreadSummary,
   TrainingFinanceListResponse,
-  TrainingFinanceRecord
+  TrainingFinanceRecord,
+  UiTextRuntimeOverride,
+  UpdateUiTextOverridePayload
 } from "./types";
 
 const API_BASE_URL =
@@ -869,6 +873,31 @@ export class SocialCrmApiClient {
   async getAdminSystemStatus() {
     const response = await this.http.get<ApiEnvelope<AdminSystemStatus> | AdminSystemStatus>("/admin/system-status");
     return unwrapEnvelope(response.data);
+  }
+
+  async getUiTextOverrides(): Promise<UiTextRuntimeOverride[]> {
+    const response = await this.http.get<ApiEnvelope<UiTextRuntimeOverride[]> | UiTextRuntimeOverride[]>("/ui-text/overrides");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listAdminUiTextOverrides(params: { search?: string; screen?: string; slot?: string; status?: string } = {}) {
+    const response = await this.http.get<ApiEnvelope<AdminUiTextOverrideListResponse> | AdminUiTextOverrideListResponse>(
+      "/admin/ui-text",
+      { params }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateAdminUiTextOverride(key: string, payload: UpdateUiTextOverridePayload): Promise<AdminUiTextOverride> {
+    const response = await this.http.patch<ApiEnvelope<AdminUiTextOverride> | AdminUiTextOverride>(
+      `/admin/ui-text/${encodeURIComponent(key)}`,
+      payload
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async resetAdminUiTextOverride(key: string): Promise<void> {
+    await this.http.delete(`/admin/ui-text/${encodeURIComponent(key)}`);
   }
 
   async listAdminAuditLogs(params: { limit: number; action?: string; targetType?: string }) {

@@ -95,6 +95,59 @@ export interface AdminSystemStatus {
   };
 }
 
+export type UiTextSlot =
+  | "nav"
+  | "header"
+  | "subtitle"
+  | "label"
+  | "button"
+  | "helper"
+  | "empty_state"
+  | "warning"
+  | "toast";
+
+export interface UiTextRegistryEntry {
+  key: string;
+  namespace: string;
+  screen: string;
+  slot: UiTextSlot;
+  defaultText: {
+    en: string;
+    vi: string;
+  };
+  maxLength?: number;
+  variables?: string[];
+  description?: string;
+}
+
+export interface UiTextRuntimeOverride {
+  key: string;
+  enOverride: string | null;
+  viOverride: string | null;
+  updatedAt?: string;
+}
+
+export interface AdminUiTextOverride extends UiTextRuntimeOverride {
+  id: string;
+  isActive: boolean;
+  updatedByUserId?: string | null;
+  updatedByUsername?: string | null;
+  createdAt?: string;
+  registry?: UiTextRegistryEntry | null;
+  hasOverride: boolean;
+}
+
+export interface AdminUiTextOverrideListResponse {
+  data: AdminUiTextOverride[];
+  total: number;
+}
+
+export interface UpdateUiTextOverridePayload {
+  enOverride?: string | null;
+  viOverride?: string | null;
+  isActive?: boolean;
+}
+
 export interface CnvConnectionStatus {
   connected: boolean;
   accountId?: string | null;

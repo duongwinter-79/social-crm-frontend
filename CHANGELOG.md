@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-06-02
+
+### UI text — in-context editing (v2)
+
+- added an admin-only **Edit text** mode (header toggle) that turns editable copy into clickable, highlighted spans on the real CRM screens, replacing the table-only editor as the primary surface
+- added `<UiText id="…">` as the editable render seam: renders a bare string in normal mode (zero wrapper / no layout shift), a highlighted gear-affordanced span in edit mode
+- added an anchored inline editor popover with EN/VI fields, a live word-level diff vs the code default, length + required-`{variable}` guards, and Preview / Save / Reset wired to the existing override mutations
+- added edit-mode highlight states: amber = unsaved draft, indigo = saved override, rose = stale/unknown key
+- extended `UiTextProvider` with `isEditMode`, `activeEditKey`/anchor, `openEditor`/`closeEditor`, and `statusFor` (session-persisted)
+- converted the first in-context nodes: Journey board "Open journey" button + cohort title, candidate dossier titles, lead workbench dossier title (string-prop usages like `SectionHeader` eyebrow stay on `text()`)
+- added a word-level diff utility with unit tests (word-boundary diff avoids Vietnamese diacritic noise)
+- widened `SectionHeader` `title`/`eyebrow`/`description` to `ReactNode` so page-level titles can be edited in context
+- expanded in-context coverage to page titles on Dashboard, Journey board, Leads inbox, and Orders catalog
+- made all primary sidebar nav labels + hints in-context editable (Dashboard, Leads, Conversations, Journey, Orders, Import, Extract)
+- widened `EmptyState` `title`/`description` to `ReactNode`
+- fully converted the Journey workbench as a template: panel title, form Manage/Upload buttons, View dossier, Close, both phase helper texts, the candidate-not-found empty state, and the workbench links — leaving data-bound values, dynamic counts, phase-nav labels, and `aria-label`s on `copy()` by design
+- expanded structural-text coverage across Conversations, Order detail, Orders list, Training-Finance detail, Leads inbox, and the full Lead workbench (page titles/eyebrows/descriptions, panel titles + subtitles, helper texts, empty/loading states)
+- converted Import + Extract admin screens and the core user-facing modals: form-intake modal header + the full form-intake content (ApplicationDetailPage panels: upload, staged file, confirm fields, phone/name matches, create/apply/replace) and the dossier modal eyebrow — registry now ~137 editable keys (confirmation dialogs intentionally excluded)
+
+### UI text — Phase 2 hardening
+
+- added registry guard tests (run under `npm test`): every `<UiText id>` / `text("key")` referenced in source must exist in the registry; no duplicate keys; non-empty EN+VI defaults; default text within its own maxLength; plus a warning for unreferenced keys
+- added a **Review drafts** sheet (opened from the preview strip) to see every staged draft with a per-language diff and Save all / Discard all in one step
+- repositioned the `/ui-text-overrides` admin page as the bulk "manage all / cleanup" view; in-context "Edit text" is now the primary editing path
+
+## 2026-06-01
+
+### UI text overrides
+
+- added a controlled UI text override layer for approved CRM admin strings: frontend registry, runtime provider, API hooks, and an Admin -> UI Text editor
+- added session-local preview mode so admins can stage draft text, open affected screens, and exit preview before saving
+- moved the editor to a dedicated admin-protected `/ui-text-overrides` screen and added a navigation tile from `/admin`
+- polished the UI Text editor with clearer Vietnamese copy and route-based screen labels instead of technical component names
+- corrected the default Vietnamese text for UI override registry keys and dashboard workflow fallbacks
+- wired initial editable keys for app-shell navigation, selected Journey board labels, and dossier titles
+- documented how to register new editable keys in `docs/UI_TEXT_OVERRIDES.md`
+
 ## 2026-05-30
 
 ### Journey consolidation

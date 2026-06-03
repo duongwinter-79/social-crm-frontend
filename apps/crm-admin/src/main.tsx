@@ -5,6 +5,8 @@ import { BrowserRouter } from "react-router-dom";
 import { AppRouter } from "./app/router";
 import { RequestNotificationsProvider, emitRequestNotification, getRequestErrorMessage } from "./app/request-notifications";
 import { I18nProvider } from "./i18n";
+import { UiTextProvider } from "./ui-text/ui-text-provider";
+import "./ui-text/ui-text.css";
 import "./styles/index.css";
 
 /**
@@ -69,9 +71,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <RequestNotificationsProvider>
         <I18nProvider>
-          <BrowserRouter>
-            <AppRouter />
-          </BrowserRouter>
+          <UiTextProvider>
+            <BrowserRouter>
+              <AppRouter />
+            </BrowserRouter>
+          </UiTextProvider>
         </I18nProvider>
       </RequestNotificationsProvider>
     </QueryClientProvider>

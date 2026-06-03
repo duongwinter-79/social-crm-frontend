@@ -13,6 +13,7 @@ import {
   type ImportRowDedupStatus
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 type DedupFilter = ImportRowDedupStatus | "";
@@ -113,20 +114,14 @@ export function ImportPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Bulk import", vi: "Nhập hàng loạt" })}
-        title={copy({ en: "Import leads from XLSX", vi: "Nhập ứng viên từ XLSX" })}
-        description={copy({
-          en: "Upload the first sheet of the customer's progress-tracking workbook. The system stages every row, checks for phone duplicates, and only writes to the database after you confirm.",
-          vi: "Tải lên sheet đầu tiên của bảng theo dõi tiến độ khách hàng. Hệ thống chuẩn bị từng dòng, kiểm tra trùng số điện thoại và chỉ ghi vào cơ sở dữ liệu sau khi bạn xác nhận."
-        })}
+        eyebrow={<UiText id="import.eyebrow" />}
+        title={<UiText id="import.title" />}
+        description={<UiText id="import.desc" />}
       />
 
       <Panel
-        title={copy({ en: "Upload", vi: "Tải lên" })}
-        subtitle={copy({
-          en: "Maps columns F (Họ tên), G (Giới tính), H (Năm sinh), J (Cao), K (Kinh nghiệm), L (SĐT), D (Nguồn), M (Chương trình). Columns N + Z + AA + AD are merged into one free-text block and handed to AI extraction.",
-          vi: "Lấy cột F (Họ tên), G (Giới tính), H (Năm sinh), J (Cao), K (Kinh nghiệm), L (SĐT), D (Nguồn), M (Chương trình). Cột N + Z + AA + AD gộp thành khối ghi chú và đưa vào AI trích xuất."
-        })}
+        title={<UiText id="import.upload.title" />}
+        subtitle={<UiText id="import.upload.subtitle" />}
       >
         <div className="flex flex-col gap-3">
           <input
@@ -162,14 +157,11 @@ export function ImportPage() {
         <Panel
           title={
             <span>
-              {copy({ en: "Preview", vi: "Xem trước" })}{" "}
+              <UiText id="import.preview.title" />{" "}
               <span className="text-slate-400">— {displayFilename(activeBatch.filename)}</span>
             </span>
           }
-          subtitle={copy({
-            en: "Review what will be created. Nothing is written to the leads table until you click Apply.",
-            vi: "Xem lại trước khi tạo. Chưa có gì được ghi vào bảng ứng viên cho đến khi bạn nhấn Áp dụng."
-          })}
+          subtitle={<UiText id="import.preview.subtitle" />}
           action={
             <div className="flex flex-wrap gap-2">
               <Button
@@ -461,11 +453,8 @@ export function ImportPage() {
       ) : null}
 
       <Panel
-        title={copy({ en: "Recent imports", vi: "Đợt nhập gần đây" })}
-        subtitle={copy({
-          en: "Click any row to load its preview.",
-          vi: "Bấm vào một dòng để xem lại."
-        })}
+        title={<UiText id="import.recent.title" />}
+        subtitle={<UiText id="import.recent.subtitle" />}
       >
         <DataTable>
           <table className="min-w-full text-sm">

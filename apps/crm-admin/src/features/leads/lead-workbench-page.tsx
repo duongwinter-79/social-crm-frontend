@@ -34,6 +34,7 @@ import { LeadStatusLine } from "./lead-status-line";
 import { CandidateWorkbench } from "@/features/candidate-workbench/candidate-workbench";
 import { DossierModal } from "./dossier-modal";
 import { useI18n } from "../../i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { type NavigationReturnState, resolveReturnState } from "@/app/navigation-state";
 import {
   FieldWithProvenance,
@@ -220,7 +221,7 @@ export function LeadWorkbenchPage() {
   const phoneMergeConflictId = findPhoneMergeCandidate(suggestionsQuery.data);
 
   if (!lead) {
-    return <Panel title={copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" })}><EmptyState title={copy({ en: "Lead not loaded", vi: "Chưa tải được ứng viên tiềm năng" })} description={copy({ en: "The selected lead could not be loaded from the backend.", vi: "Không tải được ứng viên tiềm năng đã chọn từ API." })} /></Panel>;
+    return <Panel title={<UiText id="lead.workbench.title" />}><EmptyState title={<UiText id="lead.workbench.not-loaded.title" />} description={<UiText id="lead.workbench.not-loaded.desc" />} /></Panel>;
   }
 
   return (
@@ -232,7 +233,7 @@ export function LeadWorkbenchPage() {
       />
 
       <SectionHeader
-        eyebrow={copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" })}
+        eyebrow={<UiText id="lead.workbench.eyebrow" />}
         title={getLeadDisplayName(lead)}
         description={[
           getLeadFullNameLabel(lead),
@@ -475,11 +476,8 @@ export function LeadWorkbenchPage() {
       />
 
           <Panel
-            title={copy({ en: "Conversation", vi: "Hội thoại" })}
-            subtitle={copy({
-              en: "Latest messages from this lead's primary thread. Both directions captured (inbound from candidate, outbound when admin replies via Zalo OA).",
-              vi: "Tin nhắn gần nhất từ luồng hội thoại chính. Bao gồm cả hai chiều: ứng viên gửi vào và nhân sự trả lời qua Zalo OA."
-            })}
+            title={<UiText id="lead.workbench.conversation.title" />}
+            subtitle={<UiText id="lead.workbench.conversation.subtitle" />}
           >
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-slate-600">
@@ -533,11 +531,8 @@ export function LeadWorkbenchPage() {
           </Panel>
 
           <Panel
-            title={copy({ en: "Manual AI question", vi: "Hỏi AI về hội thoại" })}
-            subtitle={copy({
-              en: "Use this for one-off questions about the conversation. It does not update verified qualification, AI suggestions, score, or matching inputs.",
-              vi: "Dùng để hỏi nhanh về hội thoại. Kết quả này không cập nhật dữ liệu xác minh, gợi ý AI, điểm ứng viên hoặc dữ liệu ghép đơn."
-            })}
+            title={<UiText id="lead.workbench.ai-question.title" />}
+            subtitle={<UiText id="lead.workbench.ai-question.subtitle" />}
           >
             <div className="space-y-3">
               <InfoStrip className="border-indigo-100 bg-indigo-50/70 text-indigo-900">
@@ -566,11 +561,8 @@ export function LeadWorkbenchPage() {
             content: (
               <div className="space-y-6">
           <Panel
-            title={copy({ en: "Identity", vi: "Thông tin nhận dạng" })}
-            subtitle={copy({
-              en: "Core lead identity. Edit to correct values — including ones suggested by extraction that can't be rejected.",
-              vi: "Thông tin nhận dạng cốt lõi. Sửa để chỉnh lại giá trị — kể cả giá trị do trích xuất gợi ý mà không thể từ chối.",
-            })}
+            title={<UiText id="lead.workbench.identity.title" />}
+            subtitle={<UiText id="lead.workbench.identity.subtitle" />}
           >
             <FieldGroup columns={2}>
               <Input label={copy({ en: "Full name", vi: "Họ và tên" })} value={identityForm.fullName} onChange={(e) => setIdentityForm((s) => ({ ...s, fullName: e.target.value }))} />
@@ -607,7 +599,7 @@ export function LeadWorkbenchPage() {
             </div>
           </Panel>
 
-          <Panel title={copy({ en: "Qualification overlay", vi: "Lớp xác minh điều kiện" })} subtitle={copy({ en: "Staff-verified fields directly influence lead score and matching.", vi: "Các trường đã được nhân viên xác minh ảnh hưởng trực tiếp đến điểm ứng viên và kết quả ghép đơn." })}>
+          <Panel title={<UiText id="lead.workbench.qualification.title" />} subtitle={<UiText id="lead.workbench.qualification.subtitle" />}>
             <FieldGroup columns={2}>
               <FieldWithProvenance
                 fieldKey="birthYear"
@@ -772,11 +764,8 @@ export function LeadWorkbenchPage() {
             content: (
               <div className="space-y-6">
                 <Panel
-                  title={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}
-                  subtitle={copy({
-                    en: "Full form-derived candidate data lives on its own page, linked to the verified document record.",
-                    vi: "Dữ liệu ứng viên từ form nằm ở trang riêng và liên kết với hồ sơ đã xác minh."
-                  })}
+                  title={<UiText id="lead.workbench.dossier.title" />}
+                  subtitle={<UiText id="lead.workbench.dossier.subtitle" />}
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1 text-sm text-slate-600">
@@ -833,11 +822,11 @@ export function LeadWorkbenchPage() {
             key: "recruitment",
             content: (
               <Panel
-                title={copy({ en: "Recruitment", vi: "Tuyển dụng" })}
-                subtitle={copy({ en: "Advance the pipeline using the status controls at the top of this page.", vi: "Dùng các nút trạng thái ở đầu trang để đẩy tiến trình hồ sơ." })}
+                title={<UiText id="lead.workbench.recruitment.title" />}
+                subtitle={<UiText id="lead.workbench.recruitment.subtitle" />}
               >
                 <p className="text-sm leading-6 text-slate-500">
-                  {copy({ en: "Interview scheduling and order linkage live in the candidate journey workbench.", vi: "Lên lịch phỏng vấn và ghép đơn nằm trong bàn xử lý hành trình ứng viên." })}
+                  <UiText id="lead.workbench.recruitment.body" />
                 </p>
               </Panel>
             ),
@@ -846,11 +835,11 @@ export function LeadWorkbenchPage() {
             key: "finance",
             content: (
               <Panel
-                title={copy({ en: "Finance", vi: "Tài chính" })}
-                subtitle={copy({ en: "Deposit, training, visa and departure milestones.", vi: "Các mốc đặt cọc, đào tạo, visa và xuất cảnh." })}
+                title={<UiText id="lead.workbench.finance.title" />}
+                subtitle={<UiText id="lead.workbench.finance.subtitle" />}
               >
                 <p className="text-sm leading-6 text-slate-500">
-                  {copy({ en: "Tracked in the Journey workbench Training & Finance section.", vi: "Được theo dõi trong mục Đào tạo & tài chính của hành trình." })}
+                  <UiText id="lead.workbench.finance.body" />
                 </p>
               </Panel>
             ),
@@ -859,7 +848,7 @@ export function LeadWorkbenchPage() {
             key: "history",
             content: (
               <div className="space-y-6">
-                <Panel title={copy({ en: "Lead summary", vi: "Tóm tắt ứng viên tiềm năng" })} subtitle={copy({ en: "Fast operator snapshot before taking action.", vi: "Thông tin nhanh để nhân sự quyết định bước xử lý tiếp theo." })}>
+                <Panel title={<UiText id="lead.workbench.summary.title" />} subtitle={<UiText id="lead.workbench.summary.subtitle" />}>
                   <DescriptionList
                     items={[
                       { label: copy({ en: "Lead ID", vi: "Mã ứng viên tiềm năng" }), value: lead.id },
@@ -873,7 +862,7 @@ export function LeadWorkbenchPage() {
                   />
                 </Panel>
 
-                <Panel title={copy({ en: "Verified qualification snapshot", vi: "Dữ liệu xác minh đã lưu" })} subtitle={copy({ en: "Staff-confirmed fields used for scoring and matching.", vi: "Các trường nhân sự đã xác nhận để tính điểm và ghép đơn." })}>
+                <Panel title={<UiText id="lead.workbench.verified-snapshot.title" />} subtitle={<UiText id="lead.workbench.verified-snapshot.subtitle" />}>
                   <DescriptionList
                     items={[
                       { label: copy({ en: "Passport", vi: "Hộ chiếu" }), value: yesNoUnknown(qualificationForm.hasPassport) },

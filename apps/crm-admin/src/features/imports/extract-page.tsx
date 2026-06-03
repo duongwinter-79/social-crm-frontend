@@ -11,6 +11,7 @@ import {
   type ImportNotesSuggestion
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 /**
@@ -137,20 +138,14 @@ export function ExtractPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Import → AI extraction", vi: "Nhập → Trích xuất AI" })}
-        title={copy({ en: "Extract imported notes", vi: "Trích xuất ghi chú đã nhập" })}
-        description={copy({
-          en: "Run AI on the notes columns of a completed import batch. Suggestions are recorded as a preview — no field is written to the database until you tick it and click Apply selected.",
-          vi: "Chạy AI trên các cột ghi chú của một đợt nhập đã hoàn tất. Gợi ý được lưu để xem trước, chưa có trường nào ghi vào cơ sở dữ liệu cho đến khi bạn chọn và nhấn Áp dụng đã chọn."
-        })}
+        eyebrow={<UiText id="extract.eyebrow" />}
+        title={<UiText id="extract.title" />}
+        description={<UiText id="extract.desc" />}
       />
 
       <Panel
-        title={copy({ en: "1. Pick a batch", vi: "1. Chọn đợt nhập" })}
-        subtitle={copy({
-          en: "Only completed batches appear. New imports go to /import first.",
-          vi: "Chỉ hiện các đợt đã hoàn tất. Đợt nhập mới sẽ thực hiện ở mục Nhập dữ liệu."
-        })}
+        title={<UiText id="extract.pick.title" />}
+        subtitle={<UiText id="extract.pick.subtitle" />}
       >
         <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
           <Select
@@ -189,11 +184,8 @@ export function ExtractPage() {
 
       {selectedBatchId ? (
         <Panel
-          title={copy({ en: "2. Review suggestions", vi: "2. Xem trước gợi ý" })}
-          subtitle={copy({
-            en: "Each row is one proposed field update. Tick the ones you accept. Verified fields are protected — AI cannot overwrite them.",
-              vi: "Mỗi dòng là một đề xuất cập nhật trường. Chọn các đề xuất bạn chấp nhận. Trường đã xác minh được bảo vệ, AI không thể ghi đè."
-          })}
+          title={<UiText id="extract.review.title" />}
+          subtitle={<UiText id="extract.review.subtitle" />}
           action={
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="secondary" onClick={toggleAll} disabled={totalSuggestions === 0}>

@@ -115,7 +115,7 @@ export function Panel(props: PropsWithChildren<{ title?: ReactNode; subtitle?: R
   );
 }
 
-export function SectionHeader(props: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
+export function SectionHeader(props: { eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div>
@@ -187,7 +187,7 @@ export function Badge(props: { children: ReactNode; tone?: "neutral" | "success"
   return <span className={cx("inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold", tones[tone])}>{props.children}</span>;
 }
 
-export function EmptyState(props: { title: string; description: string }) {
+export function EmptyState(props: { title: ReactNode; description: ReactNode }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
       <h3 className="text-lg font-medium text-slate-900">{props.title}</h3>

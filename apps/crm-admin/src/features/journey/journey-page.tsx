@@ -13,6 +13,7 @@ import {
 import { usePipelineQuery } from "@social-crm/api";
 import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import {
   currentPhaseKey,
   derivePhases,
@@ -144,7 +145,7 @@ function JourneyRow(props: {
             to={`/journey/${row.leadId}`}
             className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
           >
-            {copy({ en: "Open journey", vi: "Mở hành trình" })}
+            <UiText id="journey.board.open.button" />
           </Link>
         </div>
       </div>
@@ -215,7 +216,7 @@ export function JourneyPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Journey", vi: "Hành trình" })}
-        title={copy({ en: "Candidate journey board", vi: "Bảng hành trình ứng viên" })}
+        title={<UiText id="journey.board.title" />}
         description={copy({
           en: "One continuous view of every candidate from form intake through dossier, application, training & finance, and departure — no module hopping.",
           vi: "Một góc nhìn liền mạch cho từng ứng viên: từ nhận form, hồ sơ, ứng tuyển, đào tạo & tài chính đến xuất cảnh — không cần nhảy qua nhiều màn hình.",
@@ -292,7 +293,7 @@ export function JourneyPage() {
       </div>
 
       <Panel
-        title={copy({ en: "Cohort", vi: "Danh sách ứng viên" })}
+        title={<UiText id="journey.board.cohort.title" />}
         subtitle={copy({
           en: "Sorted by the active pipeline page. Open any candidate to act on their current phase.",
           vi: "Theo trang hiện tại của quy trình. Mở ứng viên để xử lý ngay giai đoạn họ đang ở.",

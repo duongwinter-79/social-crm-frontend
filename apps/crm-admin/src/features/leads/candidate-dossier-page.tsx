@@ -11,6 +11,8 @@ import {
 import { useCandidateByLeadQuery, useLeadDetailQuery } from "@social-crm/api";
 import { getLeadDisplayName, getLeadFullNameLabel } from "@/lib/lead-display";
 import { useI18n } from "@/i18n";
+import { useUiText } from "@/ui-text/ui-text-provider";
+import { UiText } from "@/ui-text/ui-text";
 import { CandidateDossierPanel } from "./candidate-dossier-panel";
 import { ApplicationContextNav } from "../applications/application-context-nav";
 
@@ -24,6 +26,7 @@ function toneForStatus(status?: string | null) {
 
 export function CandidateDossierPage() {
   const { copy, formatLeadStatus } = useI18n();
+  const { text } = useUiText();
   const { leadId = "" } = useParams();
   const navigate = useNavigate();
   const leadQuery = useLeadDetailQuery(leadId);
@@ -33,7 +36,7 @@ export function CandidateDossierPage() {
 
   if (!lead && leadQuery.isLoading) {
     return (
-      <Panel title={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}>
+      <Panel title={<UiText id="candidate.dossier.title" />}>
         <div className="text-sm text-slate-500">{copy({ en: "Loading dossier...", vi: "Đang tải hồ sơ..." })}</div>
       </Panel>
     );
@@ -41,7 +44,7 @@ export function CandidateDossierPage() {
 
   if (!lead) {
     return (
-      <Panel title={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}>
+      <Panel title={<UiText id="candidate.dossier.title" />}>
         <EmptyState
           title={copy({ en: "Lead not loaded", vi: "Chưa tải được lead" })}
           description={copy({ en: "The selected lead could not be loaded from the backend.", vi: "Không tải được hồ sơ đã chọn từ API." })}
@@ -53,7 +56,7 @@ export function CandidateDossierPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}
+        eyebrow={text("candidate.dossier.title")}
         title={getLeadDisplayName(lead)}
         description={[
           getLeadFullNameLabel(lead),
@@ -108,7 +111,7 @@ export function CandidateDossierPage() {
       {candidate?.profile ? (
         <CandidateDossierPanel profile={candidate.profile} />
       ) : (
-        <Panel title={copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" })}>
+        <Panel title={<UiText id="candidate.dossier.title" />}>
           <EmptyState
             title={copy({ en: "No verified form dossier yet", vi: "Chưa có hồ sơ form đã xác minh" })}
             description={copy({

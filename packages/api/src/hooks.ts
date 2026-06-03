@@ -438,6 +438,48 @@ export function useAdminSystemStatusQuery() {
   });
 }
 
+export function useUiTextOverridesQuery() {
+  return useQuery({
+    queryKey: ["ui-text", "overrides"],
+    queryFn: () => apiClient.getUiTextOverrides(),
+    staleTime: 5 * 60 * 1000
+  });
+}
+
+export function useAdminUiTextOverridesQuery(params: { search?: string; screen?: string; slot?: string; status?: string } = {}) {
+  return useQuery({
+    queryKey: ["admin", "ui-text", params],
+    queryFn: () => apiClient.listAdminUiTextOverrides(params)
+  });
+}
+
+export function useUpdateUiTextOverrideMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, patch }: { key: string; patch: Parameters<typeof apiClient.updateAdminUiTextOverride>[1] }) =>
+      apiClient.updateAdminUiTextOverride(key, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ui-text", "overrides"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "ui-text"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
+    },
+    meta: { successMessage: { en: "UI text override saved", vi: "Đã lưu nội dung giao diện" } }
+  });
+}
+
+export function useResetUiTextOverrideMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => apiClient.resetAdminUiTextOverride(key),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ui-text", "overrides"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "ui-text"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
+    },
+    meta: { successMessage: { en: "UI text override reset", vi: "Đã đặt lại nội dung giao diện" } }
+  });
+}
+
 export function useAdminAuditLogsQuery(params: { limit: number; action?: string; targetType?: string }) {
   return useQuery({
     queryKey: ["admin", "audit-logs", params],

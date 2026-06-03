@@ -5,6 +5,7 @@ import { apiClient, triggerBlobDownload, useLeadsQuery, type Lead } from "@socia
 import { createReturnState, saveRouteScroll, useRestoreRouteScroll } from "@/app/navigation-state";
 import { applySearchParamUpdates, readNumberOption, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { getLeadDisplayName, getLeadFullNameLabel } from "@/lib/lead-display";
 import { RefreshButton } from "@/components/refresh-button";
 
@@ -184,12 +185,9 @@ export function LeadsPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Lead operations", vi: "Vận hành ứng viên" })}
-        title={copy({ en: "Lead inbox", vi: "Hộp thư ứng viên" })}
-        description={copy({
-          en: "Source-style triage surface: compact filters, operational metrics, and a paginated lead table driven by the backend list APIs.",
-          vi: "Màn hình sàng lọc ứng viên tiềm năng: bộ lọc gọn, chỉ số vận hành và bảng ứng viên có phân trang từ API danh sách."
-        })}
+        eyebrow={<UiText id="leads.inbox.eyebrow" />}
+        title={<UiText id="leads.inbox.title" />}
+        description={<UiText id="leads.inbox.desc" />}
       />
 
       <div className="grid gap-3 md:grid-cols-4">
