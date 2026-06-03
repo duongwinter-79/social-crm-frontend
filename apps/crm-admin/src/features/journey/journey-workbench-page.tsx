@@ -10,6 +10,7 @@ import {
 } from "@social-crm/api";
 import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { getLeadDisplayName } from "@/lib/lead-display";
 import { currentPhaseKey, derivePhases, PHASE_KEYS, type JourneyPhase, type PhaseKey, type PhaseState } from "./journey-phases";
 import { ApplicationPhasePanel } from "./application-phase-panel";
@@ -233,7 +234,7 @@ export function JourneyWorkbench(props: {
 
   if (!lead && leadQuery.isLoading) {
     return (
-      <Panel title={copy({ en: "Journey", vi: "Hành trình" })}>
+      <Panel title={<UiText id="journey.workbench.title" />}>
         <div className="text-sm text-slate-500">{copy({ en: "Loading candidate...", vi: "Đang tải ứng viên..." })}</div>
       </Panel>
     );
@@ -241,10 +242,10 @@ export function JourneyWorkbench(props: {
 
   if (!lead) {
     return (
-      <Panel title={copy({ en: "Journey", vi: "Hành trình" })}>
+      <Panel title={<UiText id="journey.workbench.title" />}>
         <EmptyState
-          title={copy({ en: "Candidate not found", vi: "Không tìm thấy ứng viên" })}
-          description={copy({ en: "The selected candidate could not be loaded from the backend.", vi: "Không tải được ứng viên đã chọn từ API." })}
+          title={<UiText id="journey.workbench.not-found.title" />}
+          description={<UiText id="journey.workbench.not-found.desc" />}
         />
       </Panel>
     );
@@ -265,11 +266,11 @@ export function JourneyWorkbench(props: {
           <div className="min-w-0">
             {isModal ? (
               <Link to={`/journey/${leadId}`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-                {copy({ en: "Open full workbench →", vi: "Mở bàn xử lý đầy đủ →" })}
+                <UiText id="journey.workbench.open-full" />
               </Link>
             ) : (
               <Link to="/journey" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
-                ← {copy({ en: "Back to journey board", vi: "Về bảng hành trình" })}
+                ← <UiText id="journey.workbench.back-to-board" />
               </Link>
             )}
             <h1 className="mt-1 truncate text-xl font-semibold text-slate-900">{getLeadDisplayName(lead)}</h1>
@@ -316,8 +317,8 @@ export function JourneyWorkbench(props: {
                 className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100"
               >
                 {form?.hasFile
-                  ? copy({ en: "Manage form", vi: "Quản lý form" })
-                  : copy({ en: "Upload form", vi: "Tải form" })}
+                  ? <UiText id="journey.workbench.form.manage" />
+                  : <UiText id="journey.workbench.form.upload" />}
               </button>
             }
           >
@@ -328,10 +329,7 @@ export function JourneyWorkbench(props: {
               />
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-500">
-              {copy({
-                en: "Upload, verify, and commit the standard worker form in the popup.",
-                vi: "Tải lên, xác minh và lưu form lao động chuẩn trong cửa sổ bật lên.",
-              })}
+              <UiText id="journey.workbench.form.helper" />
             </p>
           </PhaseSection>
 
@@ -348,7 +346,7 @@ export function JourneyWorkbench(props: {
                 disabled={!candidate?.profile}
                 className="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {copy({ en: "View dossier", vi: "Xem hồ sơ" })}
+                <UiText id="journey.workbench.dossier.view" />
               </button>
             }
           >
@@ -387,10 +385,7 @@ export function JourneyWorkbench(props: {
               <SummaryRow label={copy({ en: "Departure date", vi: "Ngày xuất cảnh" })} value={tf?.departureDate || copy({ en: "Not scheduled", vi: "Chưa lên lịch" })} />
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-500">
-              {copy({
-                en: "Set the departure date in the Training & Finance section above. It unlocks once the application is Ready to depart.",
-                vi: "Đặt ngày xuất cảnh ở mục Đào tạo & tài chính phía trên. Mục này mở khi ứng tuyển ở trạng thái Sẵn sàng xuất cảnh.",
-              })}
+              <UiText id="journey.workbench.departure.helper" />
             </p>
           </PhaseSection>
         </div>
@@ -413,7 +408,7 @@ export function JourneyWorkbench(props: {
               onClick={onClose}
               className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
             >
-              {copy({ en: "Close", vi: "Đóng" })}
+              <UiText id="journey.workbench.close" />
             </button>
           ) : null}
           <button

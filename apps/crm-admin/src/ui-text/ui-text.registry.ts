@@ -79,6 +79,78 @@ export const uiTextRegistry = [
     description: "Main navigation hint for Journey."
   },
   {
+    key: "shell.nav.conversations.label",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "nav",
+    defaultText: { en: "Conversations", vi: "Hội thoại" },
+    maxLength: 40,
+    description: "Main navigation label for conversations."
+  },
+  {
+    key: "shell.nav.conversations.hint",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "helper",
+    defaultText: { en: "Zalo threads and messages", vi: "Luồng và tin nhắn Zalo" },
+    maxLength: 80,
+    description: "Main navigation hint for conversations."
+  },
+  {
+    key: "shell.nav.orders.label",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "nav",
+    defaultText: { en: "Orders", vi: "Đơn hàng" },
+    maxLength: 40,
+    description: "Main navigation label for orders."
+  },
+  {
+    key: "shell.nav.orders.hint",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "helper",
+    defaultText: { en: "Demand & order-first matching", vi: "Đơn hàng & ghép ứng viên" },
+    maxLength: 80,
+    description: "Main navigation hint for orders."
+  },
+  {
+    key: "shell.nav.import.label",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "nav",
+    defaultText: { en: "Import", vi: "Nhập dữ liệu" },
+    maxLength: 40,
+    description: "Main navigation label for import."
+  },
+  {
+    key: "shell.nav.import.hint",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "helper",
+    defaultText: { en: "Bulk import from XLSX", vi: "Nhập hàng loạt từ XLSX" },
+    maxLength: 80,
+    description: "Main navigation hint for import."
+  },
+  {
+    key: "shell.nav.extract.label",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "nav",
+    defaultText: { en: "Extract notes", vi: "Trích xuất ghi chú" },
+    maxLength: 40,
+    description: "Main navigation label for extract."
+  },
+  {
+    key: "shell.nav.extract.hint",
+    namespace: "shell",
+    screen: "app-shell",
+    slot: "helper",
+    defaultText: { en: "Operator-gated AI extraction", vi: "AI trích xuất, nhân sự duyệt" },
+    maxLength: 80,
+    description: "Main navigation hint for extract."
+  },
+  {
     key: "dashboard.work-queue.title",
     namespace: "dashboard",
     screen: "dashboard",
@@ -167,6 +239,114 @@ export const uiTextRegistry = [
     defaultText: { en: "Open journey", vi: "Mở hành trình" },
     maxLength: 40,
     description: "Button label for opening a candidate journey."
+  },
+  {
+    key: "journey.workbench.title",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "header",
+    defaultText: { en: "Journey", vi: "Hành trình" },
+    maxLength: 40,
+    description: "Journey workbench panel title (loading / not-found states)."
+  },
+  {
+    key: "journey.workbench.open-full",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "button",
+    defaultText: { en: "Open full workbench →", vi: "Mở bàn xử lý đầy đủ →" },
+    maxLength: 60,
+    description: "Link from the modal to the full workbench page."
+  },
+  {
+    key: "journey.workbench.back-to-board",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "button",
+    defaultText: { en: "Back to journey board", vi: "Về bảng hành trình" },
+    maxLength: 60,
+    description: "Link back to the Journey board (arrow is rendered separately)."
+  },
+  {
+    key: "journey.workbench.form.manage",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "button",
+    defaultText: { en: "Manage form", vi: "Quản lý form" },
+    maxLength: 40,
+    description: "Form intake action when a file already exists."
+  },
+  {
+    key: "journey.workbench.form.upload",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "button",
+    defaultText: { en: "Upload form", vi: "Tải form" },
+    maxLength: 40,
+    description: "Form intake action when no file exists yet."
+  },
+  {
+    key: "journey.workbench.form.helper",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "helper",
+    defaultText: {
+      en: "Upload, verify, and commit the standard worker form in the popup.",
+      vi: "Tải lên, xác minh và lưu form lao động chuẩn trong cửa sổ bật lên."
+    },
+    maxLength: 160,
+    description: "Helper text under the form intake phase."
+  },
+  {
+    key: "journey.workbench.dossier.view",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "button",
+    defaultText: { en: "View dossier", vi: "Xem hồ sơ" },
+    maxLength: 40,
+    description: "Open the candidate dossier from the dossier phase."
+  },
+  {
+    key: "journey.workbench.departure.helper",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "helper",
+    defaultText: {
+      en: "Set the departure date in the Training & Finance section above. It unlocks once the application is Ready to depart.",
+      vi: "Đặt ngày xuất cảnh ở mục Đào tạo & tài chính phía trên. Mục này mở khi ứng tuyển ở trạng thái Sẵn sàng xuất cảnh."
+    },
+    maxLength: 220,
+    description: "Helper text under the departure phase."
+  },
+  {
+    key: "journey.workbench.close",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "button",
+    defaultText: { en: "Close", vi: "Đóng" },
+    maxLength: 30,
+    description: "Close button in modal mode (footer)."
+  },
+  {
+    key: "journey.workbench.not-found.title",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "empty_state",
+    defaultText: { en: "Candidate not found", vi: "Không tìm thấy ứng viên" },
+    maxLength: 60,
+    description: "Empty-state title when the candidate cannot be loaded."
+  },
+  {
+    key: "journey.workbench.not-found.desc",
+    namespace: "journey",
+    screen: "journey-workbench",
+    slot: "empty_state",
+    defaultText: {
+      en: "The selected candidate could not be loaded from the backend.",
+      vi: "Không tải được ứng viên đã chọn từ API."
+    },
+    maxLength: 160,
+    description: "Empty-state description when the candidate cannot be loaded."
   },
   {
     key: "lead.workbench.dossier.title",

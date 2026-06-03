@@ -5,6 +5,7 @@ import { apiClient, startSessionLifecycle, useHealthQuery, useSessionStore } fro
 import { LoginPage } from "@/features/auth/login-page";
 import { useI18n } from "@/i18n";
 import { useUiText } from "@/ui-text/ui-text-provider";
+import { UiText } from "@/ui-text/ui-text";
 import { UiTextInlineEditor } from "@/ui-text/ui-text-inline-editor";
 import "./admin-shell.css";
 
@@ -97,21 +98,23 @@ function NavIcon(props: { name: IconName }) {
 const navTextKeys: Record<string, { label: string; hint: string }> = {
   "/dashboard": { label: "shell.nav.dashboard.label", hint: "shell.nav.dashboard.hint" },
   "/leads": { label: "shell.nav.leads.label", hint: "shell.nav.leads.hint" },
-  "/journey": { label: "shell.nav.journey.label", hint: "shell.nav.journey.hint" }
+  "/journey": { label: "shell.nav.journey.label", hint: "shell.nav.journey.hint" },
+  "/conversations": { label: "shell.nav.conversations.label", hint: "shell.nav.conversations.hint" },
+  "/orders": { label: "shell.nav.orders.label", hint: "shell.nav.orders.hint" },
+  "/import": { label: "shell.nav.import.label", hint: "shell.nav.import.hint" },
+  "/extract": { label: "shell.nav.extract.label", hint: "shell.nav.extract.hint" }
 };
 
-function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: { en: string; vi: string }) => string; text: (key: string) => string }) {
+function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: { en: string; vi: string }) => string }) {
   const keys = navTextKeys[props.item.to];
-  const label = keys ? props.text(keys.label) : props.copy(props.item.label);
-  const hint = keys ? props.text(keys.hint) : props.copy(props.item.hint);
   return (
     <Link to={props.item.to} className={`admin-shell-navitem ${props.active ? "is-active" : ""}`}>
       <span className="admin-shell-navicon" aria-hidden="true">
         <NavIcon name={props.item.icon} />
       </span>
       <span className="admin-shell-navcopy">
-        <span className="admin-shell-navtitle">{label}</span>
-        <span className="admin-shell-navhint">{hint}</span>
+        <span className="admin-shell-navtitle">{keys ? <UiText id={keys.label} /> : props.copy(props.item.label)}</span>
+        <span className="admin-shell-navhint">{keys ? <UiText id={keys.hint} /> : props.copy(props.item.hint)}</span>
       </span>
     </Link>
   );
@@ -135,7 +138,7 @@ function ProtectedLayout() {
   const { user } = useSessionStore();
   const health = useHealthQuery();
   const { lang, setLang, copy } = useI18n();
-  const { text, previewOverrides, isPreviewing, clearPreview, isEditMode, setEditMode } = useUiText();
+  const { previewOverrides, isPreviewing, clearPreview, isEditMode, setEditMode } = useUiText();
   const isAdmin = Boolean(user?.roles?.includes("admin"));
   const pageTitle = titleForPath(location.pathname, copy);
 
@@ -202,7 +205,6 @@ function ProtectedLayout() {
                   item={item}
                   active={location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)}
                   copy={copy}
-                  text={text}
                 />
               ))}
             </nav>

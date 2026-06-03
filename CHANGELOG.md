@@ -13,6 +13,9 @@
 - added a word-level diff utility with unit tests (word-boundary diff avoids Vietnamese diacritic noise)
 - widened `SectionHeader` `title`/`eyebrow`/`description` to `ReactNode` so page-level titles can be edited in context
 - expanded in-context coverage to page titles on Dashboard, Journey board, Leads inbox, and Orders catalog
+- made all primary sidebar nav labels + hints in-context editable (Dashboard, Leads, Conversations, Journey, Orders, Import, Extract)
+- widened `EmptyState` `title`/`description` to `ReactNode`
+- fully converted the Journey workbench as a template: panel title, form Manage/Upload buttons, View dossier, Close, both phase helper texts, the candidate-not-found empty state, and the workbench links — leaving data-bound values, dynamic counts, phase-nav labels, and `aria-label`s on `copy()` by design
 
 ## 2026-06-01
 
