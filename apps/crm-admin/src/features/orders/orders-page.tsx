@@ -12,6 +12,7 @@ import {
   type OrderSuggestedCandidate,
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { JourneyWorkbenchModal } from "@/features/journey/journey-workbench-modal";
 
 const ORDER_PAGE_SIZE = 10;
@@ -56,7 +57,7 @@ export function OrdersPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Demand", vi: "Nhu cầu" })}
-        title={copy({ en: "Orders catalog", vi: "Danh mục đơn hàng" })}
+        title={<UiText id="orders.catalog.title" />}
         description={copy({
           en: "Maintain the demand catalog used by matching. Open an order to inspect or edit the full requirement profile.",
           vi: "Quản lý danh mục đơn hàng dùng cho ghép đơn. Mở một đơn để xem hoặc chỉnh đầy đủ hồ sơ yêu cầu.",

@@ -218,7 +218,7 @@ export function DashboardPage() {
     <div className="dashboard-page">
       <SectionHeader
         eyebrow={copy({ en: "Operations overview", vi: "Tổng quan vận hành" })}
-        title={copy({ en: "Today’s work queue", vi: "Hàng đợi công việc hôm nay" })}
+        title={<UiText id="dashboard.work-queue.title" />}
         description={copy({
           en: "A compact view of intake, application, document, and downstream blockers. Use it to choose the next screen to work in.",
           vi: "Góc nhìn gọn về đầu vào, ứng tuyển, hồ sơ và điểm nghẽn phía sau. Dùng màn hình này để chọn nơi cần xử lý tiếp.",

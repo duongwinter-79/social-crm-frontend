@@ -115,7 +115,7 @@ export function Panel(props: PropsWithChildren<{ title?: ReactNode; subtitle?: R
   );
 }
 
-export function SectionHeader(props: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
+export function SectionHeader(props: { eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; action?: ReactNode }) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div>

@@ -13,7 +13,6 @@ import {
 import { usePipelineQuery } from "@social-crm/api";
 import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
-import { useUiText } from "@/ui-text/ui-text-provider";
 import { UiText } from "@/ui-text/ui-text";
 import {
   currentPhaseKey,
@@ -108,12 +107,11 @@ function JourneyRow(props: {
   row: PipelineRow;
   phases: JourneyPhase[];
   copy: (value: { en: string; vi: string }) => string;
-  text: (key: string) => string;
   formatPipelineStage: (value: string) => string;
   formatPipelineNextAction: (value: string) => string;
   formatPipelineBlocker: (value: string) => string;
 }) {
-  const { row, phases, copy, text, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = props;
+  const { row, phases, copy, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = props;
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
@@ -170,7 +168,6 @@ function JourneyRow(props: {
 
 export function JourneyPage() {
   const { copy, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = useI18n();
-  const { text } = useUiText();
   const [filters, setFilters] = useState({ stage: "", search: "" });
   const [phaseFilter, setPhaseFilter] = useState<PhaseKey | "">("");
   const [page, setPage] = useState(0);
@@ -219,7 +216,7 @@ export function JourneyPage() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow={copy({ en: "Journey", vi: "Hành trình" })}
-        title={text("journey.board.title")}
+        title={<UiText id="journey.board.title" />}
         description={copy({
           en: "One continuous view of every candidate from form intake through dossier, application, training & finance, and departure — no module hopping.",
           vi: "Một góc nhìn liền mạch cho từng ứng viên: từ nhận form, hồ sơ, ứng tuyển, đào tạo & tài chính đến xuất cảnh — không cần nhảy qua nhiều màn hình.",
@@ -310,7 +307,6 @@ export function JourneyPage() {
                 row={row}
                 phases={phases}
                 copy={copy}
-                text={text}
                 formatPipelineStage={formatPipelineStage}
                 formatPipelineNextAction={formatPipelineNextAction}
                 formatPipelineBlocker={formatPipelineBlocker}

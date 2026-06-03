@@ -11,6 +11,8 @@
 - extended `UiTextProvider` with `isEditMode`, `activeEditKey`/anchor, `openEditor`/`closeEditor`, and `statusFor` (session-persisted)
 - converted the first in-context nodes: Journey board "Open journey" button + cohort title, candidate dossier titles, lead workbench dossier title (string-prop usages like `SectionHeader` eyebrow stay on `text()`)
 - added a word-level diff utility with unit tests (word-boundary diff avoids Vietnamese diacritic noise)
+- widened `SectionHeader` `title`/`eyebrow`/`description` to `ReactNode` so page-level titles can be edited in context
+- expanded in-context coverage to page titles on Dashboard, Journey board, Leads inbox, and Orders catalog
 
 ## 2026-06-01
 

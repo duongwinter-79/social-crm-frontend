@@ -79,6 +79,15 @@ export const uiTextRegistry = [
     description: "Main navigation hint for Journey."
   },
   {
+    key: "dashboard.work-queue.title",
+    namespace: "dashboard",
+    screen: "dashboard",
+    slot: "header",
+    defaultText: { en: "Today’s work queue", vi: "Hàng đợi công việc hôm nay" },
+    maxLength: 70,
+    description: "Dashboard page main title."
+  },
+  {
     key: "dashboard.role-queues.title",
     namespace: "dashboard",
     screen: "dashboard",
@@ -113,6 +122,24 @@ export const uiTextRegistry = [
     defaultText: { en: "Document status", vi: "Trạng thái hồ sơ" },
     maxLength: 60,
     description: "Dashboard panel title for document status counts."
+  },
+  {
+    key: "leads.inbox.title",
+    namespace: "leads",
+    screen: "leads",
+    slot: "header",
+    defaultText: { en: "Lead inbox", vi: "Hộp thư ứng viên" },
+    maxLength: 60,
+    description: "Leads page main title."
+  },
+  {
+    key: "orders.catalog.title",
+    namespace: "orders",
+    screen: "orders",
+    slot: "header",
+    defaultText: { en: "Orders catalog", vi: "Danh mục đơn hàng" },
+    maxLength: 60,
+    description: "Orders page main title."
   },
   {
     key: "journey.board.title",
