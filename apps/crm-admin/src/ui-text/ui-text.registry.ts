@@ -205,6 +205,27 @@ export const uiTextRegistry = [
     description: "Leads page main title."
   },
   {
+    key: "leads.inbox.eyebrow",
+    namespace: "leads",
+    screen: "leads",
+    slot: "subtitle",
+    defaultText: { en: "Lead operations", vi: "Vận hành ứng viên" },
+    maxLength: 50,
+    description: "Leads page eyebrow."
+  },
+  {
+    key: "leads.inbox.desc",
+    namespace: "leads",
+    screen: "leads",
+    slot: "subtitle",
+    defaultText: {
+      en: "Source-style triage surface: compact filters, operational metrics, and a paginated lead table driven by the backend list APIs.",
+      vi: "Màn hình sàng lọc ứng viên tiềm năng: bộ lọc gọn, chỉ số vận hành và bảng ứng viên có phân trang từ API danh sách."
+    },
+    maxLength: 220,
+    description: "Leads page description."
+  },
+  {
     key: "orders.catalog.title",
     namespace: "orders",
     screen: "orders",
@@ -212,6 +233,48 @@ export const uiTextRegistry = [
     defaultText: { en: "Orders catalog", vi: "Danh mục đơn hàng" },
     maxLength: 60,
     description: "Orders page main title."
+  },
+  {
+    key: "orders.catalog.eyebrow",
+    namespace: "orders",
+    screen: "orders",
+    slot: "subtitle",
+    defaultText: { en: "Demand", vi: "Nhu cầu" },
+    maxLength: 50,
+    description: "Orders page eyebrow."
+  },
+  {
+    key: "orders.catalog.desc",
+    namespace: "orders",
+    screen: "orders",
+    slot: "subtitle",
+    defaultText: {
+      en: "Maintain the demand catalog used by matching. Open an order to inspect or edit the full requirement profile.",
+      vi: "Quản lý danh mục đơn hàng dùng cho ghép đơn. Mở một đơn để xem hoặc chỉnh đầy đủ hồ sơ yêu cầu."
+    },
+    maxLength: 200,
+    description: "Orders page description."
+  },
+  {
+    key: "orders.catalog.empty.title",
+    namespace: "orders",
+    screen: "orders",
+    slot: "empty_state",
+    defaultText: { en: "No orders returned", vi: "Không có đơn hàng trả về" },
+    maxLength: 60,
+    description: "Orders list empty-state title."
+  },
+  {
+    key: "orders.catalog.empty.desc",
+    namespace: "orders",
+    screen: "orders",
+    slot: "empty_state",
+    defaultText: {
+      en: "Create the first order from the detail screen when admin access is available.",
+      vi: "Tạo đơn hàng đầu tiên từ màn hình chi tiết khi có quyền admin."
+    },
+    maxLength: 160,
+    description: "Orders list empty-state description."
   },
   {
     key: "tf.detail.loading",
@@ -713,6 +776,249 @@ export const uiTextRegistry = [
     },
     maxLength: 160,
     description: "Empty-state description when the candidate cannot be loaded."
+  },
+  {
+    key: "lead.workbench.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" },
+    maxLength: 70,
+    description: "Lead workbench panel title (lead-not-loaded state)."
+  },
+  {
+    key: "lead.workbench.eyebrow",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: { en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" },
+    maxLength: 70,
+    description: "Lead workbench page eyebrow."
+  },
+  {
+    key: "lead.workbench.not-loaded.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "empty_state",
+    defaultText: { en: "Lead not loaded", vi: "Chưa tải được ứng viên tiềm năng" },
+    maxLength: 60,
+    description: "Lead workbench not-loaded empty title."
+  },
+  {
+    key: "lead.workbench.not-loaded.desc",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "empty_state",
+    defaultText: {
+      en: "The selected lead could not be loaded from the backend.",
+      vi: "Không tải được ứng viên tiềm năng đã chọn từ API."
+    },
+    maxLength: 160,
+    description: "Lead workbench not-loaded empty description."
+  },
+  {
+    key: "lead.workbench.conversation.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Conversation", vi: "Hội thoại" },
+    maxLength: 60,
+    description: "Lead workbench conversation panel title."
+  },
+  {
+    key: "lead.workbench.conversation.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Latest messages from this lead's primary thread. Both directions captured (inbound from candidate, outbound when admin replies via Zalo OA).",
+      vi: "Tin nhắn gần nhất từ luồng hội thoại chính. Bao gồm cả hai chiều: ứng viên gửi vào và nhân sự trả lời qua Zalo OA."
+    },
+    maxLength: 240,
+    description: "Lead workbench conversation panel subtitle."
+  },
+  {
+    key: "lead.workbench.ai-question.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Manual AI question", vi: "Hỏi AI về hội thoại" },
+    maxLength: 60,
+    description: "Lead workbench manual AI question panel title."
+  },
+  {
+    key: "lead.workbench.ai-question.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Use this for one-off questions about the conversation. It does not update verified qualification, AI suggestions, score, or matching inputs.",
+      vi: "Dùng để hỏi nhanh về hội thoại. Kết quả này không cập nhật dữ liệu xác minh, gợi ý AI, điểm ứng viên hoặc dữ liệu ghép đơn."
+    },
+    maxLength: 240,
+    description: "Lead workbench manual AI question panel subtitle."
+  },
+  {
+    key: "lead.workbench.identity.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Identity", vi: "Thông tin nhận dạng" },
+    maxLength: 60,
+    description: "Lead workbench identity panel title."
+  },
+  {
+    key: "lead.workbench.identity.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Core lead identity. Edit to correct values — including ones suggested by extraction that can't be rejected.",
+      vi: "Thông tin nhận dạng cốt lõi. Sửa để chỉnh lại giá trị — kể cả giá trị do trích xuất gợi ý mà không thể từ chối."
+    },
+    maxLength: 200,
+    description: "Lead workbench identity panel subtitle."
+  },
+  {
+    key: "lead.workbench.qualification.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Qualification overlay", vi: "Lớp xác minh điều kiện" },
+    maxLength: 60,
+    description: "Lead workbench qualification overlay panel title."
+  },
+  {
+    key: "lead.workbench.qualification.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Staff-verified fields directly influence lead score and matching.",
+      vi: "Các trường đã được nhân viên xác minh ảnh hưởng trực tiếp đến điểm ứng viên và kết quả ghép đơn."
+    },
+    maxLength: 180,
+    description: "Lead workbench qualification overlay panel subtitle."
+  },
+  {
+    key: "lead.workbench.dossier.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Full form-derived candidate data lives on its own page, linked to the verified document record.",
+      vi: "Dữ liệu ứng viên từ form nằm ở trang riêng và liên kết với hồ sơ đã xác minh."
+    },
+    maxLength: 180,
+    description: "Lead workbench dossier panel subtitle."
+  },
+  {
+    key: "lead.workbench.recruitment.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Recruitment", vi: "Tuyển dụng" },
+    maxLength: 60,
+    description: "Lead workbench recruitment tab panel title."
+  },
+  {
+    key: "lead.workbench.recruitment.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Advance the pipeline using the status controls at the top of this page.",
+      vi: "Dùng các nút trạng thái ở đầu trang để đẩy tiến trình hồ sơ."
+    },
+    maxLength: 180,
+    description: "Lead workbench recruitment tab subtitle."
+  },
+  {
+    key: "lead.workbench.recruitment.body",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "helper",
+    defaultText: {
+      en: "Interview scheduling and order linkage live in the candidate journey workbench.",
+      vi: "Lên lịch phỏng vấn và ghép đơn nằm trong bàn xử lý hành trình ứng viên."
+    },
+    maxLength: 180,
+    description: "Lead workbench recruitment tab body text."
+  },
+  {
+    key: "lead.workbench.finance.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Finance", vi: "Tài chính" },
+    maxLength: 60,
+    description: "Lead workbench finance tab panel title."
+  },
+  {
+    key: "lead.workbench.finance.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Deposit, training, visa and departure milestones.",
+      vi: "Các mốc đặt cọc, đào tạo, visa và xuất cảnh."
+    },
+    maxLength: 160,
+    description: "Lead workbench finance tab subtitle."
+  },
+  {
+    key: "lead.workbench.finance.body",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "helper",
+    defaultText: {
+      en: "Tracked in the Journey workbench Training & Finance section.",
+      vi: "Được theo dõi trong mục Đào tạo & tài chính của hành trình."
+    },
+    maxLength: 160,
+    description: "Lead workbench finance tab body text."
+  },
+  {
+    key: "lead.workbench.summary.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Lead summary", vi: "Tóm tắt ứng viên tiềm năng" },
+    maxLength: 60,
+    description: "Lead workbench history tab summary panel title."
+  },
+  {
+    key: "lead.workbench.summary.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Fast operator snapshot before taking action.",
+      vi: "Thông tin nhanh để nhân sự quyết định bước xử lý tiếp theo."
+    },
+    maxLength: 160,
+    description: "Lead workbench summary panel subtitle."
+  },
+  {
+    key: "lead.workbench.verified-snapshot.title",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "header",
+    defaultText: { en: "Verified qualification snapshot", vi: "Dữ liệu xác minh đã lưu" },
+    maxLength: 70,
+    description: "Lead workbench verified-snapshot panel title."
+  },
+  {
+    key: "lead.workbench.verified-snapshot.subtitle",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "subtitle",
+    defaultText: {
+      en: "Staff-confirmed fields used for scoring and matching.",
+      vi: "Các trường nhân sự đã xác nhận để tính điểm và ghép đơn."
+    },
+    maxLength: 160,
+    description: "Lead workbench verified-snapshot panel subtitle."
   },
   {
     key: "lead.workbench.dossier.title",

@@ -56,12 +56,9 @@ export function OrdersPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Demand", vi: "Nhu cầu" })}
+        eyebrow={<UiText id="orders.catalog.eyebrow" />}
         title={<UiText id="orders.catalog.title" />}
-        description={copy({
-          en: "Maintain the demand catalog used by matching. Open an order to inspect or edit the full requirement profile.",
-          vi: "Quản lý danh mục đơn hàng dùng cho ghép đơn. Mở một đơn để xem hoặc chỉnh đầy đủ hồ sơ yêu cầu.",
-        })}
+        description={<UiText id="orders.catalog.desc" />}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
@@ -145,11 +142,8 @@ export function OrdersPage() {
         </DataTable>
       ) : (
         <EmptyState
-          title={copy({ en: "No orders returned", vi: "Không có đơn hàng trả về" })}
-          description={copy({
-            en: "Create the first order from the detail screen when admin access is available.",
-            vi: "Tạo đơn hàng đầu tiên từ màn hình chi tiết khi có quyền admin.",
-          })}
+          title={<UiText id="orders.catalog.empty.title" />}
+          description={<UiText id="orders.catalog.empty.desc" />}
         />
       )}
 

@@ -185,12 +185,9 @@ export function LeadsPage() {
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow={copy({ en: "Lead operations", vi: "Vận hành ứng viên" })}
+        eyebrow={<UiText id="leads.inbox.eyebrow" />}
         title={<UiText id="leads.inbox.title" />}
-        description={copy({
-          en: "Source-style triage surface: compact filters, operational metrics, and a paginated lead table driven by the backend list APIs.",
-          vi: "Màn hình sàng lọc ứng viên tiềm năng: bộ lọc gọn, chỉ số vận hành và bảng ứng viên có phân trang từ API danh sách."
-        })}
+        description={<UiText id="leads.inbox.desc" />}
       />
 
       <div className="grid gap-3 md:grid-cols-4">
