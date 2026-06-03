@@ -151,6 +151,168 @@ export const uiTextRegistry = [
     description: "Main navigation hint for extract."
   },
   {
+    key: "import.eyebrow",
+    namespace: "import",
+    screen: "import",
+    slot: "subtitle",
+    defaultText: { en: "Bulk import", vi: "Nhập hàng loạt" },
+    maxLength: 50,
+    description: "Import page eyebrow."
+  },
+  {
+    key: "import.title",
+    namespace: "import",
+    screen: "import",
+    slot: "header",
+    defaultText: { en: "Import leads from XLSX", vi: "Nhập ứng viên từ XLSX" },
+    maxLength: 60,
+    description: "Import page main title."
+  },
+  {
+    key: "import.desc",
+    namespace: "import",
+    screen: "import",
+    slot: "subtitle",
+    defaultText: {
+      en: "Upload the first sheet of the customer's progress-tracking workbook. The system stages every row, checks for phone duplicates, and only writes to the database after you confirm.",
+      vi: "Tải lên sheet đầu tiên của bảng theo dõi tiến độ khách hàng. Hệ thống chuẩn bị từng dòng, kiểm tra trùng số điện thoại và chỉ ghi vào cơ sở dữ liệu sau khi bạn xác nhận."
+    },
+    maxLength: 260,
+    description: "Import page description."
+  },
+  {
+    key: "import.upload.title",
+    namespace: "import",
+    screen: "import",
+    slot: "header",
+    defaultText: { en: "Upload", vi: "Tải lên" },
+    maxLength: 40,
+    description: "Import upload panel title."
+  },
+  {
+    key: "import.upload.subtitle",
+    namespace: "import",
+    screen: "import",
+    slot: "subtitle",
+    defaultText: {
+      en: "Maps columns F (Họ tên), G (Giới tính), H (Năm sinh), J (Cao), K (Kinh nghiệm), L (SĐT), D (Nguồn), M (Chương trình). Columns N + Z + AA + AD are merged into one free-text block and handed to AI extraction.",
+      vi: "Lấy cột F (Họ tên), G (Giới tính), H (Năm sinh), J (Cao), K (Kinh nghiệm), L (SĐT), D (Nguồn), M (Chương trình). Cột N + Z + AA + AD gộp thành khối ghi chú và đưa vào AI trích xuất."
+    },
+    maxLength: 320,
+    description: "Import upload panel subtitle (column map)."
+  },
+  {
+    key: "import.preview.title",
+    namespace: "import",
+    screen: "import",
+    slot: "header",
+    defaultText: { en: "Preview", vi: "Xem trước" },
+    maxLength: 40,
+    description: "Import preview panel title (filename rendered separately)."
+  },
+  {
+    key: "import.preview.subtitle",
+    namespace: "import",
+    screen: "import",
+    slot: "subtitle",
+    defaultText: {
+      en: "Review what will be created. Nothing is written to the leads table until you click Apply.",
+      vi: "Xem lại trước khi tạo. Chưa có gì được ghi vào bảng ứng viên cho đến khi bạn nhấn Áp dụng."
+    },
+    maxLength: 180,
+    description: "Import preview panel subtitle."
+  },
+  {
+    key: "import.recent.title",
+    namespace: "import",
+    screen: "import",
+    slot: "header",
+    defaultText: { en: "Recent imports", vi: "Đợt nhập gần đây" },
+    maxLength: 50,
+    description: "Import recent-batches panel title."
+  },
+  {
+    key: "import.recent.subtitle",
+    namespace: "import",
+    screen: "import",
+    slot: "subtitle",
+    defaultText: { en: "Click any row to load its preview.", vi: "Bấm vào một dòng để xem lại." },
+    maxLength: 120,
+    description: "Import recent-batches panel subtitle."
+  },
+  {
+    key: "extract.eyebrow",
+    namespace: "extract",
+    screen: "extract",
+    slot: "subtitle",
+    defaultText: { en: "Import → AI extraction", vi: "Nhập → Trích xuất AI" },
+    maxLength: 60,
+    description: "Extract page eyebrow."
+  },
+  {
+    key: "extract.title",
+    namespace: "extract",
+    screen: "extract",
+    slot: "header",
+    defaultText: { en: "Extract imported notes", vi: "Trích xuất ghi chú đã nhập" },
+    maxLength: 60,
+    description: "Extract page main title."
+  },
+  {
+    key: "extract.desc",
+    namespace: "extract",
+    screen: "extract",
+    slot: "subtitle",
+    defaultText: {
+      en: "Run AI on the notes columns of a completed import batch. Suggestions are recorded as a preview — no field is written to the database until you tick it and click Apply selected.",
+      vi: "Chạy AI trên các cột ghi chú của một đợt nhập đã hoàn tất. Gợi ý được lưu để xem trước, chưa có trường nào ghi vào cơ sở dữ liệu cho đến khi bạn chọn và nhấn Áp dụng đã chọn."
+    },
+    maxLength: 300,
+    description: "Extract page description."
+  },
+  {
+    key: "extract.pick.title",
+    namespace: "extract",
+    screen: "extract",
+    slot: "header",
+    defaultText: { en: "1. Pick a batch", vi: "1. Chọn đợt nhập" },
+    maxLength: 50,
+    description: "Extract step-1 panel title."
+  },
+  {
+    key: "extract.pick.subtitle",
+    namespace: "extract",
+    screen: "extract",
+    slot: "subtitle",
+    defaultText: {
+      en: "Only completed batches appear. New imports go to /import first.",
+      vi: "Chỉ hiện các đợt đã hoàn tất. Đợt nhập mới sẽ thực hiện ở mục Nhập dữ liệu."
+    },
+    maxLength: 160,
+    description: "Extract step-1 panel subtitle."
+  },
+  {
+    key: "extract.review.title",
+    namespace: "extract",
+    screen: "extract",
+    slot: "header",
+    defaultText: { en: "2. Review suggestions", vi: "2. Xem trước gợi ý" },
+    maxLength: 50,
+    description: "Extract step-2 panel title."
+  },
+  {
+    key: "extract.review.subtitle",
+    namespace: "extract",
+    screen: "extract",
+    slot: "subtitle",
+    defaultText: {
+      en: "Each row is one proposed field update. Tick the ones you accept. Verified fields are protected — AI cannot overwrite them.",
+      vi: "Mỗi dòng là một đề xuất cập nhật trường. Chọn các đề xuất bạn chấp nhận. Trường đã xác minh được bảo vệ, AI không thể ghi đè."
+    },
+    maxLength: 220,
+    description: "Extract step-2 panel subtitle."
+  },
+  {
     key: "dashboard.work-queue.title",
     namespace: "dashboard",
     screen: "dashboard",
