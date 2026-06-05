@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Panel,
+  useImeSafeInput,
 } from "@social-crm/ui";
 import {
   apiClient,
@@ -974,12 +975,11 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
                                 <option value="false">{copy({ en: "No", vi: "Chưa" })}</option>
                               </select>
                             ) : (
-                              <input
+                              <OverrideTextInput
                                 type={field.input === "number" ? "number" : "text"}
                                 value={override}
-                                onChange={(e) => setOverride(field.key, e.target.value)}
+                                onChange={(value) => setOverride(field.key, value)}
                                 placeholder={String(displayValue(formVal))}
-                                className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs"
                               />
                             )}
                           </div>
@@ -1360,15 +1360,38 @@ function LeadSuggestionRow(props: {
 }
 
 function FieldInput(props: { label: string; value: string; onChange: (v: string) => void }) {
+  const ime = useImeSafeInput(props.value, (e) => props.onChange(e.target.value));
   return (
     <label className="block text-sm">
       <span className="mb-1 block font-medium text-slate-600">{props.label}</span>
       <input
         type="text"
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
+        value={ime.value}
+        onChange={ime.onChange}
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
       />
     </label>
+  );
+}
+
+function OverrideTextInput(props: {
+  type: "number" | "text";
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  const ime = useImeSafeInput(props.value, (e) => props.onChange(e.target.value));
+  return (
+    <input
+      type={props.type}
+      value={ime.value}
+      onChange={ime.onChange}
+      onCompositionStart={ime.onCompositionStart}
+      onCompositionEnd={ime.onCompositionEnd}
+      placeholder={props.placeholder}
+      className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs"
+    />
   );
 }
