@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useLeadsSearchQuery } from "@social-crm/api";
+import { useImeSafeInput } from "@social-crm/ui";
 
 /**
  * Splits `text` on occurrences of `query` (case-insensitive) and returns a
@@ -41,6 +42,14 @@ export function LeadPicker({ value, onChange, label, placeholder }: LeadPickerPr
   const searchQuery = useLeadsSearchQuery(inputValue);
   const leads = searchQuery.data?.data ?? [];
 
+  // IME-safe input: during composition the dropdown value updates locally but the
+  // committed search term (and query) only changes on compositionend, so typing
+  // Vietnamese (e.g. Telex) composes correctly instead of producing "Nhiím".
+  const ime = useImeSafeInput(inputValue, (event) => {
+    setInputValue(event.target.value);
+    setOpen(true);
+  });
+
   // Close dropdown on outside click
   useEffect(() => {
     function handleMouseDown(e: MouseEvent) {
@@ -76,12 +85,11 @@ export function LeadPicker({ value, onChange, label, placeholder }: LeadPickerPr
       <div className="relative">
         <input
           type="text"
-          value={inputValue}
+          value={ime.value}
           placeholder={currentValueLabel ?? (placeholder ?? "Tìm tên hoặc SĐT ứng viên…")}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            setOpen(true);
-          }}
+          onChange={ime.onChange}
+          onCompositionStart={ime.onCompositionStart}
+          onCompositionEnd={ime.onCompositionEnd}
           onFocus={() => { if (inputValue.length >= 1) setOpen(true); }}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
         />

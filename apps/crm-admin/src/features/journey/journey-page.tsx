@@ -27,6 +27,20 @@ import {
 const PAGE_SIZE = 25;
 
 /**
+ * Stages shown in the Journey "Stage" filter, in lead-pipeline lifecycle order
+ * (a subset of the backend `LeadStatus` enum — the milestones operators filter
+ * by). Fixed list so the dropdown order is stable and independent of how many
+ * candidates currently sit in each stage.
+ */
+const FILTER_STAGES = [
+  "new", // Mới tiếp nhận
+  "contacted", // Đã liên hệ
+  "qualified", // Đã có form
+  "visa_processing", // Đóng visa
+  "departed", // Đã xuất cảnh
+] as const;
+
+/**
  * Journey — the unified candidate cohort view.
  *
  * Replaces the separate Pipeline / Applications-list / Training-finance-ledger
@@ -180,8 +194,6 @@ export function JourneyPage() {
   });
 
   const rows = pipelineQuery.data?.data ?? [];
-  const groups = pipelineQuery.data?.groups ?? {};
-  const orderedGroups = useMemo(() => Object.entries(groups).sort((a, b) => b[1] - a[1]), [groups]);
 
   // Phase derivation + the optional "stuck at phase" client filter. The stage
   // and text filters hit the server; the phase filter is a view over the page.
@@ -245,7 +257,7 @@ export function JourneyPage() {
             onChange={(e) => setFilters((s) => ({ ...s, stage: e.target.value }))}
           >
             <option value="">{copy({ en: "All stages", vi: "Tất cả giai đoạn" })}</option>
-            {orderedGroups.map(([stage]) => (
+            {FILTER_STAGES.map((stage) => (
               <option key={stage} value={stage}>
                 {formatPipelineStage(stage)}
               </option>

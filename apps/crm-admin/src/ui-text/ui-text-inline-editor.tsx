@@ -5,6 +5,7 @@ import {
   useResetUiTextOverrideMutation,
   useUpdateUiTextOverrideMutation
 } from "@social-crm/api";
+import { useImeSafeInput } from "@social-crm/ui";
 import { useI18n } from "@/i18n";
 import { useUiText } from "./ui-text-provider";
 import { uiTextByKey } from "./ui-text.registry";
@@ -56,6 +57,8 @@ export function UiTextInlineEditor() {
   const [position, setPosition] = useState<Position | null>(null);
   const [enOverride, setEnOverride] = useState("");
   const [viOverride, setViOverride] = useState("");
+  const enIme = useImeSafeInput(enOverride, (event) => setEnOverride(event.target.value));
+  const viIme = useImeSafeInput(viOverride, (event) => setViOverride(event.target.value));
 
   const updateOverride = useUpdateUiTextOverrideMutation();
   const resetOverride = useResetUiTextOverrideMutation();
@@ -184,10 +187,12 @@ export function UiTextInlineEditor() {
           <span className="text-[11px] font-normal text-slate-400">{entry.defaultText.en}</span>
           <input
             className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
-            value={enOverride}
+            value={enIme.value}
             maxLength={maxLength}
             placeholder={entry.defaultText.en}
-            onChange={(event) => setEnOverride(event.target.value)}
+            onChange={enIme.onChange}
+            onCompositionStart={enIme.onCompositionStart}
+            onCompositionEnd={enIme.onCompositionEnd}
           />
         </label>
 
@@ -199,10 +204,12 @@ export function UiTextInlineEditor() {
           <span className="text-[11px] font-normal text-slate-400">{entry.defaultText.vi}</span>
           <input
             className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-100"
-            value={viOverride}
+            value={viIme.value}
             maxLength={maxLength}
             placeholder={entry.defaultText.vi}
-            onChange={(event) => setViOverride(event.target.value)}
+            onChange={viIme.onChange}
+            onCompositionStart={viIme.onCompositionStart}
+            onCompositionEnd={viIme.onCompositionEnd}
           />
         </label>
 

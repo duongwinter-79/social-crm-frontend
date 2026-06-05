@@ -1,9 +1,11 @@
 import type {
+  CompositionEvent,
   InputHTMLAttributes,
   PropsWithChildren,
   ReactNode,
   SelectHTMLAttributes
 } from "react";
+import { useImeSafeInput } from "./use-ime-safe-input";
 
 function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
@@ -41,7 +43,12 @@ export function Button(
 }
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
-  const { label, className, ...rest } = props;
+  const { label, className, value, onChange, onCompositionStart, onCompositionEnd, ...rest } = props;
+  // Controlled text inputs are made IME-safe so Vietnamese (and other composing
+  // IMEs) compose correctly even when the value comes from lagging state. Leave
+  // uncontrolled inputs (no `value`) untouched.
+  const ime = useImeSafeInput(typeof value === "string" ? value : undefined, onChange);
+  const controlled = typeof value === "string";
   return (
     <label className="flex flex-col gap-2 text-sm text-slate-600">
       {label ? <span className="font-medium text-slate-600">{label}</span> : null}
@@ -51,6 +58,20 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: s
           className
         )}
         {...rest}
+        {...(controlled
+          ? {
+              value: ime.value,
+              onChange: ime.onChange,
+              onCompositionStart: (event: CompositionEvent<HTMLInputElement>) => {
+                ime.onCompositionStart();
+                onCompositionStart?.(event);
+              },
+              onCompositionEnd: (event: CompositionEvent<HTMLInputElement>) => {
+                ime.onCompositionEnd(event);
+                onCompositionEnd?.(event);
+              }
+            }
+          : { value, onChange, onCompositionStart, onCompositionEnd })}
       />
     </label>
   );

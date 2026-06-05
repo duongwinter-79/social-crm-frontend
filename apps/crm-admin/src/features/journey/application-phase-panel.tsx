@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Badge, Button, Select } from "@social-crm/ui";
+import { Badge, Button, Select, useImeSafeInput } from "@social-crm/ui";
 import {
   useCreateApplicationMutation,
   useDeleteApplicationMutation,
@@ -139,6 +139,9 @@ function EditApplication(props: { application: ApplicationRecord }) {
   const statusOptions = applicationStatusOptions(application.status);
   const safeStatus = statusOptions.includes(draft.status) ? draft.status : application.status;
   const effectiveDraft = { ...draft, status: safeStatus };
+  const rejectReasonIme = useImeSafeInput(effectiveDraft.rejectReason, (e) =>
+    setDraft((d) => ({ ...d, rejectReason: e.target.value }))
+  );
   const hasNextStatus = hasApplicationNextStatus(application.status);
   const missingInterviewDate = requiresInterviewDate(effectiveDraft.status) && !effectiveDraft.interviewDate;
   const missingRejectReason = requiresRejectReason(effectiveDraft.status) && !effectiveDraft.rejectReason.trim();
@@ -194,8 +197,10 @@ function EditApplication(props: { application: ApplicationRecord }) {
           <label className="mb-1.5 block text-sm font-medium text-slate-600">{copy({ en: "Reject / withdraw reason", vi: "Lý do rớt / rút" })}</label>
           <input
             type="text"
-            value={effectiveDraft.rejectReason}
-            onChange={(e) => setDraft((d) => ({ ...d, rejectReason: e.target.value }))}
+            value={rejectReasonIme.value}
+            onChange={rejectReasonIme.onChange}
+            onCompositionStart={rejectReasonIme.onCompositionStart}
+            onCompositionEnd={rejectReasonIme.onCompositionEnd}
             placeholder={copy({ en: "Required for closed outcomes", vi: "Bắt buộc khi đóng hồ sơ" })}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           />

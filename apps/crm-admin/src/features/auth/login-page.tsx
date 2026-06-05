@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient, useSessionStore } from "@social-crm/api";
+import { useImeSafeInput } from "@social-crm/ui";
 import { getRequestErrorMessage, useRequestNotifications } from "@/app/request-notifications";
 import { useI18n } from "@/i18n";
 import "./login-page.css";
@@ -12,6 +13,7 @@ export function LoginPage() {
   const consumeLogoutReason = useSessionStore((state) => state.consumeLogoutReason);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const usernameIme = useImeSafeInput(username, (e) => setUsername(e.target.value));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
@@ -150,8 +152,10 @@ export function LoginPage() {
               <input
                 id="username"
                 className="login-form-control"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={usernameIme.value}
+                onChange={usernameIme.onChange}
+                onCompositionStart={usernameIme.onCompositionStart}
+                onCompositionEnd={usernameIme.onCompositionEnd}
                 placeholder={copy({ en: "Enter your operator username", vi: "Nhập tên đăng nhập nhân sự" })}
                 autoComplete="username"
               />
