@@ -13,6 +13,8 @@ export function DossierModal(props: {
   name: string;
   profile: Record<string, unknown> | null | undefined;
   onClose: () => void;
+  /** Opens the upload-form modal; surfaced as a link in the dossier subtitle. */
+  onEditForm?: () => void;
 }) {
   const { copy } = useI18n();
 
@@ -52,7 +54,7 @@ export function DossierModal(props: {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto bg-slate-50/40 p-5">
-          <CandidateDossierPanel profile={props.profile} />
+          <CandidateDossierPanel profile={props.profile} onEditForm={props.onEditForm} />
         </div>
       </div>
     </div>,

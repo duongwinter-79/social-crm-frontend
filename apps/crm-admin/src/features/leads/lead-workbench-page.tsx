@@ -461,7 +461,21 @@ export function LeadWorkbenchPage() {
         lead={lead}
         suggestions={suggestionsQuery.data ?? []}
         qualification={qualificationQuery.data}
-        onVerifyAll={(patch) => qualificationMutation.mutate(patch)}
+        onVerifyAll={(patch, identityPatch) => {
+          if (Object.keys(patch).length > 0) {
+            qualificationMutation.mutate(patch);
+          }
+          // Identity fields (fullName/phone) are Lead-level, not qualification.
+          // Prefill the identity form so the operator can review and persist
+          // them via "Save identity"; do not auto-save here.
+          if (identityPatch && Object.keys(identityPatch).length > 0) {
+            setIdentityForm((s) => ({
+              ...s,
+              ...(typeof identityPatch.fullName === "string" ? { fullName: identityPatch.fullName } : {}),
+              ...(typeof identityPatch.phone === "string" ? { phone: identityPatch.phone } : {})
+            }));
+          }
+        }}
         onRerunExtraction={(scanMode) => {
           if (selectedThreadId) {
             runExtraction.mutate({ leadId, threadId: selectedThreadId, scanMode });

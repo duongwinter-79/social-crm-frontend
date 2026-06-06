@@ -374,6 +374,14 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async resyncImportBatch(id: string): Promise<ImportBatch> {
+    const response = await this.http.post<ApiEnvelope<ImportBatch> | ImportBatch>(
+      `/imports/leads/${id}/resync`,
+      {}
+    );
+    return unwrapEnvelope(response.data);
+  }
+
   // ── Operator-triggered notes extraction (preview/apply gate) ─────────
 
   async triggerImportNotesExtraction(id: string) {

@@ -9,7 +9,9 @@ import { useI18n } from "@/i18n";
  *
  * Form data is the candidate's full information; the Lead is intentionally
  * narrower (channel signal only). To edit anything here, the operator removes
- * the linked form on `/applications/detail?leadId=…` and re-uploads.
+ * the linked form and re-uploads. When rendered inside the journey modal an
+ * `onEditForm` callback opens the upload-form modal directly, so the subtitle
+ * links to that action instead of exposing a raw route path to the operator.
  *
  * Hides itself entirely when the candidate has no dossier yet (no form
  * uploaded AND no fields seeded via `syncProfileFromVerifiedLeadData`).
@@ -95,7 +97,14 @@ function displayValue(v: unknown): string {
   return String(v);
 }
 
-export function CandidateDossierPanel({ profile }: { profile: DossierProfile }) {
+export function CandidateDossierPanel({
+  profile,
+  onEditForm,
+}: {
+  profile: DossierProfile;
+  /** Opens the upload-form modal. When set, the subtitle links to it. */
+  onEditForm?: () => void;
+}) {
   const { copy } = useI18n();
 
   if (!profile || typeof profile !== "object") return null;
@@ -112,13 +121,32 @@ export function CandidateDossierPanel({ profile }: { profile: DossierProfile }) 
     })
     .filter(({ populated }) => populated.length > 0);
 
+  const subtitle = onEditForm ? (
+    <>
+      {copy({
+        en: "Read-only. Sourced from the most recently confirmed FORM_STANDARD upload. To edit, ",
+        vi: "Chỉ xem. Lấy từ form đã xác nhận gần nhất. Để sửa, ",
+      })}
+      <button
+        type="button"
+        onClick={onEditForm}
+        className="font-medium text-indigo-600 underline underline-offset-2 transition-colors hover:text-indigo-700"
+      >
+        {copy({ en: "manage the form", vi: "quản lý form" })}
+      </button>
+      {copy({ en: " and re-upload.", vi: " rồi tải lại." })}
+    </>
+  ) : (
+    copy({
+      en: "Read-only. Sourced from the most recently confirmed FORM_STANDARD upload. To edit, manage the standard form and re-upload.",
+      vi: "Chỉ xem. Lấy từ form đã xác nhận gần nhất. Để sửa, hãy quản lý form chuẩn rồi tải lại.",
+    })
+  );
+
   return (
     <Panel
       title={copy({ en: "Candidate dossier (from form)", vi: "Hồ sơ ứng viên (từ form)" })}
-      subtitle={copy({
-        en: "Read-only. Sourced from the most recently confirmed FORM_STANDARD upload. To edit, remove the file from /applications/detail and re-upload.",
-        vi: "Chỉ xem. Lấy từ form đã xác nhận gần nhất. Để sửa, xoá file ở /applications/detail rồi tải lại.",
-      })}
+      subtitle={subtitle}
     >
       <div className="space-y-5">
         {sections.map(({ section, populated }) => (

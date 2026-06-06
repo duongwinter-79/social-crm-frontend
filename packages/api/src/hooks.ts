@@ -176,6 +176,19 @@ export function useCancelImportBatchMutation() {
   });
 }
 
+export function useResyncImportBatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.resyncImportBatch(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["imports", "batches"] });
+      // Prefix-invalidates the batch summary AND its staged rows.
+      queryClient.invalidateQueries({ queryKey: ["imports", "batch", id] });
+    },
+    meta: { successMessage: { en: "Re-checked against latest data", vi: "Đã đối chiếu với dữ liệu mới nhất" } }
+  });
+}
+
 export function useDashboardStatsQuery() {
   return useQuery({
     queryKey: ["dashboard", "stats"],

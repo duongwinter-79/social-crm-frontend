@@ -330,6 +330,8 @@ export interface ImportBatch {
   errorRows: number;
   appliedAt?: string | null;
   completedAt?: string | null;
+  /** When the pending batch was last re-checked against the live leads table. */
+  resyncedAt?: string | null;
   errorSummary?: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;

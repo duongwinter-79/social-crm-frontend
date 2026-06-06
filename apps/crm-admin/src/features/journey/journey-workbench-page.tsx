@@ -433,7 +433,15 @@ export function JourneyWorkbench(props: {
         />
       ) : null}
       {dossierOpen ? (
-        <DossierModal name={getLeadDisplayName(lead)} profile={candidate?.profile} onClose={() => setDossierOpen(false)} />
+        <DossierModal
+          name={getLeadDisplayName(lead)}
+          profile={candidate?.profile}
+          onClose={() => setDossierOpen(false)}
+          onEditForm={() => {
+            setDossierOpen(false);
+            setFormModalOpen(true);
+          }}
+        />
       ) : null}
     </div>
   );

@@ -3,6 +3,7 @@ import { Badge, Button, DataTable, InfoStrip, Panel, SectionHeader } from "@soci
 import {
   useApplyImportBatchMutation,
   useCancelImportBatchMutation,
+  useResyncImportBatchMutation,
   useImportBatchQuery,
   useImportBatchRowsQuery,
   useImportBatchesQuery,
@@ -56,6 +57,7 @@ export function ImportPage() {
   const previewMutation = usePreviewLeadsImportMutation();
   const applyMutation = useApplyImportBatchMutation();
   const cancelMutation = useCancelImportBatchMutation();
+  const resyncMutation = useResyncImportBatchMutation();
   const batchesQuery = useImportBatchesQuery({ limit: 25 });
   const batchQuery = useImportBatchQuery(activeBatchId ?? undefined, { pollWhileActive: true });
   const rowsQuery = useImportBatchRowsQuery(activeBatchId ?? undefined, {
@@ -110,6 +112,20 @@ export function ImportPage() {
     if (!activeBatchId) return;
     setConfirmAction("cancel");
   };
+
+  const handleResync = () => {
+    if (!activeBatchId) return;
+    resyncMutation.mutate(activeBatchId);
+  };
+
+  // A pending preview is dedup'd against the DB at upload (or last resync). If
+  // it has been sitting >24h, the duplicate check may be out of date — surface
+  // a nudge to re-check before applying.
+  const lastCheckedAt = activeBatch?.resyncedAt ?? activeBatch?.createdAt ?? null;
+  const isStalePreview =
+    activeBatch?.status === "pending_review" &&
+    lastCheckedAt != null &&
+    Date.now() - new Date(lastCheckedAt).getTime() >= 24 * 60 * 60 * 1000;
 
   return (
     <div className="space-y-6">
@@ -184,6 +200,17 @@ export function ImportPage() {
                         vi: `Áp dụng (${activeBatch.willCreateRows})`
                       })}
               </Button>
+              {activeBatch.status === "pending_review" ? (
+                <Button
+                  variant="secondary"
+                  onClick={handleResync}
+                  disabled={resyncMutation.isPending}
+                >
+                  {resyncMutation.isPending
+                    ? copy({ en: "Re-checking...", vi: "Đang đối chiếu..." })
+                    : copy({ en: "Re-check duplicates", vi: "Đối chiếu lại dữ liệu" })}
+                </Button>
+              ) : null}
               <Button
                 variant="secondary"
                 onClick={handleCancel}
@@ -217,6 +244,32 @@ export function ImportPage() {
               tone={activeBatch.errorRows > 0 ? "danger" : "neutral"}
             />
           </div>
+
+          {activeBatch.status === "pending_review" && lastCheckedAt ? (
+            <div
+              className={`mt-3 rounded-xl border px-3 py-2 text-xs leading-5 ${
+                isStalePreview
+                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                  : "border-slate-200 bg-slate-50 text-slate-500"
+              }`}
+            >
+              {copy({
+                en: "Duplicate check based on the database at",
+                vi: "Kết quả kiểm tra trùng dựa trên dữ liệu lúc"
+              })}{" "}
+              <span className="font-medium">{new Date(lastCheckedAt).toLocaleString()}</span>
+              {activeBatch.resyncedAt
+                ? copy({ en: " (last re-checked).", vi: " (đối chiếu lần cuối)." })
+                : copy({ en: " (upload time).", vi: " (lúc tải lên)." })}
+              {isStalePreview
+                ? " " +
+                  copy({
+                    en: "This may be out of date — re-check duplicates before applying.",
+                    vi: "Có thể đã cũ — hãy đối chiếu lại trước khi áp dụng."
+                  })
+                : ""}
+            </div>
+          ) : null}
 
           {(() => {
             const aiPending = activeBatch.aiPending ?? 0;

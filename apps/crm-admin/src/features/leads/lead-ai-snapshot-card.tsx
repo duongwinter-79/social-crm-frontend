@@ -10,7 +10,13 @@ interface Props {
     lead: Lead;
     suggestions: AiSuggestion[];
     qualification: LeadQualificationSnapshot | undefined;
-    onVerifyAll: (patch: Record<string, unknown>) => void;
+    /**
+     * Apply verified suggestions. `patch` carries qualification-overlay fields
+     * (saved immediately); `identityPatch` carries Lead identity fields
+     * (fullName/phone) that the parent applies to the identity form display so
+     * the operator can review and save them via "Save identity".
+     */
+    onVerifyAll: (patch: Record<string, unknown>, identityPatch: Record<string, unknown>) => void;
     onRerunExtraction: (scanMode: ScanMode) => void;
     /** Reject/dismiss the active suggestion for a field so it stops resurfacing. */
     onDismissSuggestion?: (fieldName: string) => void;
@@ -55,27 +61,36 @@ const FIELD_SECTION: Record<string, SectionId> = {
     hasWorkedAbroad: "work_experience"
 };
 
-const QUALIFICATION_DTO_FIELDS: ReadonlySet<string> = new Set([
-    "age",
-    "gender",
-    "hasPassport",
-    "height",
-    "weight",
-    "experienceLevel",
-    "experienceYears",
-    "experienceField",
-    "experienceDetails",
-    "preferredRegion",
-    "tattooStatus",
-    "healthMeetsCriteria",
-    "hasWorkedAbroad",
-    "hasCleanHistoryAbroad",
-    "hasStrongSkills",
-    "hasRiskHistory",
-    "readyToDepartInMonths",
-    "understandsJobNature",
-    "hasClearRegionPreference"
-]);
+/**
+ * Routing table for "Verify all". Every value the AI can suggest is keyed by
+ * the suggestion `fieldName` and routed to exactly one destination:
+ *
+ *   - "qualification" — saved to the qualification overlay via the
+ *     UpdateLeadQualification DTO (`dtoKey` is the DTO field name).
+ *   - "identity"      — a Lead-level field (fullName/phone) applied to the
+ *     identity form for the operator to review and persist via "Save identity".
+ *
+ * This MUST stay in sync with the backend's `EXTRACTED_TO_MANIFEST_KEY`
+ * (social_crm_backend/.../lead-ai-suggestion.writer.ts) — those `manifestKey`s
+ * are the only `fieldName`s that can ever be persisted as a LeadAiSuggestion,
+ * so any key listed there must appear here or "Verify all" would silently drop
+ * it. `composeVerifyAllPatches` dev-warns on any unrouted suggestion to make
+ * such drift visible.
+ */
+type VerifyTarget = "qualification" | "identity";
+const SUGGESTION_ROUTING: Record<string, { target: VerifyTarget; dtoKey: string }> = {
+    fullName: { target: "identity", dtoKey: "fullName" },
+    name: { target: "identity", dtoKey: "fullName" },
+    phone: { target: "identity", dtoKey: "phone" },
+    birthYear: { target: "qualification", dtoKey: "birthYear" },
+    gender: { target: "qualification", dtoKey: "gender" },
+    heightCm: { target: "qualification", dtoKey: "height" },
+    weightKg: { target: "qualification", dtoKey: "weight" },
+    experienceField: { target: "qualification", dtoKey: "experienceField" },
+    preferredRegions: { target: "qualification", dtoKey: "preferredRegion" },
+    desiredIndustry: { target: "qualification", dtoKey: "desiredIndustry" },
+    desiredSalary: { target: "qualification", dtoKey: "desiredSalary" }
+};
 
 function extractionStatusCopy(status: BackgroundExtractionStatus, copy: ReturnType<typeof useI18n>["copy"]) {
     switch (status) {
@@ -299,24 +314,67 @@ function findConflicts(
     return out;
 }
 
-function composeVerifyAllPatch(suggestions: AiSuggestion[], verifiedKeys: string[]): Record<string, unknown> {
-    const patch: Record<string, unknown> = {};
+interface VerifyAllPatches {
+    /** Fields saved to the qualification overlay via the qualification mutation. */
+    qualification: Record<string, unknown>;
+    /** Lead identity fields (fullName/phone) applied to the identity form display. */
+    identity: Record<string, unknown>;
+}
+
+/**
+ * Partitions every active AI suggestion into the qualification patch and the
+ * identity patch via SUGGESTION_ROUTING, so "Verify all" applies ALL suggested
+ * fields — nothing shown as "Pending" is silently dropped.
+ *
+ * Idempotency guards:
+ *   - qualification: skip fields the operator already verified. verifiedKeys is
+ *     stamped with DTO keys (e.g. `height`, not `heightCm`), so we check both
+ *     the suggestion fieldName and the routed dtoKey.
+ *   - identity: skip suggestions that already match the saved Lead value.
+ */
+function composeVerifyAllPatches(
+    suggestions: AiSuggestion[],
+    verifiedKeys: string[],
+    lead: Lead
+): VerifyAllPatches {
+    const qualification: Record<string, unknown> = {};
+    const identity: Record<string, unknown> = {};
 
     for (const suggestion of suggestions) {
-        if (verifiedKeys.includes(suggestion.fieldName)) continue;
-        if (suggestion.value === null || suggestion.value === undefined) continue;
+        if (suggestion.value === null || suggestion.value === undefined || suggestion.value === "") continue;
 
-        let dtoKey = suggestion.fieldName;
-        if (suggestion.fieldName === "heightCm") dtoKey = "height";
-        if (suggestion.fieldName === "weightKg") dtoKey = "weight";
-        if (suggestion.fieldName === "preferredRegions") dtoKey = "preferredRegion";
+        const route = SUGGESTION_ROUTING[suggestion.fieldName];
+        if (!route) {
+            // A suggestion the routing table doesn't know about would be dropped
+            // by "Verify all". Surface it in dev so backend drift is caught.
+            if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+                // eslint-disable-next-line no-console
+                console.warn(
+                    `[verify-all] No routing for AI suggestion field "${suggestion.fieldName}" — it will NOT be applied.`
+                );
+            }
+            continue;
+        }
 
-        if (QUALIFICATION_DTO_FIELDS.has(dtoKey)) {
-            patch[dtoKey] = suggestion.value;
+        if (route.target === "qualification") {
+            if (verifiedKeys.includes(suggestion.fieldName) || verifiedKeys.includes(route.dtoKey)) continue;
+            qualification[route.dtoKey] = suggestion.value;
+        } else {
+            // Identity: skip if the suggestion already matches the saved value.
+            const current = (lead as unknown as Record<string, unknown>)[route.dtoKey];
+            if (
+                current !== null &&
+                current !== undefined &&
+                current !== "" &&
+                JSON.stringify(current) === JSON.stringify(suggestion.value)
+            ) {
+                continue;
+            }
+            identity[route.dtoKey] = suggestion.value;
         }
     }
 
-    return patch;
+    return { qualification, identity };
 }
 
 interface RowState {
@@ -620,9 +678,9 @@ export function LeadAiSnapshotCard(props: Props) {
         () => findConflicts(props.suggestions, verifiedKeys, verified),
         [props.suggestions, verifiedKeys, verified]
     );
-    const verifyAllPatch = useMemo(
-        () => composeVerifyAllPatch(props.suggestions, verifiedKeys),
-        [props.suggestions, verifiedKeys]
+    const { qualification: verifyAllPatch, identity: identityPatch } = useMemo(
+        () => composeVerifyAllPatches(props.suggestions, verifiedKeys, props.lead),
+        [props.suggestions, verifiedKeys, props.lead]
     );
     const rows = useMemo(
         () => buildRows(props.lead, props.suggestions, verifiedKeys, verified),
@@ -644,7 +702,7 @@ export function LeadAiSnapshotCard(props: Props) {
             }));
     }, [rows]);
 
-    const verifyAllCount = Object.keys(verifyAllPatch).length;
+    const verifyAllCount = Object.keys(verifyAllPatch).length + Object.keys(identityPatch).length;
     const phoneMergeConflictId = findPhoneMergeCandidate(props.suggestions);
     const extractionStatus = extractionStatusCopy(props.extractionStatus, copy);
 
@@ -725,7 +783,7 @@ export function LeadAiSnapshotCard(props: Props) {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
-                        onClick={() => props.onVerifyAll(verifyAllPatch)}
+                        onClick={() => props.onVerifyAll(verifyAllPatch, identityPatch)}
                         disabled={props.isVerifyAllPending || verifyAllCount === 0}
                     >
                         {props.isVerifyAllPending
