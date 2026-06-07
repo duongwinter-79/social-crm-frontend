@@ -1,5 +1,6 @@
 import { Panel } from "@social-crm/ui";
 import { useI18n } from "@/i18n";
+import { DOSSIER_FIELD_ROWS, type DossierFieldRow } from "./dossier-fields.generated";
 
 /**
  * Read-only "Hồ sơ ứng viên (từ form)" panel.
@@ -19,51 +20,11 @@ import { useI18n } from "@/i18n";
 
 type DossierProfile = Record<string, unknown> | null | undefined;
 
-type FieldRow = {
-  key: string;
-  group: "typed" | "soft";
-  section: "identity" | "physical" | "background" | "family" | "work" | "wishes";
-  en: string;
-  vi: string;
-};
-
-const ROWS: readonly FieldRow[] = [
-  { key: "fullName",          group: "typed", section: "identity",   en: "Full name",          vi: "Họ và tên" },
-  { key: "dateOfBirth",       group: "typed", section: "identity",   en: "Date of birth",      vi: "Ngày sinh" },
-  { key: "birthYear",         group: "typed", section: "identity",   en: "Birth year",         vi: "Năm sinh" },
-  { key: "gender",            group: "typed", section: "identity",   en: "Gender",             vi: "Giới tính" },
-
-  { key: "heightCm",          group: "typed", section: "physical",   en: "Height (cm)",        vi: "Chiều cao (cm)" },
-  { key: "weightKg",          group: "typed", section: "physical",   en: "Weight (kg)",        vi: "Cân nặng (kg)" },
-  { key: "vision",            group: "soft",  section: "physical",   en: "Vision",             vi: "Thị lực" },
-  { key: "handedness",        group: "soft",  section: "physical",   en: "Handedness",         vi: "Thuận tay" },
-  { key: "tattooNote",        group: "soft",  section: "physical",   en: "Tattoo note",        vi: "Hình xăm" },
-
-  { key: "hometownProvince",  group: "typed", section: "background", en: "Hometown",           vi: "Hộ khẩu" },
-  { key: "address",           group: "typed", section: "background", en: "Address",            vi: "Địa chỉ" },
-  { key: "education",         group: "soft",  section: "background", en: "Education",          vi: "Trình độ" },
-
-  { key: "maritalStatus",     group: "soft",  section: "family",     en: "Marital status",     vi: "Tình trạng hôn nhân" },
-  { key: "spouseName",        group: "soft",  section: "family",     en: "Spouse name",        vi: "Họ tên vợ/chồng" },
-  { key: "spouseAge",         group: "soft",  section: "family",     en: "Spouse age",         vi: "Tuổi vợ/chồng" },
-  { key: "childrenCount",     group: "soft",  section: "family",     en: "Children count",     vi: "Số con" },
-  { key: "childrenAges",      group: "soft",  section: "family",     en: "Children ages",      vi: "Tuổi con" },
-  { key: "fatherName",        group: "soft",  section: "family",     en: "Father's name",      vi: "Họ tên bố" },
-  { key: "fatherAge",         group: "soft",  section: "family",     en: "Father's age",       vi: "Tuổi bố" },
-  { key: "motherName",        group: "soft",  section: "family",     en: "Mother's name",      vi: "Họ tên mẹ" },
-  { key: "motherAge",         group: "soft",  section: "family",     en: "Mother's age",       vi: "Tuổi mẹ" },
-  { key: "siblingsCount",     group: "soft",  section: "family",     en: "Siblings count",     vi: "Số anh chị em" },
-  { key: "birthOrder",        group: "soft",  section: "family",     en: "Birth order",        vi: "Thứ tự sinh" },
-
-  { key: "experienceField",   group: "typed", section: "work",       en: "Experience field",   vi: "Ngành kinh nghiệm" },
-  { key: "experienceDetails", group: "typed", section: "work",       en: "Experience details", vi: "Chi tiết kinh nghiệm" },
-  { key: "experienceYears",   group: "typed", section: "work",       en: "Experience years",   vi: "Số năm KN" },
-  { key: "hasBeenToTaiwan",   group: "soft",  section: "work",       en: "Has been to Taiwan", vi: "Đã qua Đài Loan" },
-
-  { key: "desiredIndustry",   group: "typed", section: "wishes",     en: "Desired industry",   vi: "Ngành mong muốn" },
-  { key: "preferredRegion",   group: "typed", section: "wishes",     en: "Preferred regions",  vi: "Khu vực mong muốn" },
-  { key: "desiredSalary",     group: "typed", section: "wishes",     en: "Desired salary",     vi: "Lương mong muốn" },
-];
+// The dossier field list (ROWS) + section/group are generated from the backend
+// field registry — see `dossier-fields.generated.ts` (npm run gen:field-policy).
+// Add a dossier field by adding a manifest entry + a DOSSIER_LAYOUT line; do not
+// hand-edit the generated list here.
+type FieldRow = DossierFieldRow;
 
 const SECTION_LABELS: Record<FieldRow["section"], { en: string; vi: string }> = {
   identity:   { en: "Identity",   vi: "Thông tin cơ bản" },
@@ -110,12 +71,12 @@ export function CandidateDossierPanel({
   if (!profile || typeof profile !== "object") return null;
 
   // Only render the panel if at least one field has a non-empty value.
-  const hasAnyValue = ROWS.some((row) => isNonEmpty(readDossierValue(profile, row)));
+  const hasAnyValue = DOSSIER_FIELD_ROWS.some((row) => isNonEmpty(readDossierValue(profile, row)));
   if (!hasAnyValue) return null;
 
   const sections = (["identity", "physical", "background", "family", "work", "wishes"] as const)
     .map((section) => {
-      const rows = ROWS.filter((r) => r.section === section);
+      const rows = DOSSIER_FIELD_ROWS.filter((r) => r.section === section);
       const populated = rows.filter((r) => isNonEmpty(readDossierValue(profile, r)));
       return { section, populated };
     })

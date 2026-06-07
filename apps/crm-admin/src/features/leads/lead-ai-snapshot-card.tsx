@@ -3,6 +3,12 @@ import { Badge, Button, EmptyState, InfoStrip, Panel } from "@social-crm/ui";
 import type { AiSuggestion, BackgroundExtractionStatus, Lead, LeadQualificationSnapshot } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 import { findPhoneMergeCandidate } from "./field-with-provenance";
+import {
+    FIELD_DISPLAY_ALIASES,
+    REVIEWABLE_AI_FIELDS,
+    SUGGESTION_ROUTING,
+    TRACKED_AI_FIELDS
+} from "./field-policy.generated";
 
 export type ScanMode = "new_only" | "include_scanned";
 
@@ -61,36 +67,11 @@ const FIELD_SECTION: Record<string, SectionId> = {
     hasWorkedAbroad: "work_experience"
 };
 
-/**
- * Routing table for "Verify all". Every value the AI can suggest is keyed by
- * the suggestion `fieldName` and routed to exactly one destination:
- *
- *   - "qualification" — saved to the qualification overlay via the
- *     UpdateLeadQualification DTO (`dtoKey` is the DTO field name).
- *   - "identity"      — a Lead-level field (fullName/phone) applied to the
- *     identity form for the operator to review and persist via "Save identity".
- *
- * This MUST stay in sync with the backend's `EXTRACTED_TO_MANIFEST_KEY`
- * (social_crm_backend/.../lead-ai-suggestion.writer.ts) — those `manifestKey`s
- * are the only `fieldName`s that can ever be persisted as a LeadAiSuggestion,
- * so any key listed there must appear here or "Verify all" would silently drop
- * it. `composeVerifyAllPatches` dev-warns on any unrouted suggestion to make
- * such drift visible.
- */
-type VerifyTarget = "qualification" | "identity";
-const SUGGESTION_ROUTING: Record<string, { target: VerifyTarget; dtoKey: string }> = {
-    fullName: { target: "identity", dtoKey: "fullName" },
-    name: { target: "identity", dtoKey: "fullName" },
-    phone: { target: "identity", dtoKey: "phone" },
-    birthYear: { target: "qualification", dtoKey: "birthYear" },
-    gender: { target: "qualification", dtoKey: "gender" },
-    heightCm: { target: "qualification", dtoKey: "height" },
-    weightKg: { target: "qualification", dtoKey: "weight" },
-    experienceField: { target: "qualification", dtoKey: "experienceField" },
-    preferredRegions: { target: "qualification", dtoKey: "preferredRegion" },
-    desiredIndustry: { target: "qualification", dtoKey: "desiredIndustry" },
-    desiredSalary: { target: "qualification", dtoKey: "desiredSalary" }
-};
+// SUGGESTION_ROUTING / TRACKED_AI_FIELDS / FIELD_DISPLAY_ALIASES /
+// REVIEWABLE_AI_FIELDS now live in `./field-policy.generated.ts`, generated from
+// the backend's single FIELD_POLICY table (npm run gen:field-policy). Do not
+// hand-edit them here — the backend drift guard (test:field-policy-codegen)
+// keeps the generated mirror honest.
 
 function extractionStatusCopy(status: BackgroundExtractionStatus, copy: ReturnType<typeof useI18n>["copy"]) {
     switch (status) {
@@ -143,26 +124,6 @@ function extractionStatusCopy(status: BackgroundExtractionStatus, copy: ReturnTy
             return null;
     }
 }
-
-const TRACKED_AI_FIELDS: readonly string[] = [
-    "fullName",
-    "phone",
-    "birthYear",
-    "gender",
-    "heightCm",
-    "weightKg",
-    "experienceField",
-    "desiredIndustry",
-    "preferredRegions",
-    "desiredSalary"
-];
-
-const FIELD_DISPLAY_ALIASES: Record<string, string> = {
-    name: "fullName",
-    height: "heightCm",
-    weight: "weightKg",
-    preferredRegion: "preferredRegions"
-};
 
 function canonicalDisplayField(key: string): string {
     return FIELD_DISPLAY_ALIASES[key] ?? key;
@@ -319,6 +280,14 @@ interface VerifyAllPatches {
     qualification: Record<string, unknown>;
     /** Lead identity fields (fullName/phone) applied to the identity form display. */
     identity: Record<string, unknown>;
+    /**
+     * Canonical display-field names that "Verify all" will actually apply — the
+     * single source of truth for the button count, the per-row "pending" badge,
+     * and the section/panel pending counts, so they can never disagree. A
+     * suggestion that is already verified, already matches the saved value, or
+     * has no routing is NOT in this set even though it still renders as a row.
+     */
+    actionable: Set<string>;
 }
 
 /**
@@ -339,6 +308,7 @@ function composeVerifyAllPatches(
 ): VerifyAllPatches {
     const qualification: Record<string, unknown> = {};
     const identity: Record<string, unknown> = {};
+    const actionable = new Set<string>();
 
     for (const suggestion of suggestions) {
         if (suggestion.value === null || suggestion.value === undefined || suggestion.value === "") continue;
@@ -372,9 +342,13 @@ function composeVerifyAllPatches(
             }
             identity[route.dtoKey] = suggestion.value;
         }
+
+        // Reached only when the suggestion is actually applied above. Track it by
+        // its display-field name so the row badge + counts line up with the patch.
+        actionable.add(canonicalDisplayField(suggestion.fieldName));
     }
 
-    return { qualification, identity };
+    return { qualification, identity, actionable };
 }
 
 interface RowState {
@@ -417,6 +391,13 @@ function buildRows(
     for (const [key, value] of Object.entries(jsonb)) {
         const fieldName = canonicalDisplayField(key);
         const canonicalValue = jsonb[fieldName];
+
+        // Only reviewable fields belong on the panel. JSONB also carries
+        // scoring/merge inputs (age, dateOfBirth, address, jobNeeds, interests,
+        // behaviour signals) that can NEVER become a suggestion — surfacing them
+        // here produced dead "Đã lưu" rows with no path forward. Gate on the
+        // generated REVIEWABLE_AI_FIELDS so they stay out of the review surface.
+        if (!REVIEWABLE_AI_FIELDS.has(fieldName)) continue;
 
         // Prefer canonical keys like `fullName` over legacy aliases like `name`.
         if (fieldName !== key && canonicalValue !== null && canonicalValue !== undefined && canonicalValue !== "") {
@@ -525,6 +506,7 @@ function ChevronDownIcon(props: { open: boolean }) {
 function FieldRow({
     row,
     verified,
+    isActionable,
     copy,
     formatFieldLabel,
     formatFieldValue,
@@ -535,6 +517,8 @@ function FieldRow({
 }: {
     row: RowState;
     verified: Record<string, unknown>;
+    /** True iff "Verify all" would actually apply this row (drives the badge). */
+    isActionable: boolean;
     copy: (v: { en: string; vi: string }) => string;
     formatFieldLabel: (key: string) => string;
     formatFieldValue: (key: string, value: unknown) => string;
@@ -545,20 +529,27 @@ function FieldRow({
 }) {
     const suggestion = row.suggestion;
     const verifiedValue = row.isVerified ? verified[row.fieldName] : undefined;
+    // A suggestion that exists but isn't actionable already matches the saved
+    // value (or has no writable target) — show it as "Matches saved", not
+    // "Pending", so the badges reconcile with the Verify-all count.
+    const pending = Boolean(suggestion) && isActionable;
+    const matchesSaved = Boolean(suggestion) && !isActionable && !row.isVerified && !row.verifiedValueDiffers;
     const tone = row.isVerified
         ? "success"
         : row.verifiedValueDiffers
             ? "danger"
-            : suggestion
+            : pending
                 ? "warning"
                 : "neutral";
     const stateLabel = row.isVerified
         ? copy({ en: "Verified", vi: "Đã xác minh" })
         : row.verifiedValueDiffers
             ? copy({ en: "Conflict", vi: "Mâu thuẫn" })
-            : suggestion
+            : pending
                 ? copy({ en: "Pending", vi: "Chờ xác minh" })
-                : copy({ en: "Stored", vi: "Đã lưu" });
+                : matchesSaved
+                    ? copy({ en: "Matches saved", vi: "Đã khớp" })
+                    : copy({ en: "Stored", vi: "Đã lưu" });
 
     return (
         <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -678,7 +669,7 @@ export function LeadAiSnapshotCard(props: Props) {
         () => findConflicts(props.suggestions, verifiedKeys, verified),
         [props.suggestions, verifiedKeys, verified]
     );
-    const { qualification: verifyAllPatch, identity: identityPatch } = useMemo(
+    const { qualification: verifyAllPatch, identity: identityPatch, actionable: actionableFields } = useMemo(
         () => composeVerifyAllPatches(props.suggestions, verifiedKeys, props.lead),
         [props.suggestions, verifiedKeys, props.lead]
     );
@@ -702,7 +693,9 @@ export function LeadAiSnapshotCard(props: Props) {
             }));
     }, [rows]);
 
-    const verifyAllCount = Object.keys(verifyAllPatch).length + Object.keys(identityPatch).length;
+    // Count from the single actionable set so the button always equals the
+    // per-row "pending" badges and the section/panel counts.
+    const verifyAllCount = actionableFields.size;
     const phoneMergeConflictId = findPhoneMergeCandidate(props.suggestions);
     const extractionStatus = extractionStatusCopy(props.extractionStatus, copy);
 
@@ -925,6 +918,14 @@ export function LeadAiSnapshotCard(props: Props) {
                             <Badge tone="neutral">
                                 {copy({ en: `${rows.length} fields`, vi: `${rows.length} trường` })}
                             </Badge>
+                            {verifyAllCount > 0 ? (
+                                <Badge tone="accent">
+                                    {copy({
+                                        en: `${verifyAllCount} pending`,
+                                        vi: `${verifyAllCount} chờ xác minh`
+                                    })}
+                                </Badge>
+                            ) : null}
                             <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-transform group-open:rotate-180">
                                 <ChevronDownIcon open={false} />
                             </span>
@@ -932,32 +933,46 @@ export function LeadAiSnapshotCard(props: Props) {
                     </summary>
 
                     <div className="space-y-5 border-t border-slate-200 bg-slate-50/80 p-4">
-                        {sectionedRows.map((section) => (
-                            <div key={section.id}>
-                                <div className="mb-2 flex flex-wrap items-center gap-2">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                        {copy(section.label)}
+                        {sectionedRows.map((section) => {
+                            const sectionPending = section.rows.filter((row) =>
+                                actionableFields.has(row.fieldName)
+                            ).length;
+                            return (
+                                <div key={section.id}>
+                                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                            {copy(section.label)}
+                                        </div>
+                                        <Badge tone="neutral">{section.rows.length}</Badge>
+                                        {sectionPending > 0 ? (
+                                            <Badge tone="accent">
+                                                {copy({
+                                                    en: `${sectionPending} pending`,
+                                                    vi: `${sectionPending} chờ xác minh`
+                                                })}
+                                            </Badge>
+                                        ) : null}
                                     </div>
-                                    <Badge tone="neutral">{section.rows.length}</Badge>
+                                    <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                                        {section.rows.map((row) => (
+                                            <FieldRow
+                                                key={row.fieldName}
+                                                row={row}
+                                                verified={verified}
+                                                isActionable={actionableFields.has(row.fieldName)}
+                                                copy={copy}
+                                                formatFieldLabel={formatFieldLabel}
+                                                formatFieldValue={formatFieldValue}
+                                                formatConfidence={formatConfidence}
+                                                formatExtractionSource={formatExtractionSource}
+                                                onDismiss={props.onDismissSuggestion}
+                                                isDismissing={props.isDismissing}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                                    {section.rows.map((row) => (
-                                        <FieldRow
-                                            key={row.fieldName}
-                                            row={row}
-                                            verified={verified}
-                                            copy={copy}
-                                            formatFieldLabel={formatFieldLabel}
-                                            formatFieldValue={formatFieldValue}
-                                            formatConfidence={formatConfidence}
-                                            formatExtractionSource={formatExtractionSource}
-                                            onDismiss={props.onDismissSuggestion}
-                                            isDismissing={props.isDismissing}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </details>
             ) : null}
