@@ -87,10 +87,16 @@ const VERIFY_FIELDS: readonly VerifyFieldDef[] = [
   { key: "vision",            group: "soft",  section: "physical",   en: "Vision",             vi: "Thị lực",              input: "text" },
   { key: "handedness",        group: "soft",  section: "physical",   en: "Handedness",         vi: "Thuận tay",            input: "text" },
   { key: "tattooNote",        group: "soft",  section: "physical",   en: "Tattoo note",        vi: "Hình xăm",             input: "text" },
+  { key: "alcohol",           group: "soft",  section: "physical",   en: "Drinks alcohol",     vi: "Uống rượu",            input: "select-yes-no" },
+  { key: "smoking",           group: "soft",  section: "physical",   en: "Smokes",             vi: "Hút thuốc",            input: "select-yes-no" },
+  { key: "surgery",           group: "soft",  section: "physical",   en: "Surgery history",    vi: "Phẫu thuật",           input: "text" },
+  { key: "birthDefect",       group: "soft",  section: "physical",   en: "Birth defect",       vi: "Dị tật",               input: "text" },
   // ── Background ───────────────────────────────────────────────────────
   { key: "hometownProvince",  group: "typed", section: "background", en: "Hometown",           vi: "Hộ khẩu",              input: "text" },
   { key: "address",           group: "typed", section: "background", en: "Address",            vi: "Địa chỉ",              input: "text" },
   { key: "education",         group: "soft",  section: "background", en: "Education",          vi: "Trình độ",             input: "text" },
+  { key: "languages",         group: "soft",  section: "background", en: "Foreign languages",  vi: "Ngoại ngữ",            input: "text" },
+  { key: "referrer",          group: "soft",  section: "background", en: "Referrer",           vi: "Người giới thiệu",     input: "text" },
   // ── Family ───────────────────────────────────────────────────────────
   { key: "maritalStatus",     group: "soft",  section: "family",     en: "Marital status",     vi: "Tình trạng hôn nhân",  input: "text" },
   { key: "spouseName",        group: "soft",  section: "family",     en: "Spouse name",        vi: "Họ tên vợ/chồng",      input: "text" },

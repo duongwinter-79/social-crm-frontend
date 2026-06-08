@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-07
+
+### AI snapshot panel — field policy from a single source
+
+- the AI snapshot card (`features/leads/lead-ai-snapshot-card.tsx`) now imports `SUGGESTION_ROUTING`, `FIELD_DISPLAY_ALIASES`, `TRACKED_AI_FIELDS`, and `REVIEWABLE_AI_FIELDS` from `field-policy.generated.ts` — generated from the backend field manifest — instead of hand-maintained copies that had to be kept in sync by review
+- fixed phantom "Đã lưu" rows: the JSONB sweep now renders only `REVIEWABLE_AI_FIELDS`, so non-reviewable scoring/merge inputs (age, dateOfBirth, address, jobNeeds, interests) no longer appear in the review surface as dead, never-actionable rows
+- `field-policy.generated.ts` is an auto-generated artifact (do not hand-edit); the backend `test:field-policy-codegen` guard fails if it drifts from the manifest
+
+### Candidate dossier — generated from the field registry
+
+- the read-only candidate dossier (`features/leads/candidate-dossier-panel.tsx`) now renders `DOSSIER_FIELD_ROWS` from `dossier-fields.generated.ts` (generated from the backend registry) instead of a hand-maintained 30-row list
+- new dossier fields now shown: `languages`, `alcohol`, `smoking`, `surgery`, `birthDefect`, `referrer`
+- the form verify/confirm screen (`features/applications/application-detail-page.tsx`) gains the same six fields so operators can confirm/enter them; its commit-contract field list stays hand-maintained for now (different key shape: extraction `name` vs CandidateProfile `fullName`)
+
 ## 2026-06-02
 
 ### UI text — in-context editing (v2)
