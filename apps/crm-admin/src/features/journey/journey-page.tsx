@@ -13,6 +13,7 @@ import {
 import { usePipelineQuery } from "@social-crm/api";
 import type { PipelineRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { getLeadDisplayName } from "@/lib/lead-display";
 import { UiText } from "@/ui-text/ui-text";
 import {
   currentPhaseKey,
@@ -132,7 +133,7 @@ function JourneyRow(props: {
         {/* Identity */}
         <div className="w-full shrink-0 lg:w-56">
           <div className="truncate font-semibold text-slate-900">
-            {row.leadName || copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" })}
+            {getLeadDisplayName({ displayName: row.displayName ?? row.leadName, fullName: row.fullName })}
           </div>
           <div className="mt-0.5 truncate text-xs text-slate-500">
             {row.phone || copy({ en: "No phone", vi: "Chưa có SĐT" })} · {row.source}

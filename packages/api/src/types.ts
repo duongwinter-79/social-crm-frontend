@@ -857,6 +857,10 @@ export interface TrainingFinanceListResponse {
 export interface PipelineRow {
   leadId: string;
   leadName?: string | null;
+  /** Raw channel display name — used with getLeadDisplayName for the list label. */
+  displayName?: string | null;
+  /** Raw legal full name — fallback in getLeadDisplayName. */
+  fullName?: string | null;
   phone?: string | null;
   source: string;
   currentStage: string;
