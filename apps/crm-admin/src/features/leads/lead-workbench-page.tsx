@@ -157,6 +157,9 @@ export function LeadWorkbenchPage() {
     hasRiskHistory: "",
     note: ""
   });
+  // Last-saved snapshot of the qualification form, used to flag fields the
+  // operator has edited but not yet re-saved (see FieldWithProvenance.savedValue).
+  const [savedQualification, setSavedQualification] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!leadQuery.data) return;
@@ -171,7 +174,7 @@ export function LeadWorkbenchPage() {
   useEffect(() => {
     if (!qualificationQuery.data) return;
     const verified = qualificationQuery.data.verifiedData ?? {};
-    setQualificationForm({
+    const seeded = {
       // Prefer canonical `birthYear`; fall back to deriving from legacy `age`
       // (= currentYear - age) so older saved verified blobs still pre-fill the
       // form correctly. Operator can type a 4-digit year here.
@@ -201,7 +204,12 @@ export function LeadWorkbenchPage() {
       healthMeetsCriteria: readBooleanString(verified.healthMeetsCriteria),
       hasRiskHistory: readString(verified.hasRiskHistory),
       note: readQualificationNote(verified)
-    });
+    };
+    setQualificationForm(seeded);
+    // Baseline snapshot — drives the per-field "Edited · not saved" badge. A
+    // successful save refetches qualificationQuery, re-running this effect and
+    // resetting the baseline to the freshly-saved values.
+    setSavedQualification(seeded);
   }, [qualificationQuery.data]);
 
   const lead = leadQuery.data;
@@ -466,14 +474,21 @@ export function LeadWorkbenchPage() {
             qualificationMutation.mutate(patch);
           }
           // Identity fields (fullName/phone) are Lead-level, not qualification.
-          // Prefill the identity form so the operator can review and persist
-          // them via "Save identity"; do not auto-save here.
+          // "Verify all" verifies EVERY actionable field in the snapshot card,
+          // identity included — so persist them via updateLead (which mirrors
+          // them into lead_field_state as verified). A phone collision surfaces
+          // as an error on this mutation while the qualification save still
+          // succeeds independently.
           if (identityPatch && Object.keys(identityPatch).length > 0) {
-            setIdentityForm((s) => ({
-              ...s,
-              ...(typeof identityPatch.fullName === "string" ? { fullName: identityPatch.fullName } : {}),
-              ...(typeof identityPatch.phone === "string" ? { phone: identityPatch.phone } : {})
-            }));
+            const idPatch: { fullName?: string; phone?: string } = {};
+            if (typeof identityPatch.fullName === "string") idPatch.fullName = identityPatch.fullName;
+            if (typeof identityPatch.phone === "string") idPatch.phone = identityPatch.phone;
+            if (Object.keys(idPatch).length > 0) {
+              // Reflect immediately for snappy feedback; the refetch after save
+              // re-seeds the form authoritatively.
+              setIdentityForm((s) => ({ ...s, ...idPatch }));
+              updateLead.mutate({ id: leadId, patch: idPatch });
+            }
           }
         }}
         onRerunExtraction={(scanMode) => {
@@ -622,6 +637,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.birthYear ?? suggestionsByField.age}
                 isVerified={isFieldVerified("birthYear") || isFieldVerified("age")}
                 currentValue={qualificationForm.birthYear}
+                savedValue={savedQualification.birthYear}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, birthYear: v == null ? "" : String(v) }))}
               >
                 <Input label={copy({ en: "Verified birth year (YYYY)", vi: "Năm sinh đã xác minh (YYYY)" })} value={qualificationForm.birthYear} onChange={(e) => setQualificationForm((s) => ({ ...s, birthYear: e.target.value }))} />
@@ -633,6 +649,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.gender}
                 isVerified={isFieldVerified("gender")}
                 currentValue={qualificationForm.gender}
+                savedValue={savedQualification.gender}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, gender: typeof v === "string" ? v : "" }))}
               >
                 <Select label={copy({ en: "Verified gender", vi: "Giới tính đã xác minh" })} value={qualificationForm.gender} onChange={(e) => setQualificationForm((s) => ({ ...s, gender: e.target.value }))}>
@@ -649,6 +666,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.hasPassport}
                 isVerified={isFieldVerified("hasPassport")}
                 currentValue={qualificationForm.hasPassport}
+                savedValue={savedQualification.hasPassport}
               >
                 <Select label={copy({ en: "Has passport", vi: "Có hộ chiếu" })} value={qualificationForm.hasPassport} onChange={(e) => setQualificationForm((s) => ({ ...s, hasPassport: e.target.value }))}>
                   <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
@@ -663,6 +681,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.heightCm ?? suggestionsByField.height}
                 isVerified={isFieldVerified("height") || isFieldVerified("heightCm")}
                 currentValue={qualificationForm.height}
+                savedValue={savedQualification.height}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, height: v == null ? "" : String(v) }))}
               >
                 <Input label={copy({ en: "Verified height (cm)", vi: "Chiều cao đã xác minh (cm)" })} value={qualificationForm.height} onChange={(e) => setQualificationForm((s) => ({ ...s, height: e.target.value }))} />
@@ -674,6 +693,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.weightKg ?? suggestionsByField.weight}
                 isVerified={isFieldVerified("weight") || isFieldVerified("weightKg")}
                 currentValue={qualificationForm.weight}
+                savedValue={savedQualification.weight}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, weight: v == null ? "" : String(v) }))}
               >
                 <Input label={copy({ en: "Verified weight (kg)", vi: "Cân nặng đã xác minh (kg)" })} value={qualificationForm.weight} onChange={(e) => setQualificationForm((s) => ({ ...s, weight: e.target.value }))} />
@@ -686,6 +706,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.experienceField}
                 isVerified={isFieldVerified("experienceField")}
                 currentValue={qualificationForm.experienceField}
+                savedValue={savedQualification.experienceField}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, experienceField: typeof v === "string" ? v : "" }))}
               >
                 <Input label={copy({ en: "Experience field", vi: "Lĩnh vực kinh nghiệm" })} value={qualificationForm.experienceField} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceField: e.target.value }))} />
@@ -697,6 +718,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.desiredIndustry}
                 isVerified={isFieldVerified("desiredIndustry")}
                 currentValue={qualificationForm.desiredIndustry}
+                savedValue={savedQualification.desiredIndustry}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, desiredIndustry: typeof v === "string" ? v : "" }))}
               >
                 <Input label={copy({ en: "Desired industry", vi: "Ngành mong muốn" })} value={qualificationForm.desiredIndustry} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredIndustry: e.target.value }))} />
@@ -709,6 +731,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.preferredRegion ?? suggestionsByField.preferredRegions}
                 isVerified={isFieldVerified("preferredRegion") || isFieldVerified("preferredRegions")}
                 currentValue={qualificationForm.preferredRegion}
+                savedValue={savedQualification.preferredRegion}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, preferredRegion: Array.isArray(v) ? v.join(", ") : v == null ? "" : String(v) }))}
               >
                 <Input label={copy({ en: "Preferred region(s)", vi: "Khu vực mong muốn" })} value={qualificationForm.preferredRegion} onChange={(e) => setQualificationForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
@@ -720,6 +743,7 @@ export function LeadWorkbenchPage() {
                 suggestion={suggestionsByField.desiredSalary}
                 isVerified={isFieldVerified("desiredSalary")}
                 currentValue={qualificationForm.desiredSalary}
+                savedValue={savedQualification.desiredSalary}
                 onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, desiredSalary: v == null ? "" : String(v) }))}
               >
                 <Input label={copy({ en: "Desired salary", vi: "Mức lương mong muốn" })} value={qualificationForm.desiredSalary} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredSalary: e.target.value }))} />

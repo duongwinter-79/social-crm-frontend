@@ -529,11 +529,20 @@ function FieldRow({
 }) {
     const suggestion = row.suggestion;
     const verifiedValue = row.isVerified ? verified[row.fieldName] : undefined;
-    // A suggestion that exists but isn't actionable already matches the saved
-    // value (or has no writable target) — show it as "Matches saved", not
-    // "Pending", so the badges reconcile with the Verify-all count.
+    // Only an *actionable* suggestion (one "Verify all" would actually apply) is
+    // "Pending". A suggestion that isn't actionable already matches the saved
+    // value (or has no writable target), so it falls through to the neutral
+    // "Stored" badge — to an operator a suggestion that equals the saved value
+    // and a plain stored value are the same thing, so the UI shows one label
+    // instead of splitting them. This still keeps no-op suggestions out of the
+    // "Pending" bucket, reconciling the badges with the Verify-all count.
     const pending = Boolean(suggestion) && isActionable;
-    const matchesSaved = Boolean(suggestion) && !isActionable && !row.isVerified && !row.verifiedValueDiffers;
+    // A non-actionable, non-conflict suggestion already equals the saved value —
+    // there's nothing to verify AND nothing to reject (rejecting wouldn't change
+    // the saved data). Used to disable the Reject button so the row reads as the
+    // passive "Stored" state it is.
+    const matchesSaved =
+        Boolean(suggestion) && !isActionable && !row.isVerified && !row.verifiedValueDiffers;
     const tone = row.isVerified
         ? "success"
         : row.verifiedValueDiffers
@@ -547,9 +556,7 @@ function FieldRow({
             ? copy({ en: "Conflict", vi: "Mâu thuẫn" })
             : pending
                 ? copy({ en: "Pending", vi: "Chờ xác minh" })
-                : matchesSaved
-                    ? copy({ en: "Matches saved", vi: "Đã khớp" })
-                    : copy({ en: "Stored", vi: "Đã lưu" });
+                : copy({ en: "Stored", vi: "Đã lưu" });
 
     return (
         <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -605,10 +612,17 @@ function FieldRow({
                     <div className="pt-1">
                         <button
                             type="button"
-                            disabled={isDismissing}
-                            className="text-rose-500 underline hover:text-rose-600 disabled:opacity-40"
+                            disabled={isDismissing || matchesSaved}
+                            className="text-rose-500 underline hover:text-rose-600 disabled:no-underline disabled:cursor-not-allowed disabled:opacity-40"
                             onClick={() => onDismiss(row.fieldName)}
-                            title={copy({ en: "Reject this suggestion so it stops showing", vi: "Từ chối gợi ý để không hiển thị lại" })}
+                            title={
+                                matchesSaved
+                                    ? copy({
+                                          en: "Nothing to reject — this already matches the saved value",
+                                          vi: "Không có gì để từ chối — đã khớp với giá trị đã lưu"
+                                      })
+                                    : copy({ en: "Reject this suggestion so it stops showing", vi: "Từ chối gợi ý để không hiển thị lại" })
+                            }
                         >
                             {copy({ en: "Reject", vi: "Từ chối" })}
                         </button>
