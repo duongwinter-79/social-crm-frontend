@@ -288,6 +288,12 @@ interface VerifyAllPatches {
      * has no routing is NOT in this set even though it still renders as a row.
      */
     actionable: Set<string>;
+    /**
+     * Subset of `actionable` that is already verified but whose newer AI value
+     * differs from the verified one — applying these OVERWRITES an operator's
+     * earlier correction, so the UI warns before "Verify all" runs.
+     */
+    reSuggested: Set<string>;
 }
 
 /**
@@ -304,11 +310,13 @@ interface VerifyAllPatches {
 function composeVerifyAllPatches(
     suggestions: AiSuggestion[],
     verifiedKeys: string[],
-    lead: Lead
+    lead: Lead,
+    verified: Record<string, unknown>
 ): VerifyAllPatches {
     const qualification: Record<string, unknown> = {};
     const identity: Record<string, unknown> = {};
     const actionable = new Set<string>();
+    const reSuggested = new Set<string>();
 
     for (const suggestion of suggestions) {
         if (suggestion.value === null || suggestion.value === undefined || suggestion.value === "") continue;
@@ -327,7 +335,22 @@ function composeVerifyAllPatches(
         }
 
         if (route.target === "qualification") {
-            if (verifiedKeys.includes(suggestion.fieldName) || verifiedKeys.includes(route.dtoKey)) continue;
+            const isVerified =
+                verifiedKeys.includes(suggestion.fieldName) || verifiedKeys.includes(route.dtoKey);
+            if (isVerified) {
+                // Already verified: skip only when the new suggestion still matches
+                // the verified value. If it DIFFERS, it's a re-suggestion — include
+                // it (Verify all overwrites) but flag it so the UI can warn.
+                const vv = verified[route.dtoKey] ?? verified[suggestion.fieldName];
+                if (
+                    vv === null ||
+                    vv === undefined ||
+                    JSON.stringify(vv) === JSON.stringify(suggestion.value)
+                ) {
+                    continue;
+                }
+                reSuggested.add(canonicalDisplayField(suggestion.fieldName));
+            }
             qualification[route.dtoKey] = suggestion.value;
         } else {
             // Identity: skip if the suggestion already matches the saved value.
@@ -348,7 +371,7 @@ function composeVerifyAllPatches(
         actionable.add(canonicalDisplayField(suggestion.fieldName));
     }
 
-    return { qualification, identity, actionable };
+    return { qualification, identity, actionable, reSuggested };
 }
 
 interface RowState {
@@ -356,7 +379,16 @@ interface RowState {
     value: unknown;
     suggestion?: AiSuggestion;
     isVerified: boolean;
+    /** The operator's saved verified value (when verified). */
+    verifiedValue?: unknown;
+    /** Not-yet-verified AI value differs from a saved value. */
     verifiedValueDiffers: boolean;
+    /**
+     * Already verified, but a NEWER extraction produced a value that differs
+     * from the verified one. Needs an explicit operator decision (use AI / keep)
+     * — otherwise the field is locked on the stale verified value.
+     */
+    reSuggested: boolean;
     section: SectionId;
 }
 
@@ -373,16 +405,21 @@ function buildRows(
         const isVerified = verifiedKeys.includes(fieldName) || verifiedKeys.includes(suggestion.fieldName);
         const verifiedValue = verified[fieldName] ?? verified[suggestion.fieldName];
 
+        const diffsFromVerified =
+            verifiedValue !== null &&
+            verifiedValue !== undefined &&
+            suggestion.value !== null &&
+            suggestion.value !== undefined &&
+            JSON.stringify(verifiedValue) !== JSON.stringify(suggestion.value);
+
         map.set(fieldName, {
             fieldName,
             value: suggestion.value,
             suggestion,
             isVerified,
-            verifiedValueDiffers:
-                !isVerified &&
-                verifiedValue !== null &&
-                verifiedValue !== undefined &&
-                JSON.stringify(verifiedValue) !== JSON.stringify(suggestion.value),
+            verifiedValue,
+            verifiedValueDiffers: !isVerified && diffsFromVerified,
+            reSuggested: isVerified && diffsFromVerified,
             section: sectionFor(fieldName)
         });
     }
@@ -413,6 +450,7 @@ function buildRows(
             value,
             isVerified: verifiedKeys.includes(fieldName) || verifiedKeys.includes(key),
             verifiedValueDiffers: false,
+            reSuggested: false,
             section: sectionFor(fieldName)
         });
     }
@@ -513,6 +551,7 @@ function FieldRow({
     formatConfidence,
     formatExtractionSource,
     onDismiss,
+    onAccept,
     isDismissing
 }: {
     row: RowState;
@@ -525,6 +564,8 @@ function FieldRow({
     formatConfidence: (value: string) => string;
     formatExtractionSource: (value: string) => string;
     onDismiss?: (fieldName: string) => void;
+    /** Re-verify this single field to its newer AI value (re-suggested rows). */
+    onAccept?: (row: RowState) => void;
     isDismissing?: boolean;
 }) {
     const suggestion = row.suggestion;
@@ -543,14 +584,18 @@ function FieldRow({
     // passive "Stored" state it is.
     const matchesSaved =
         Boolean(suggestion) && !isActionable && !row.isVerified && !row.verifiedValueDiffers;
-    const tone = row.isVerified
-        ? "success"
-        : row.verifiedValueDiffers
-            ? "danger"
-            : pending
-                ? "warning"
-                : "neutral";
-    const stateLabel = row.isVerified
+    const tone = row.reSuggested
+        ? "warning"
+        : row.isVerified
+            ? "success"
+            : row.verifiedValueDiffers
+                ? "danger"
+                : pending
+                    ? "warning"
+                    : "neutral";
+    const stateLabel = row.reSuggested
+        ? copy({ en: "Re-suggested", vi: "Cần xem lại" })
+        : row.isVerified
         ? copy({ en: "Verified", vi: "Đã xác minh" })
         : row.verifiedValueDiffers
             ? copy({ en: "Conflict", vi: "Mâu thuẫn" })
@@ -608,7 +653,43 @@ function FieldRow({
                             : suggestion.reason}
                     </div>
                 ) : null}
-                {suggestion && !row.isVerified && onDismiss ? (
+                {row.reSuggested ? (
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                        <span className="text-amber-700">
+                            {copy({
+                                en: "AI re-extracted a different value:",
+                                vi: "AI trích xuất lại giá trị khác:"
+                            })}
+                        </span>
+                        {onAccept ? (
+                            <button
+                                type="button"
+                                className="font-medium text-indigo-600 underline hover:text-indigo-500"
+                                onClick={() => onAccept(row)}
+                                title={copy({
+                                    en: "Replace your verified value with the new AI value",
+                                    vi: "Thay giá trị đã xác minh bằng giá trị AI mới"
+                                })}
+                            >
+                                {copy({ en: "Use AI value", vi: "Dùng giá trị AI" })}
+                            </button>
+                        ) : null}
+                        {onDismiss ? (
+                            <button
+                                type="button"
+                                disabled={isDismissing}
+                                className="text-slate-600 underline hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                onClick={() => onDismiss(row.fieldName)}
+                                title={copy({
+                                    en: "Keep your verified value and dismiss the new AI suggestion",
+                                    vi: "Giữ giá trị đã xác minh và bỏ qua gợi ý AI mới"
+                                })}
+                            >
+                                {copy({ en: "Keep mine", vi: "Giữ giá trị hiện tại" })}
+                            </button>
+                        ) : null}
+                    </div>
+                ) : suggestion && !row.isVerified && onDismiss ? (
                     <div className="pt-1">
                         <button
                             type="button"
@@ -683,9 +764,14 @@ export function LeadAiSnapshotCard(props: Props) {
         () => findConflicts(props.suggestions, verifiedKeys, verified),
         [props.suggestions, verifiedKeys, verified]
     );
-    const { qualification: verifyAllPatch, identity: identityPatch, actionable: actionableFields } = useMemo(
-        () => composeVerifyAllPatches(props.suggestions, verifiedKeys, props.lead),
-        [props.suggestions, verifiedKeys, props.lead]
+    const {
+        qualification: verifyAllPatch,
+        identity: identityPatch,
+        actionable: actionableFields,
+        reSuggested: reSuggestedFields,
+    } = useMemo(
+        () => composeVerifyAllPatches(props.suggestions, verifiedKeys, props.lead, verified),
+        [props.suggestions, verifiedKeys, props.lead, verified]
     );
     const rows = useMemo(
         () => buildRows(props.lead, props.suggestions, verifiedKeys, verified),
@@ -712,6 +798,20 @@ export function LeadAiSnapshotCard(props: Props) {
     const verifyAllCount = actionableFields.size;
     const phoneMergeConflictId = findPhoneMergeCandidate(props.suggestions);
     const extractionStatus = extractionStatusCopy(props.extractionStatus, copy);
+
+    // Per-field "Use AI value" — re-verify ONE field to its newer AI value by
+    // routing it through the same verify path "Verify all" uses.
+    const acceptRow = (row: RowState) => {
+        const sug = row.suggestion;
+        if (!sug) return;
+        const route = SUGGESTION_ROUTING[sug.fieldName];
+        if (!route) return;
+        if (route.target === "identity") {
+            props.onVerifyAll({}, { [route.dtoKey]: sug.value });
+        } else {
+            props.onVerifyAll({ [route.dtoKey]: sug.value }, {});
+        }
+    };
 
     return (
         <Panel
@@ -815,6 +915,21 @@ export function LeadAiSnapshotCard(props: Props) {
                             : copy({ en: "Refresh structured extraction", vi: "Cập nhật trích xuất có cấu trúc" })}
                     </Button>
                 </div>
+
+                {reSuggestedFields.size > 0 ? (
+                    <div className="mt-3 max-w-2xl rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                        <span className="font-semibold">{copy({ en: "Heads up: ", vi: "Lưu ý: " })}</span>
+                        {copy({
+                            en: `"Verify all" will OVERWRITE ${reSuggestedFields.size} field(s) you previously verified with newer AI values (`,
+                            vi: `"Xác minh tất cả" sẽ GHI ĐÈ ${reSuggestedFields.size} trường bạn đã xác minh trước đó bằng giá trị AI mới (`
+                        })}
+                        {[...reSuggestedFields].map(formatFieldLabel).join(", ")}
+                        {copy({
+                            en: "). Use the per-field “Keep mine” / “Use AI value” buttons below to decide individually.",
+                            vi: "). Dùng nút “Giữ giá trị hiện tại” / “Dùng giá trị AI” ở từng trường bên dưới để quyết định riêng."
+                        })}
+                    </div>
+                ) : null}
 
                 {refreshDialogOpen ? (
                     <div className="mt-4 rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm">
@@ -980,6 +1095,7 @@ export function LeadAiSnapshotCard(props: Props) {
                                                 formatConfidence={formatConfidence}
                                                 formatExtractionSource={formatExtractionSource}
                                                 onDismiss={props.onDismissSuggestion}
+                                                onAccept={acceptRow}
                                                 isDismissing={props.isDismissing}
                                             />
                                         ))}
