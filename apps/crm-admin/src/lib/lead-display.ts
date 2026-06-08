@@ -7,10 +7,14 @@ const PLACEHOLDER_NAMES = new Set(["Zalo User"]);
  * Priority:
  *   1. displayName   — channel identity (Zalo display_name or "Zalo:<id>")
  *   2. fullName      — fallback for leads created before the displayName column
- *   3. "(Chưa có tên)" — absolute fallback
+ *   3. fallback      — absolute fallback (pass a localized string; defaults to
+ *                      "(Chưa có tên)" for callers without an i18n context)
  */
-export function getLeadDisplayName(lead: { displayName?: string | null; fullName?: string | null }): string {
-  return lead.displayName?.trim() || lead.fullName?.trim() || "(Chưa có tên)";
+export function getLeadDisplayName(
+  lead: { displayName?: string | null; fullName?: string | null },
+  fallback = "(Chưa có tên)",
+): string {
+  return lead.displayName?.trim() || lead.fullName?.trim() || fallback;
 }
 
 /**

@@ -133,7 +133,10 @@ function JourneyRow(props: {
         {/* Identity */}
         <div className="w-full shrink-0 lg:w-56">
           <div className="truncate font-semibold text-slate-900">
-            {getLeadDisplayName({ displayName: row.displayName ?? row.leadName, fullName: row.fullName })}
+            {getLeadDisplayName(
+              { displayName: row.displayName ?? row.leadName, fullName: row.fullName },
+              copy({ en: "Unnamed lead", vi: "Ứng viên chưa có tên" }),
+            )}
           </div>
           <div className="mt-0.5 truncate text-xs text-slate-500">
             {row.phone || copy({ en: "No phone", vi: "Chưa có SĐT" })} · {row.source}
