@@ -28,6 +28,13 @@ export interface FieldWithProvenanceProps {
   isVerified: boolean;
   /** Current value the operator sees in the editor. Used to decide "needs verification". */
   currentValue: unknown;
+  /**
+   * Last *saved* value for this field (the baseline the form was seeded with).
+   * When a verified field's live value drifts from this, the badge flips from
+   * "Verified" to "Edited · not saved" until the operator saves again. Omit on
+   * fields without a saved baseline (behaves as before).
+   */
+  savedValue?: unknown;
   /** Optional click handler — receives suggestion.value to copy into the editor. */
   onApplySuggestion?: (value: unknown) => void;
   /** Optional reject handler — receives the suggestion's fieldName to dismiss it. */
@@ -63,6 +70,12 @@ export function FieldWithProvenance(props: FieldWithProvenanceProps) {
   const { copy, formatFieldValue, formatConfidence, formatExtractionSource } = useI18n();
   const state = provenanceState(props);
   const sug = props.suggestion;
+  // A verified field whose live value no longer matches the last-saved baseline
+  // has unsaved manual edits — surface that instead of a stale "Verified" badge.
+  const editedSinceSaved =
+    props.isVerified &&
+    props.savedValue !== undefined &&
+    JSON.stringify(props.savedValue ?? "") !== JSON.stringify(props.currentValue ?? "");
 
   return (
     <div className="space-y-1.5">
@@ -72,7 +85,11 @@ export function FieldWithProvenance(props: FieldWithProvenanceProps) {
 
       <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
         {state === "verified" ? (
-          <Badge tone="success">{copy({ en: "Verified", vi: "Đã xác minh" })}</Badge>
+          editedSinceSaved ? (
+            <Badge tone="warning">{copy({ en: "Edited · not saved", vi: "Đã sửa · chưa lưu" })}</Badge>
+          ) : (
+            <Badge tone="success">{copy({ en: "Verified", vi: "Đã xác minh" })}</Badge>
+          )
         ) : state === "needs_verification" ? (
           <Badge tone="warning">{copy({ en: "Needs verification", vi: "Cần xác minh" })}</Badge>
         ) : state === "extracted" ? (
