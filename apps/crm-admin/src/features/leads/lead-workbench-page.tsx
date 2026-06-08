@@ -474,14 +474,21 @@ export function LeadWorkbenchPage() {
             qualificationMutation.mutate(patch);
           }
           // Identity fields (fullName/phone) are Lead-level, not qualification.
-          // Prefill the identity form so the operator can review and persist
-          // them via "Save identity"; do not auto-save here.
+          // "Verify all" verifies EVERY actionable field in the snapshot card,
+          // identity included — so persist them via updateLead (which mirrors
+          // them into lead_field_state as verified). A phone collision surfaces
+          // as an error on this mutation while the qualification save still
+          // succeeds independently.
           if (identityPatch && Object.keys(identityPatch).length > 0) {
-            setIdentityForm((s) => ({
-              ...s,
-              ...(typeof identityPatch.fullName === "string" ? { fullName: identityPatch.fullName } : {}),
-              ...(typeof identityPatch.phone === "string" ? { phone: identityPatch.phone } : {})
-            }));
+            const idPatch: { fullName?: string; phone?: string } = {};
+            if (typeof identityPatch.fullName === "string") idPatch.fullName = identityPatch.fullName;
+            if (typeof identityPatch.phone === "string") idPatch.phone = identityPatch.phone;
+            if (Object.keys(idPatch).length > 0) {
+              // Reflect immediately for snappy feedback; the refetch after save
+              // re-seeds the form authoritatively.
+              setIdentityForm((s) => ({ ...s, ...idPatch }));
+              updateLead.mutate({ id: leadId, patch: idPatch });
+            }
           }
         }}
         onRerunExtraction={(scanMode) => {
