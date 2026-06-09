@@ -55,7 +55,7 @@ export function FormIntakeModal(props: {
         </div>
         <div className="flex-1 overflow-y-auto bg-slate-50/40 p-5">
           {props.createMode ? (
-            <ApplicationDetailPage onLeadCommitted={props.onLeadCommitted} />
+            <ApplicationDetailPage createMode onLeadCommitted={props.onLeadCommitted} />
           ) : (
             <ApplicationDetailPage embeddedLeadId={props.leadId} embeddedOnViewDossier={props.onViewDossier} />
           )}
