@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Badge,
   EmptyState,
@@ -186,8 +186,18 @@ function JourneyRow(props: {
 
 export function JourneyPage() {
   const { copy, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = useI18n();
-  const [filters, setFilters] = useState({ stage: "", search: "" });
-  const [phaseFilter, setPhaseFilter] = useState<PhaseKey | "">("");
+  // Seed filters from the URL so dashboard cards can deep-link to a subset
+  // (e.g. /journey?stage=qualified for "Form ready", /journey?phase=dossier for
+  // document blockers). Read once on mount.
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState(() => ({
+    stage: searchParams.get("stage") ?? "",
+    search: searchParams.get("search") ?? "",
+  }));
+  const [phaseFilter, setPhaseFilter] = useState<PhaseKey | "">(() => {
+    const phase = searchParams.get("phase");
+    return phase && (PHASE_KEYS as readonly string[]).includes(phase) ? (phase as PhaseKey) : "";
+  });
   const [page, setPage] = useState(0);
 
   const pipelineQuery = usePipelineQuery({
