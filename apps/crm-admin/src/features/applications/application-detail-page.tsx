@@ -741,7 +741,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
         </div>
       ) : null}
 
-      {!embedded ? <ApplicationContextNav leadId={selectedLeadId || undefined} active="form" /> : null}
+      {!embedded && !props.createMode ? <ApplicationContextNav leadId={selectedLeadId || undefined} active="form" /> : null}
 
       {pageState === "EMPTY" ? renderEmpty()
         : pageState === "STAGED" ? renderStaged()
