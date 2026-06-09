@@ -421,9 +421,8 @@ export function AppRouter() {
         {/* Pipeline list is subsumed by the Journey board. */}
         <Route path="/pipeline" element={<Navigate to="/journey" replace />} />
         <Route path="/journey" element={<LazyRoute><JourneyPage /></LazyRoute>} />
-        {/* Create a brand-new journey: same workbench shell, intake hosts the
-            upload → create-lead flow. Static path outranks the :leadId param. */}
-        <Route path="/journey/new" element={<LazyRoute><JourneyWorkbenchPage /></LazyRoute>} />
+        {/* /journey/new is captured by :leadId (leadId="new" → workbench "new"
+            mode: same shell, intake hosts the upload → create-lead flow). */}
         <Route path="/journey/:leadId" element={<LazyRoute><JourneyWorkbenchPage /></LazyRoute>} />
         {/* Standalone matching console retired — order-first matching lives on
             the Orders page, candidate-first inside the Journey workbench. */}
