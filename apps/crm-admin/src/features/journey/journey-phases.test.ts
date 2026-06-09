@@ -61,6 +61,29 @@ describe("derivePhases", () => {
     expect(visaDone[4].state).toBe("active"); // awaiting departure
   });
 
+  it("the deposit summary shows a friendly label with paid/due and currency", () => {
+    const paidOnly = derivePhases(
+      row({ candidateId: "C1", applicationStatus: "ready_to_depart", trainingFinance: { depositStatus: "partial", amountPaid: 25000000, currency: "VND" } }),
+    );
+    expect(paidOnly[3].detailEn).toBe("Partial deposit · 25,000,000 VND");
+
+    const paidAndDue = derivePhases(
+      row({ candidateId: "C1", applicationStatus: "ready_to_depart", trainingFinance: { depositStatus: "partial", amountPaid: 10000000, amountDue: 25000000, currency: "VND" } }),
+    );
+    expect(paidAndDue[3].detailEn).toBe("Partial deposit · 10,000,000 / 25,000,000 VND");
+    expect(paidAndDue[3].detailVi).toBe("Đặt cọc một phần · 10,000,000 / 25,000,000 VND");
+
+    const usd = derivePhases(
+      row({ candidateId: "C1", applicationStatus: "ready_to_depart", trainingFinance: { amountPaid: 1500.5, currency: "USD" } }),
+    );
+    expect(usd[3].detailEn).toBe("Deposit tracked · 1,500.50 USD");
+
+    const noAmount = derivePhases(
+      row({ candidateId: "C1", applicationStatus: "ready_to_depart", trainingFinance: { depositStatus: "partial" } }),
+    );
+    expect(noAmount[3].detailEn).toBe("Partial deposit");
+  });
+
   it("a departure date completes the whole journey", () => {
     const phases = derivePhases(
       row({ currentStage: "departed", candidateId: "C1", applicationStatus: "ready_to_depart", trainingFinance: { visaDate: "2026-06-01", departureDate: "2026-07-01" } }),

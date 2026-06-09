@@ -42,8 +42,8 @@ export function Button(
   );
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: string }) {
-  const { label, className, value, onChange, onCompositionStart, onCompositionEnd, ...rest } = props;
+export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string }) {
+  const { label, hint, className, value, onChange, onCompositionStart, onCompositionEnd, ...rest } = props;
   // Controlled text inputs are made IME-safe so Vietnamese (and other composing
   // IMEs) compose correctly even when the value comes from lagging state. Leave
   // uncontrolled inputs (no `value`) untouched.
@@ -73,6 +73,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: s
             }
           : { value, onChange, onCompositionStart, onCompositionEnd })}
       />
+      {hint ? <span className="text-xs leading-5 text-slate-500">{hint}</span> : null}
     </label>
   );
 }

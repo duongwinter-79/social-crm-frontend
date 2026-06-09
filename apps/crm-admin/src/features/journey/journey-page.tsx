@@ -237,6 +237,15 @@ export function JourneyPage() {
           en: "One continuous view of every candidate from form intake through dossier, application, training & finance, and departure — no module hopping.",
           vi: "Một góc nhìn liền mạch cho từng ứng viên: từ nhận form, hồ sơ, ứng tuyển, đào tạo & tài chính đến xuất cảnh — không cần nhảy qua nhiều màn hình.",
         })}
+        action={
+          <Link
+            to="/journey/new"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white no-underline transition-colors hover:bg-indigo-700"
+          >
+            <span aria-hidden="true">+</span>
+            {copy({ en: "Create journey", vi: "Tạo hành trình" })}
+          </Link>
+        }
       />
 
       <InfoStrip>

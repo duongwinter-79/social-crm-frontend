@@ -830,16 +830,30 @@ export interface DocumentChecklistSummary {
   candidateId?: string;
 }
 
+/** Supported currencies for training-finance amounts. VND-first; TWD/USD foreign. */
+export type TrainingFinanceCurrency = "VND" | "TWD" | "USD";
+
+/** Canonical training-finance enum codes (manifest VISA/DEPOSIT/ORDER values). */
+export type VisaStatus = "none" | "in_progress" | "received" | "rejected";
+
+/** How depositStatus is determined: derived from amounts, or operator-set. */
+export type DepositStatusMode = "auto" | "manual";
+
 export interface TrainingFinanceRecord {
   id: string;
   lead_id: string;
   order_id?: string | null;
   application_id?: string | null;
   orderType?: string | null;
+  depositStatusMode?: DepositStatusMode | null;
   depositStatus?: string | null;
+  depositRefunded?: boolean | null;
   amountPaid?: number | null;
+  amountDue?: number | null;
+  currency?: TrainingFinanceCurrency | null;
   trainingStartDate?: string | null;
   trainingProgress?: string | null;
+  visaStatus?: VisaStatus | null;
   visaDate?: string | null;
   departureDate?: string | null;
   createdAt?: string;
@@ -876,6 +890,8 @@ export interface PipelineRow {
   trainingFinance?: {
     depositStatus?: string | null;
     amountPaid?: number | null;
+    amountDue?: number | null;
+    currency?: TrainingFinanceCurrency | null;
     trainingProgress?: string | null;
     visaDate?: string | null;
     departureDate?: string | null;

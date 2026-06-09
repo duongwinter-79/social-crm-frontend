@@ -65,6 +65,55 @@ const ACQUISITION_SOURCES: { value: LeadAcquisitionSource; en: string; vi: strin
  */
 type ChoicePerField = "current" | "form" | "override";
 
+// ── Staging-session persistence ────────────────────────────────────────────
+// The staged upload → verify flow lives in component state, which is destroyed
+// when the Journey form-intake modal closes or the operator navigates away. The
+// staged file itself persists server-side (keyed by pendingId), so we mirror the
+// in-progress UI state into sessionStorage and rehydrate on remount — the
+// operator returns to exactly where they left off instead of an empty upload box.
+const STAGING_SESSION_PREFIX = "form-intake-session:v1:";
+
+type PersistedStagingSession = {
+  pending: FormStandardStageResult | null;
+  verifyResult: VerifyPendingResult | null;
+  choices: Record<string, ChoicePerField>;
+  overrides: Record<string, string>;
+  editSessionOpen: boolean;
+  newLeadFullName: string;
+  newLeadDisplayName: string;
+  newLeadPhone: string;
+  newLeadAcquisitionSource: LeadAcquisitionSource;
+};
+
+function stagingSessionKey(leadKey: string): string {
+  return STAGING_SESSION_PREFIX + (leadKey || "__no_lead__");
+}
+
+function readStagingSession(leadKey: string): PersistedStagingSession | null {
+  try {
+    const raw = sessionStorage.getItem(stagingSessionKey(leadKey));
+    return raw ? (JSON.parse(raw) as PersistedStagingSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStagingSession(leadKey: string, session: PersistedStagingSession): void {
+  try {
+    sessionStorage.setItem(stagingSessionKey(leadKey), JSON.stringify(session));
+  } catch {
+    /* storage full / unavailable — non-fatal, the session just won't persist */
+  }
+}
+
+function clearStagingSession(leadKey: string): void {
+  try {
+    sessionStorage.removeItem(stagingSessionKey(leadKey));
+  } catch {
+    /* non-fatal */
+  }
+}
+
 type VerifyFieldDef = {
   key: string;
   group: "typed" | "soft";
@@ -168,6 +217,13 @@ function apiErrorMessage(err: unknown): string | null {
   return null;
 }
 
+// A staged pending row can disappear out-of-band (committed/cancelled in another
+// tab, or server-side expiry). The server answers 404/410 for its pendingId.
+function isPendingGoneError(err: unknown): boolean {
+  const status = (err as { response?: { status?: number } })?.response?.status;
+  return status === 404 || status === 410;
+}
+
 function isWordFilename(filename: string): boolean {
   return /\.(doc|docx)$/i.test(filename);
 }
@@ -190,7 +246,7 @@ function openPendingGoogleDocsTab(): Window | null {
   return tab;
 }
 
-export function ApplicationDetailPage(props: { embeddedLeadId?: string; embeddedOnViewDossier?: () => void } = {}) {
+export function ApplicationDetailPage(props: { embeddedLeadId?: string; embeddedOnViewDossier?: () => void; onLeadCommitted?: (leadId: string) => void } = {}) {
   const { copy, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -206,12 +262,16 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
     if (props.embeddedLeadId) setSelectedLeadId(props.embeddedLeadId);
   }, [props.embeddedLeadId]);
 
+  // Rehydrate any in-progress staging session persisted before an unmount (modal
+  // close / navigation). Read once on mount, keyed by the lead in context.
+  const [restoredSession] = useState(() => readStagingSession(props.embeddedLeadId ?? leadIdFromUrl));
+
   // Staging session state
-  const [pending, setPending] = useState<FormStandardStageResult | null>(null);
-  const [verifyResult, setVerifyResult] = useState<VerifyPendingResult | null>(null);
+  const [pending, setPending] = useState<FormStandardStageResult | null>(restoredSession?.pending ?? null);
+  const [verifyResult, setVerifyResult] = useState<VerifyPendingResult | null>(restoredSession?.verifyResult ?? null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [editSessionOpen, setEditSessionOpen] = useState(false);
+  const [editSessionOpen, setEditSessionOpen] = useState(restoredSession?.editSessionOpen ?? false);
   const [stageError, setStageError] = useState("");
   const [fileActionError, setFileActionError] = useState("");
   const [confirmUnlink, setConfirmUnlink] = useState(false);
@@ -220,12 +280,12 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   // override). `overrides` holds the operator's typed value when choice is
   // "override". Form-wins is the default when the form provides a non-null
   // value; otherwise current-wins.
-  const [choices, setChoices] = useState<Record<string, ChoicePerField>>({});
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
-  const [newLeadFullName, setNewLeadFullName] = useState("");
-  const [newLeadDisplayName, setNewLeadDisplayName] = useState("");
-  const [newLeadPhone, setNewLeadPhone] = useState("");
-  const [newLeadAcquisitionSource, setNewLeadAcquisitionSource] = useState<LeadAcquisitionSource>("zalo");
+  const [choices, setChoices] = useState<Record<string, ChoicePerField>>(restoredSession?.choices ?? {});
+  const [overrides, setOverrides] = useState<Record<string, string>>(restoredSession?.overrides ?? {});
+  const [newLeadFullName, setNewLeadFullName] = useState(restoredSession?.newLeadFullName ?? "");
+  const [newLeadDisplayName, setNewLeadDisplayName] = useState(restoredSession?.newLeadDisplayName ?? "");
+  const [newLeadPhone, setNewLeadPhone] = useState(restoredSession?.newLeadPhone ?? "");
+  const [newLeadAcquisitionSource, setNewLeadAcquisitionSource] = useState<LeadAcquisitionSource>(restoredSession?.newLeadAcquisitionSource ?? "zalo");
 
   // Mutations / queries
   const unlinkFormStandard = useUnlinkFormStandardMutation();
@@ -250,6 +310,35 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
       setEditSessionOpen(false);
     }
   }, [editSessionOpen, editSessionStatusQuery.data?.status]);
+
+  // Persist the in-progress staging session so it survives a modal close or
+  // navigation. Only while a file is staged; resetStagingState clears it.
+  const stagingLeadKey = props.embeddedLeadId ?? selectedLeadId ?? "";
+  useEffect(() => {
+    if (!pending) return;
+    writeStagingSession(stagingLeadKey, {
+      pending,
+      verifyResult,
+      choices,
+      overrides,
+      editSessionOpen,
+      newLeadFullName,
+      newLeadDisplayName,
+      newLeadPhone,
+      newLeadAcquisitionSource,
+    });
+  }, [
+    stagingLeadKey,
+    pending,
+    verifyResult,
+    choices,
+    overrides,
+    editSessionOpen,
+    newLeadFullName,
+    newLeadDisplayName,
+    newLeadPhone,
+    newLeadAcquisitionSource,
+  ]);
 
   // Register lookup for the committed-state UI. Skipped when no lead picked.
   const registerQuery = useFormStandardRegisterQuery(
@@ -335,6 +424,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   // ── Staging actions ─────────────────────────────────────────────────────
 
   function resetStagingState() {
+    clearStagingSession(props.embeddedLeadId ?? selectedLeadId ?? "");
     setPending(null);
     setVerifyResult(null);
     setUploadFile(null);
@@ -347,6 +437,21 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
     setNewLeadDisplayName("");
     setNewLeadPhone("");
     setNewLeadAcquisitionSource("zalo");
+  }
+
+  // If a verify/commit fails because the staged row is gone, self-heal: drop the
+  // dead (and now-stale persisted) session and tell the operator to re-upload,
+  // instead of leaving them stuck on a session that can never be committed.
+  function handleStaleSessionError(err: unknown): boolean {
+    if (!isPendingGoneError(err)) return false;
+    resetStagingState();
+    setStageError(
+      copy({
+        en: "This staged form is no longer available — it may have been completed or cancelled elsewhere. Please upload again.",
+        vi: "Hồ sơ tạm này không còn khả dụng — có thể đã hoàn tất hoặc bị hủy ở nơi khác. Vui lòng tải lên lại.",
+      }),
+    );
+    return true;
   }
 
   function handleStageUpload() {
@@ -469,6 +574,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
           }
         },
         onError: (err: unknown) => {
+          if (handleStaleSessionError(err)) return;
           setStageError(
             apiErrorMessage(err)
             ?? copy({ en: "Could not extract data from the file.", vi: "Không trích xuất được dữ liệu." }),
@@ -489,8 +595,10 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
           resetStagingState();
           setSelectedLeadId(leadId);
           if (!embedded) setSearchParams({ leadId }, { replace: true });
+          props.onLeadCommitted?.(leadId);
         },
         onError: (err: unknown) => {
+          if (handleStaleSessionError(err)) return;
           setStageError(
             apiErrorMessage(err)
             ?? copy({ en: "Could not link the form to this lead.", vi: "Không thể gắn hồ sơ với ứng viên này." }),
@@ -533,9 +641,11 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
           if (newLeadId) {
             setSelectedLeadId(newLeadId);
             if (!embedded) setSearchParams({ leadId: newLeadId }, { replace: true });
+            props.onLeadCommitted?.(newLeadId);
           }
         },
         onError: (err: unknown) => {
+          if (handleStaleSessionError(err)) return;
           setStageError(
             apiErrorMessage(err)
             ?? copy({ en: "Could not create the lead and link the form.", vi: "Không thể tạo ứng viên và gắn hồ sơ." }),

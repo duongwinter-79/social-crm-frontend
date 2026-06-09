@@ -150,6 +150,43 @@ function applicationPhase(row: PipelineRow, dossierDone: boolean): JourneyPhase 
   };
 }
 
+// VND renders as whole numbers; TWD/USD carry 2 decimals — mirrors the
+// training-finance form so the rail summary and the editor agree.
+function formatAmount(value: number, currency: string): string {
+  const decimals = currency === "VND" ? 0 : 2;
+  return value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Friendly deposit-status labels for the rail (journey-phases is i18n-free, so
+// each language is built inline). Mirrors the training-finance form labels.
+const DEPOSIT_LABELS_EN: Record<string, string> = {
+  none: "No deposit",
+  partial: "Partial deposit",
+  full: "Paid in full",
+  refunded: "Refunded",
+};
+const DEPOSIT_LABELS_VI: Record<string, string> = {
+  none: "Chưa đặt cọc",
+  partial: "Đặt cọc một phần",
+  full: "Đã đặt cọc đủ",
+  refunded: "Đã hoàn cọc",
+};
+
+// Deposit summary line for the rail, e.g. "Partial deposit · 10,000,000 /
+// 25,000,000 VND". Shows paid/due when both are known, paid alone otherwise, and
+// falls back to a default label when no amount is recorded.
+function depositDetail(tf: PipelineRow["trainingFinance"], labels: Record<string, string>, fallback: string): string {
+  const status = tf?.depositStatus ?? undefined;
+  const label = (status && labels[status]) || fallback;
+  if (tf?.amountPaid == null) return label;
+  const currency = tf.currency ?? "VND";
+  const paid = formatAmount(tf.amountPaid, currency);
+  if (tf.amountDue != null) {
+    return `${label} · ${paid} / ${formatAmount(tf.amountDue, currency)} ${currency}`;
+  }
+  return `${label} · ${paid} ${currency}`;
+}
+
 function trainingPhase(row: PipelineRow, applicationDone: boolean): JourneyPhase {
   const tf = row.trainingFinance;
   const base = {
@@ -174,15 +211,15 @@ function trainingPhase(row: PipelineRow, applicationDone: boolean): JourneyPhase
   }
 
   const detailEn = hasVisa
-    ? `Visa ${tf?.visaDate}`
+    ? `Visa · ${tf?.visaDate}`
     : hasTraining
       ? String(tf?.trainingProgress)
-      : tf?.depositStatus || "Deposit tracked";
+      : depositDetail(tf, DEPOSIT_LABELS_EN, "Deposit tracked");
   const detailVi = hasVisa
-    ? `Visa ${tf?.visaDate}`
+    ? `Visa · ${tf?.visaDate}`
     : hasTraining
       ? String(tf?.trainingProgress)
-      : tf?.depositStatus || "Đã theo dõi cọc";
+      : depositDetail(tf, DEPOSIT_LABELS_VI, "Đã theo dõi cọc");
 
   return {
     ...base,

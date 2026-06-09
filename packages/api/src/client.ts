@@ -59,6 +59,8 @@ import type {
   ThreadSummary,
   TrainingFinanceListResponse,
   TrainingFinanceRecord,
+  TrainingFinanceCurrency,
+  DepositStatusMode,
   UiTextRuntimeOverride,
   UpdateUiTextOverridePayload
 } from "./types";
@@ -826,7 +828,7 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async createTrainingFinance(payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) {
+  async createTrainingFinance(payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatusMode?: DepositStatusMode; depositStatus?: string; depositRefunded?: boolean; amountPaid?: number; amountDue?: number; currency?: TrainingFinanceCurrency; trainingStartDate?: string; trainingProgress?: string; visaStatus?: string; visaDate?: string; departureDate?: string }) {
     const response = await this.http.post<ApiEnvelope<TrainingFinanceRecord> | TrainingFinanceRecord>("/training-finance", payload);
     return unwrapEnvelope(response.data);
   }
