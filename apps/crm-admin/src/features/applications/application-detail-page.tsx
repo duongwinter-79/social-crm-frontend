@@ -246,7 +246,7 @@ function openPendingGoogleDocsTab(): Window | null {
   return tab;
 }
 
-export function ApplicationDetailPage(props: { embeddedLeadId?: string; embeddedOnViewDossier?: () => void; onLeadCommitted?: (leadId: string) => void } = {}) {
+export function ApplicationDetailPage(props: { embeddedLeadId?: string; embeddedOnViewDossier?: () => void; onLeadCommitted?: (leadId: string) => void; createMode?: boolean } = {}) {
   const { copy, formatDocumentStatus } = useI18n();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -697,8 +697,10 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
 
   return (
     <div className="space-y-6">
-      {/* Header — hidden in embedded (Journey workbench) mode. */}
-      {!embedded ? (
+      {/* Header (Back-to-list + candidate picker + status badges) — hidden in
+          embedded (Journey workbench) mode and in create mode (new journey is
+          create-new-lead only, so there is no list to go back to or pick from). */}
+      {!embedded && !props.createMode ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
