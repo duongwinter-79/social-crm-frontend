@@ -122,6 +122,7 @@ function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: {
 }
 
 function titleForPath(pathname: string, copy: (value: { en: string; vi: string }) => string) {
+  if (pathname === "/journey/new") return copy({ en: "New journey", vi: "Hành trình mới" });
   if (pathname.match(/^\/journey\/[^/]+$/)) return copy({ en: "Candidate journey", vi: "Hành trình ứng viên" });
   if (pathname === "/journey") return copy({ en: "Journey", vi: "Hành trình ứng viên" });
   if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
@@ -420,6 +421,9 @@ export function AppRouter() {
         {/* Pipeline list is subsumed by the Journey board. */}
         <Route path="/pipeline" element={<Navigate to="/journey" replace />} />
         <Route path="/journey" element={<LazyRoute><JourneyPage /></LazyRoute>} />
+        {/* Create a brand-new journey: same workbench shell, intake hosts the
+            upload → create-lead flow. Static path outranks the :leadId param. */}
+        <Route path="/journey/new" element={<LazyRoute><JourneyWorkbenchPage /></LazyRoute>} />
         <Route path="/journey/:leadId" element={<LazyRoute><JourneyWorkbenchPage /></LazyRoute>} />
         {/* Standalone matching console retired — order-first matching lives on
             the Orders page, candidate-first inside the Journey workbench. */}

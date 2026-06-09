@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus } from "./types";
+import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus, TrainingFinanceCurrency, DepositStatusMode } from "./types";
 
 export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
 
@@ -886,7 +886,7 @@ export function useVerifyDocumentMutation() {
 export function useCreateTrainingFinanceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatus?: string; amountPaid?: number; trainingStartDate?: string; trainingProgress?: string; visaDate?: string; departureDate?: string }) =>
+    mutationFn: (payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatusMode?: DepositStatusMode; depositStatus?: string; depositRefunded?: boolean; amountPaid?: number; amountDue?: number; currency?: TrainingFinanceCurrency; trainingStartDate?: string; trainingProgress?: string; visaStatus?: string; visaDate?: string; departureDate?: string }) =>
       apiClient.createTrainingFinance(payload),
     onSuccess: (record) => {
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });

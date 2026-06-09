@@ -21,7 +21,10 @@ import {
   useTrainingFinanceDetailQuery,
   useUpdateTrainingFinanceMutation,
   type ApplicationRecord,
+  type DepositStatusMode,
+  type TrainingFinanceCurrency,
   type TrainingFinanceRecord,
+  type VisaStatus,
 } from "@social-crm/api";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { getLeadDisplayName } from "@/lib/lead-display";
@@ -33,26 +36,113 @@ type MilestoneForm = {
   orderId: string;
   applicationId: string;
   orderType: string;
+  depositStatusMode: DepositStatusMode;
   depositStatus: string;
   amountPaid: string;
+  amountDue: string;
+  depositRefunded: boolean;
+  currency: TrainingFinanceCurrency;
   trainingStartDate: string;
   trainingProgress: string;
+  visaStatus: string;
   visaDate: string;
   departureDate: string;
 };
+
+const CURRENCY_OPTIONS: TrainingFinanceCurrency[] = ["VND", "TWD", "USD"];
+
+// Canonical manifest codes (PDF Sec V) with operator-facing labels. The stored
+// value is always the code; only the label is localized. A leading blank option
+// keeps each field optional (matches the prior free-text "unset" behavior).
+type EnumOption = { value: string; en: string; vi: string };
+
+const ORDER_TYPE_OPTIONS: EnumOption[] = [
+  { value: "standard", en: "Standard", vi: "Tiêu chuẩn" },
+  { value: "engineer", en: "Engineer", vi: "Kỹ sư" },
+  { value: "free", en: "Free", vi: "Miễn phí" },
+];
+
+// Deposit status codes (manifest). Used for the auto-mode read-only label and
+// the manual-mode dropdown.
+const DEPOSIT_STATUS_VALUES = ["none", "partial", "full", "refunded"] as const;
+const DEPOSIT_STATUS_LABELS: Record<string, { en: string; vi: string }> = {
+  none: { en: "No deposit", vi: "Chưa đặt cọc" },
+  partial: { en: "Partial deposit", vi: "Đặt cọc một phần" },
+  full: { en: "Paid in full", vi: "Đã đặt cọc đủ" },
+  refunded: { en: "Refunded", vi: "Đã hoàn cọc" },
+};
+
+const VISA_STATUS_OPTIONS: { value: VisaStatus; en: string; vi: string }[] = [
+  { value: "none", en: "Not applied", vi: "Chưa nộp" },
+  { value: "in_progress", en: "In progress", vi: "Đang xử lý" },
+  { value: "received", en: "Received", vi: "Đã nhận" },
+  { value: "rejected", en: "Rejected", vi: "Bị từ chối" },
+];
 
 const emptyForm: MilestoneForm = {
   leadId: "",
   orderId: "",
   applicationId: "",
   orderType: "",
+  depositStatusMode: "auto",
   depositStatus: "",
   amountPaid: "",
+  amountDue: "",
+  depositRefunded: false,
+  currency: "VND",
   trainingStartDate: "",
   trainingProgress: "",
+  visaStatus: "",
   visaDate: "",
   departureDate: "",
 };
+
+// Money is currency-flexible: VND (whole amounts) plus TWD/USD (up to 2
+// decimals). We keep the raw text in form state so the operator can type freely
+// (with thousands separators), and parse to a real number only at submit time.
+// `numeric(14,2)` on the backend caps the value.
+const MONEY_MAX = 999999999999.99;
+
+// VND has no subunit in practice — render and round to whole numbers; TWD/USD
+// carry cents (2 decimals).
+function moneyDecimals(currency: TrainingFinanceCurrency): number {
+  return currency === "VND" ? 0 : 2;
+}
+
+function parseMoney(raw: string, currency: TrainingFinanceCurrency): number | undefined {
+  const cleaned = raw.replace(/,/g, "").trim();
+  if (!cleaned) return undefined;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value < 0 || value > MONEY_MAX) return undefined;
+  const factor = currency === "VND" ? 1 : 100;
+  return Math.round(value * factor) / factor;
+}
+
+// Group with thousands separators; decimals follow the currency (VND whole —
+// 25,000,000; TWD/USD always 2 — 1,500.50).
+function formatMoney(value: number, currency: TrainingFinanceCurrency): string {
+  const decimals = moneyDecimals(currency);
+  return value.toLocaleString("en-US", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Strip anything that isn't a digit, comma, or a single decimal point so the
+// field can never hold characters that would parse to NaN.
+function sanitizeMoneyInput(raw: string): string {
+  const filtered = raw.replace(/[^\d.,]/g, "");
+  const firstDot = filtered.indexOf(".");
+  if (firstDot === -1) return filtered;
+  // collapse any decimal points after the first
+  return filtered.slice(0, firstDot + 1) + filtered.slice(firstDot + 1).replace(/\./g, "");
+}
+
+// Mirror of the backend deriveDepositStatus (training-finance-rules.ts) so the
+// form previews the status the server will compute on save.
+function deriveDepositStatus(paid?: number, due?: number, refunded?: boolean): string {
+  if (refunded) return "refunded";
+  if (paid == null || paid <= 0) return "none";
+  if (due != null && due > 0 && paid >= due) return "full";
+  return "partial";
+}
 
 function applicationLabel(application: ApplicationRecord, formatApplicationStatus: (value: string) => string) {
   const orderName = application.order?.name ?? application.order_id;
@@ -60,15 +150,21 @@ function applicationLabel(application: ApplicationRecord, formatApplicationStatu
 }
 
 function recordToForm(record: TrainingFinanceRecord): MilestoneForm {
+  const currency: TrainingFinanceCurrency = record.currency ?? "VND";
   return {
     leadId: record.lead_id ?? "",
     orderId: record.order_id ?? "",
     applicationId: record.application_id ?? "",
     orderType: record.orderType ?? "",
+    depositStatusMode: record.depositStatusMode ?? "auto",
     depositStatus: record.depositStatus ?? "",
-    amountPaid: record.amountPaid != null ? String(record.amountPaid) : "",
+    amountPaid: record.amountPaid != null ? formatMoney(record.amountPaid, currency) : "",
+    amountDue: record.amountDue != null ? formatMoney(record.amountDue, currency) : "",
+    depositRefunded: record.depositRefunded ?? false,
+    currency,
     trainingStartDate: record.trainingStartDate ?? "",
     trainingProgress: record.trainingProgress ?? "",
+    visaStatus: record.visaStatus ?? "",
     visaDate: record.visaDate ?? "",
     departureDate: record.departureDate ?? "",
   };
@@ -90,10 +186,15 @@ function buildPayload(form: MilestoneForm) {
     orderId: form.orderId || undefined,
     applicationId: form.applicationId || undefined,
     orderType: form.orderType || undefined,
-    depositStatus: form.depositStatus || undefined,
-    amountPaid: form.amountPaid ? Number(form.amountPaid) : undefined,
+    depositStatusMode: form.depositStatusMode,
+    depositStatus: form.depositStatusMode === "manual" ? form.depositStatus || "none" : undefined,
+    amountPaid: parseMoney(form.amountPaid, form.currency),
+    amountDue: parseMoney(form.amountDue, form.currency),
+    depositRefunded: form.depositRefunded,
+    currency: form.currency,
     trainingStartDate: form.trainingStartDate || undefined,
     trainingProgress: form.trainingProgress || undefined,
+    visaStatus: form.visaStatus || undefined,
     visaDate: form.visaDate || undefined,
     departureDate: form.departureDate || undefined,
   };
@@ -104,10 +205,15 @@ function buildPatch(form: MilestoneForm) {
     orderId: form.orderId || null,
     applicationId: form.applicationId || null,
     orderType: form.orderType || null,
-    depositStatus: form.depositStatus || null,
-    amountPaid: form.amountPaid ? Number(form.amountPaid) : null,
+    depositStatusMode: form.depositStatusMode,
+    depositStatus: form.depositStatusMode === "manual" ? form.depositStatus || "none" : undefined,
+    amountPaid: parseMoney(form.amountPaid, form.currency) ?? null,
+    amountDue: parseMoney(form.amountDue, form.currency) ?? null,
+    depositRefunded: form.depositRefunded,
+    currency: form.currency,
     trainingStartDate: form.trainingStartDate || null,
     trainingProgress: form.trainingProgress || null,
+    visaStatus: form.visaStatus || null,
     visaDate: form.visaDate || null,
     departureDate: form.departureDate || null,
   };
@@ -156,8 +262,24 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
   const dirty = isNew || !sameForm(form, savedForm);
   const gateOk = departureGate(form.departureDate, selectedApplication);
   const pending = createTrainingFinance.isPending || updateTrainingFinance.isPending;
-  const canSave = canManageFinance && Boolean(form.leadId) && gateOk && dirty && !pending;
+  const paidValue = parseMoney(form.amountPaid, form.currency);
+  const dueValue = parseMoney(form.amountDue, form.currency);
+  const amountInvalid =
+    (form.amountPaid.trim() !== "" && paidValue === undefined) ||
+    (form.amountDue.trim() !== "" && dueValue === undefined);
+  // Entry pre-gate: a new record needs a linked application (which presupposes a
+  // matched candidate). The backend enforces both; the UI blocks early.
+  const needsApplication = isNew && !form.applicationId;
+  const noApplicationsForLead = isNew && Boolean(form.leadId) && !applicationsQuery.isLoading && applications.length === 0;
+  const canSave = canManageFinance && Boolean(form.leadId) && gateOk && dirty && !pending && !amountInvalid && !needsApplication;
   const selectedLeadName = detailQuery.data?.lead ? getLeadDisplayName(detailQuery.data.lead) : form.leadId;
+
+  // Live preview of what the server will store + the outstanding balance.
+  const derivedStatus =
+    form.depositStatusMode === "manual"
+      ? form.depositStatus || "none"
+      : deriveDepositStatus(paidValue, dueValue, form.depositRefunded);
+  const remaining = dueValue != null ? Math.max(0, Math.round((dueValue - (paidValue ?? 0)) * 100) / 100) : null;
 
   function chooseApplication(applicationId: string) {
     const application = findApplication(applications, applicationId, detailQuery.data?.application ?? null);
@@ -250,14 +372,173 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
               disabled={!canManageFinance || Boolean(form.applicationId)}
               onChange={(e) => setForm((s) => ({ ...s, orderId: e.target.value }))}
             />
-            <Input label={copy({ en: "Order type", vi: "Loại đơn hàng" })} value={form.orderType} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, orderType: e.target.value }))} />
-            <Input label={copy({ en: "Deposit status", vi: "Trạng thái đặt cọc" })} value={form.depositStatus} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, depositStatus: e.target.value }))} />
-            <Input label={copy({ en: "Amount paid", vi: "Số tiền đã đóng" })} value={form.amountPaid} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, amountPaid: e.target.value }))} />
+            <Select label={copy({ en: "Order type", vi: "Loại đơn hàng" })} value={form.orderType} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, orderType: e.target.value }))}>
+              <option value="">{copy({ en: "— Not set —", vi: "— Chưa đặt —" })}</option>
+              {ORDER_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {copy({ en: option.en, vi: option.vi })}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label={copy({ en: "Currency", vi: "Loại tiền tệ" })}
+              value={form.currency}
+              disabled={!canManageFinance}
+              onChange={(e) =>
+                setForm((s) => {
+                  const currency = e.target.value as TrainingFinanceCurrency;
+                  // Re-render both amounts under the new currency's decimal rules.
+                  const paid = parseMoney(s.amountPaid, currency);
+                  const due = parseMoney(s.amountDue, currency);
+                  return {
+                    ...s,
+                    currency,
+                    amountPaid: paid === undefined ? s.amountPaid : formatMoney(paid, currency),
+                    amountDue: due === undefined ? s.amountDue : formatMoney(due, currency),
+                  };
+                })
+              }
+            >
+              {CURRENCY_OPTIONS.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </Select>
+            <Input
+              label={copy({ en: "Amount due (total)", vi: "Tổng phải đóng" })}
+              hint={copy({
+                en: "Total the candidate must pay for this placement, in the selected currency.",
+                vi: "Tổng số tiền ứng viên phải đóng cho suất này, theo loại tiền đã chọn.",
+              })}
+              value={form.amountDue}
+              disabled={!canManageFinance}
+              inputMode="decimal"
+              placeholder="0"
+              onChange={(e) => setForm((s) => ({ ...s, amountDue: sanitizeMoneyInput(e.target.value) }))}
+              onBlur={() =>
+                setForm((s) => {
+                  const value = parseMoney(s.amountDue, s.currency);
+                  return value === undefined ? s : { ...s, amountDue: formatMoney(value, s.currency) };
+                })
+              }
+            />
+            <Input
+              label={copy({ en: "Amount paid", vi: "Số tiền đã đóng" })}
+              hint={copy({
+                en: "Total received so far. Numbers only — grouping is added automatically.",
+                vi: "Tổng đã thu đến nay. Chỉ nhập số — dấu phân cách tự thêm.",
+              })}
+              value={form.amountPaid}
+              disabled={!canManageFinance}
+              inputMode="decimal"
+              placeholder="0"
+              onChange={(e) => setForm((s) => ({ ...s, amountPaid: sanitizeMoneyInput(e.target.value) }))}
+              onBlur={() =>
+                setForm((s) => {
+                  const value = parseMoney(s.amountPaid, s.currency);
+                  return value === undefined ? s : { ...s, amountPaid: formatMoney(value, s.currency) };
+                })
+              }
+            />
+            <Select
+              label={copy({ en: "Deposit status mode", vi: "Chế độ trạng thái cọc" })}
+              value={form.depositStatusMode}
+              disabled={!canManageFinance}
+              onChange={(e) =>
+                setForm((s) => {
+                  const mode = e.target.value as DepositStatusMode;
+                  // Switching to manual seeds the pick with whatever auto shows now.
+                  if (mode === "manual" && !s.depositStatus) {
+                    const seeded = deriveDepositStatus(parseMoney(s.amountPaid, s.currency), parseMoney(s.amountDue, s.currency), s.depositRefunded);
+                    return { ...s, depositStatusMode: mode, depositStatus: seeded };
+                  }
+                  return { ...s, depositStatusMode: mode };
+                })
+              }
+            >
+              <option value="auto">{copy({ en: "Auto (from amounts)", vi: "Tự động (theo số tiền)" })}</option>
+              <option value="manual">{copy({ en: "Manual", vi: "Thủ công" })}</option>
+            </Select>
+            {form.depositStatusMode === "manual" ? (
+              <Select
+                label={copy({ en: "Deposit status", vi: "Trạng thái đặt cọc" })}
+                value={form.depositStatus || "none"}
+                disabled={!canManageFinance}
+                onChange={(e) => setForm((s) => ({ ...s, depositStatus: e.target.value }))}
+              >
+                {DEPOSIT_STATUS_VALUES.map((code) => (
+                  <option key={code} value={code}>
+                    {copy(DEPOSIT_STATUS_LABELS[code])}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <>
+                <Select
+                  label={copy({ en: "Deposit refunded?", vi: "Đã hoàn cọc?" })}
+                  value={form.depositRefunded ? "yes" : "no"}
+                  disabled={!canManageFinance}
+                  onChange={(e) => setForm((s) => ({ ...s, depositRefunded: e.target.value === "yes" }))}
+                >
+                  <option value="no">{copy({ en: "No", vi: "Không" })}</option>
+                  <option value="yes">{copy({ en: "Yes", vi: "Có" })}</option>
+                </Select>
+                <Input
+                  label={copy({ en: "Deposit status (auto)", vi: "Trạng thái cọc (tự động)" })}
+                  value={copy(DEPOSIT_STATUS_LABELS[derivedStatus] ?? { en: derivedStatus, vi: derivedStatus })}
+                  disabled
+                  readOnly
+                />
+              </>
+            )}
             <Input label={copy({ en: "Training start", vi: "Bắt đầu đào tạo" })} type="date" value={form.trainingStartDate} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, trainingStartDate: e.target.value }))} />
-            <Input label={copy({ en: "Training progress", vi: "Tiến độ đào tạo" })} value={form.trainingProgress} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, trainingProgress: e.target.value }))} />
+            <Input
+              label={copy({ en: "Training progress", vi: "Tiến độ đào tạo" })}
+              hint={copy({
+                en: "Short note on the training stage — e.g. course/module, week or % complete, pass/fail.",
+                vi: "Ghi chú ngắn về tiến độ đào tạo — ví dụ: khóa/học phần, tuần hoặc % hoàn thành, kết quả đạt/không đạt.",
+              })}
+              value={form.trainingProgress}
+              disabled={!canManageFinance}
+              onChange={(e) => setForm((s) => ({ ...s, trainingProgress: e.target.value }))}
+            />
+            <Select label={copy({ en: "Visa status", vi: "Trạng thái visa" })} value={form.visaStatus} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, visaStatus: e.target.value }))}>
+              <option value="">{copy({ en: "— Not set —", vi: "— Chưa đặt —" })}</option>
+              {VISA_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {copy({ en: option.en, vi: option.vi })}
+                </option>
+              ))}
+            </Select>
             <Input label={copy({ en: "Visa date", vi: "Ngày visa" })} type="date" value={form.visaDate} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, visaDate: e.target.value }))} />
             <Input label={copy({ en: "Departure date", vi: "Ngày xuất cảnh" })} type="date" value={form.departureDate} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, departureDate: e.target.value }))} />
           </FieldGroup>
+
+          {remaining != null ? (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              {remaining > 0
+                ? copy({
+                    en: `Remaining balance: ${formatMoney(remaining, form.currency)} ${form.currency}`,
+                    vi: `Còn lại phải đóng: ${formatMoney(remaining, form.currency)} ${form.currency}`,
+                  })
+                : copy({ en: "Fully paid — no balance remaining.", vi: "Đã đóng đủ — không còn dư nợ." })}
+            </div>
+          ) : null}
+
+          {needsApplication ? (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              {noApplicationsForLead
+                ? copy({
+                    en: "This lead has no application yet. Match the candidate to an order first — training-finance starts after an application exists.",
+                    vi: "Lead này chưa có ứng tuyển. Hãy ghép ứng viên với đơn hàng trước — đào tạo/tài chính chỉ bắt đầu sau khi có ứng tuyển.",
+                  })
+                : copy({
+                    en: "Link an application above before creating a training-finance record.",
+                    vi: "Hãy liên kết một ứng tuyển ở trên trước khi tạo bản ghi đào tạo/tài chính.",
+                  })}
+            </div>
+          ) : null}
 
           {!gateOk ? (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -276,10 +557,11 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
                   ? copy({ en: "Create milestone record", vi: "Tạo bản ghi tiến độ" })
                   : copy({ en: "Save milestone update", vi: "Lưu cập nhật tiến độ" })}
             </Button>
-            <Button variant="secondary" onClick={() => setForm(isNew ? emptyForm : savedForm)} disabled={pending || !dirty}>
+            <Button variant="secondary" onClick={() => setForm((s) => (isNew ? { ...emptyForm, leadId: props.embeddedLeadId ?? s.leadId } : savedForm))} disabled={pending || !dirty}>
               {copy({ en: "Reset changes", vi: "Đặt lại thay đổi" })}
             </Button>
             {!form.leadId ? <span className="text-sm text-rose-600">{copy({ en: "Lead ID is required.", vi: "Cần mã lead." })}</span> : null}
+            {amountInvalid ? <span className="text-sm text-rose-600">{copy({ en: "Amount paid must be a number ≥ 0 with up to 2 decimals.", vi: "Số tiền đã đóng phải là số ≥ 0, tối đa 2 chữ số thập phân." })}</span> : null}
             {!dirty && !isNew ? <span className="text-sm text-slate-500">{copy({ en: "No unsaved changes.", vi: "Không có thay đổi chưa lưu." })}</span> : null}
           </div>
         </Panel>

@@ -11,7 +11,14 @@ import { ApplicationDetailPage } from "../applications/application-detail-page";
  * here on demand. The component is the same one the standalone route used; it
  * runs in embedded mode (locked to this lead, no standalone chrome).
  */
-export function FormIntakeModal(props: { leadId: string; onClose: () => void; onViewDossier?: () => void }) {
+export function FormIntakeModal(props: {
+  leadId?: string;
+  /** Create mode: no lead yet — host the standalone upload → create-lead flow. */
+  createMode?: boolean;
+  onLeadCommitted?: (leadId: string) => void;
+  onClose: () => void;
+  onViewDossier?: () => void;
+}) {
   const { copy } = useI18n();
 
   useEffect(() => {
@@ -47,7 +54,11 @@ export function FormIntakeModal(props: { leadId: string; onClose: () => void; on
           </button>
         </div>
         <div className="flex-1 overflow-y-auto bg-slate-50/40 p-5">
-          <ApplicationDetailPage embeddedLeadId={props.leadId} embeddedOnViewDossier={props.onViewDossier} />
+          {props.createMode ? (
+            <ApplicationDetailPage onLeadCommitted={props.onLeadCommitted} />
+          ) : (
+            <ApplicationDetailPage embeddedLeadId={props.leadId} embeddedOnViewDossier={props.onViewDossier} />
+          )}
         </div>
       </div>
     </div>,

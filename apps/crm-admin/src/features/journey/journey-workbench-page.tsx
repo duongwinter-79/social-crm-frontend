@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge, EmptyState, Panel } from "@social-crm/ui";
 import {
   useApplicationsQuery,
@@ -181,13 +181,19 @@ export function JourneyWorkbench(props: {
 }) {
   const { leadId, presetOrderId, onClose } = props;
   const isModal = Boolean(onClose);
+  // Create mode: `/journey/new` renders the same shell with no lead yet — the
+  // intake phase hosts the upload → create-lead flow; the rest stay pending
+  // until the candidate exists. effectiveLeadId disables the per-lead queries.
+  const isNew = leadId === "new";
+  const effectiveLeadId = isNew ? "" : leadId;
+  const navigate = useNavigate();
   const { copy, formatLeadStatus, formatDocumentStatus } = useI18n();
 
-  const leadQuery = useLeadDetailQuery(leadId);
-  const candidateQuery = useCandidateByLeadQuery(leadId);
-  const applicationsQuery = useApplicationsQuery({ offset: 0, limit: 1, leadId: leadId || undefined }, { enabled: Boolean(leadId) });
-  const formQuery = useFormStandardRegisterQuery(leadId ? { offset: 0, limit: 1, leadId } : undefined, { enabled: Boolean(leadId) });
-  const tfQuery = useTrainingFinanceByLeadQuery(leadId || undefined);
+  const leadQuery = useLeadDetailQuery(effectiveLeadId || undefined);
+  const candidateQuery = useCandidateByLeadQuery(effectiveLeadId || undefined);
+  const applicationsQuery = useApplicationsQuery({ offset: 0, limit: 1, leadId: effectiveLeadId || undefined }, { enabled: Boolean(effectiveLeadId) });
+  const formQuery = useFormStandardRegisterQuery(effectiveLeadId ? { offset: 0, limit: 1, leadId: effectiveLeadId } : undefined, { enabled: Boolean(effectiveLeadId) });
+  const tfQuery = useTrainingFinanceByLeadQuery(effectiveLeadId || undefined);
 
   const lead = leadQuery.data;
   const candidate = candidateQuery.data ?? null;
@@ -198,6 +204,18 @@ export function JourneyWorkbench(props: {
   // Synthesize a PipelineRow so the rail uses the exact same derivation as the
   // cohort board. The section cards below carry the precise live data.
   const phases = useMemo<JourneyPhase[]>(() => {
+    if (isNew) {
+      // A brand-new journey: intake active, every later phase pending.
+      const emptyRow: PipelineRow = {
+        leadId: "",
+        source: "",
+        currentStage: "new",
+        documents: { missingRequired: [], expired: [], total: 0 },
+        blockers: [],
+        nextAction: "",
+      };
+      return derivePhases(emptyRow);
+    }
     if (!lead) return [];
     const row: PipelineRow = {
       leadId,
@@ -214,6 +232,8 @@ export function JourneyWorkbench(props: {
         ? {
             depositStatus: tf.depositStatus,
             amountPaid: tf.amountPaid,
+            amountDue: tf.amountDue,
+            currency: tf.currency,
             trainingProgress: tf.trainingProgress,
             visaDate: tf.visaDate,
             departureDate: tf.departureDate,
@@ -223,7 +243,7 @@ export function JourneyWorkbench(props: {
       nextAction: "",
     };
     return derivePhases(row);
-  }, [lead, leadId, candidate, application, form, tf]);
+  }, [isNew, lead, leadId, candidate, application, form, tf]);
 
   // The rail switches the active phase; only the active section renders its
   // body (accordion), so the page stays short instead of stacking all five.
@@ -232,7 +252,7 @@ export function JourneyWorkbench(props: {
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [dossierOpen, setDossierOpen] = useState(false);
 
-  if (!lead && leadQuery.isLoading) {
+  if (!isNew && !lead && leadQuery.isLoading) {
     return (
       <Panel title={<UiText id="journey.workbench.title" />}>
         <div className="text-sm text-slate-500">{copy({ en: "Loading candidate...", vi: "Đang tải ứng viên..." })}</div>
@@ -240,7 +260,7 @@ export function JourneyWorkbench(props: {
     );
   }
 
-  if (!lead) {
+  if (!isNew && !lead) {
     return (
       <Panel title={<UiText id="journey.workbench.title" />}>
         <EmptyState
@@ -258,6 +278,16 @@ export function JourneyWorkbench(props: {
   const prevKey = activeIdx > 0 ? PHASE_KEYS[activeIdx - 1] : null;
   const nextKey = activeIdx >= 0 && activeIdx < PHASE_KEYS.length - 1 ? PHASE_KEYS[activeIdx + 1] : null;
 
+  // Placeholder for lead-locked phases while a new journey has no candidate yet.
+  const createFirstNote = (
+    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+      {copy({
+        en: "Available once the candidate is created. Upload a form in the Form intake phase above.",
+        vi: "Khả dụng sau khi tạo ứng viên. Hãy tải lên form ở giai đoạn Tiếp nhận form phía trên.",
+      })}
+    </div>
+  );
+
   return (
     <div className="space-y-5">
       {/* Candidate header */}
@@ -273,15 +303,23 @@ export function JourneyWorkbench(props: {
                 ← <UiText id="journey.workbench.back-to-board" />
               </Link>
             )}
-            <h1 className="mt-1 truncate text-xl font-semibold text-slate-900">{getLeadDisplayName(lead)}</h1>
+            <h1 className="mt-1 truncate text-xl font-semibold text-slate-900">
+              {lead ? getLeadDisplayName(lead) : copy({ en: "New journey", vi: "Hành trình mới" })}
+            </h1>
             <div className="mt-0.5 truncate text-sm text-slate-500">
-              {lead.source?.toUpperCase()} · {lead.phone || copy({ en: "No phone", vi: "Chưa có SĐT" })}
-              {candidate?.code ? ` · ${candidate.code}` : ""}
+              {lead ? (
+                <>
+                  {lead.source?.toUpperCase()} · {lead.phone || copy({ en: "No phone", vi: "Chưa có SĐT" })}
+                  {candidate?.code ? ` · ${candidate.code}` : ""}
+                </>
+              ) : (
+                copy({ en: "Upload a form to create the candidate.", vi: "Tải lên form để tạo ứng viên." })
+              )}
             </div>
           </div>
           <div className="flex items-start gap-3">
             <div className="flex flex-col items-end gap-2">
-              <Badge tone="neutral">{formatLeadStatus(lead.status)}</Badge>
+              <Badge tone="neutral">{lead ? formatLeadStatus(lead.status) : copy({ en: "New", vi: "Mới" })}</Badge>
               <span className="text-xs text-slate-500">
                 {copy({ en: `${completeCount} of ${phases.length} phases complete`, vi: `Hoàn tất ${completeCount}/${phases.length} giai đoạn` })}
               </span>
@@ -364,19 +402,27 @@ export function JourneyWorkbench(props: {
 
           {/* §3 Application — create gate + status transitions, inlined */}
           <PhaseSection phase={byKey("application")} index={2} activeKey={activeKey} onSelect={setActiveOverride} copy={copy}>
-            <ApplicationPhasePanel
-              leadId={leadId}
-              leadStatus={lead.status}
-              candidate={candidate}
-              form={form}
-              application={application}
-              presetOrderId={presetOrderId}
-            />
+            {lead ? (
+              <ApplicationPhasePanel
+                leadId={leadId}
+                leadStatus={lead.status}
+                candidate={candidate}
+                form={form}
+                application={application}
+                presetOrderId={presetOrderId}
+              />
+            ) : (
+              createFirstNote
+            )}
           </PhaseSection>
 
           {/* §4 Training & Finance — milestone record editor, inlined */}
           <PhaseSection phase={byKey("training")} index={3} activeKey={activeKey} onSelect={setActiveOverride} copy={copy}>
-            <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />
+            {lead ? (
+              <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />
+            ) : (
+              createFirstNote
+            )}
           </PhaseSection>
 
           {/* §5 Departure — status summary; departure date is edited in §4 above. */}
@@ -425,6 +471,8 @@ export function JourneyWorkbench(props: {
       {formModalOpen ? (
         <FormIntakeModal
           leadId={leadId}
+          createMode={isNew}
+          onLeadCommitted={isNew ? (newLeadId) => { setFormModalOpen(false); navigate(`/journey/${newLeadId}`); } : undefined}
           onClose={() => setFormModalOpen(false)}
           onViewDossier={() => {
             setFormModalOpen(false);
@@ -434,7 +482,7 @@ export function JourneyWorkbench(props: {
       ) : null}
       {dossierOpen ? (
         <DossierModal
-          name={getLeadDisplayName(lead)}
+          name={lead ? getLeadDisplayName(lead) : ""}
           profile={candidate?.profile}
           onClose={() => setDossierOpen(false)}
           onEditForm={() => {

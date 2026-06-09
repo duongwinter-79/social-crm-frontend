@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-06-09
+
+### Journey — Training & Finance money UX
+
+- the Training & Finance form (embedded in Journey §4) gains a **currency selector** (VND/TWD/USD), an **Amount due** field, currency-aware money formatting/parsing (VND whole; TWD/USD 2 decimals), and a live **remaining-balance** note
+- `depositStatus` is now an **Auto / Manual** toggle: auto derives the status from the amounts (+ a "Deposit refunded?" flag) and shows it read-only; manual exposes the status dropdown — mirrors the backend resolver so the preview matches what is saved
+- `orderType`, `depositStatus`, and `visaStatus` are manifest-backed `<Select>`s (canonical codes) instead of free text
+- `Input` gains a `hint` prop; added helper hints on **Training progress** and the amount fields
+- the **Reset** button no longer clears the Lead ID
+- create is blocked until an application is linked (mirrors the backend entry gate), with a clearer message when the lead has no application yet
+
+### Journey — rail summary + form-intake session
+
+- the rail deposit line now shows a friendly status label with paid/due and currency (e.g. `Partial deposit · 10,000,000 / 25,000,000 VND`); the visa line is beautified with a `·` separator
+- the staged form-intake session (upload → verify, in `application-detail-page.tsx`) is persisted to `sessionStorage`, so it survives closing the Journey modal or navigating away; seeded on mount, cleared on commit/cancel
+- a staged session that died out-of-band (server 404/410) now self-heals on verify/commit — the operator is returned to a clean upload box instead of being stuck
+
+### Journey — Create journey entry
+
+- new `/journey/new` route + a **"Create journey"** button on the board: the same workbench shell in a no-lead "new" mode whose intake phase hosts the upload → create-lead flow; on commit it navigates to `/journey/:leadId`. Later phases show a "create the candidate first" placeholder until the lead exists
+- `FormIntakeModal` gains a `createMode`; `ApplicationDetailPage` gains an `onLeadCommitted(leadId)` callback
+
 ## 2026-06-07
 
 ### AI snapshot panel — field policy from a single source
