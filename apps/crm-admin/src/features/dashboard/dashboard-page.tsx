@@ -71,8 +71,8 @@ function rowHasRecruitmentWork(row: PipelineRow) {
 }
 
 function linkForRow(row: PipelineRow) {
-  // Every operational next-step now lives in the candidate's Journey workbench.
-  return `/journey/${row.leadId}`;
+  // Every operational next-step now lives in the lead workbench.
+  return `/leads/${row.leadId}`;
 }
 
 function translateNextAction(action: string, copy: (value: { en: string; vi: string }) => string) {
@@ -150,28 +150,28 @@ export function DashboardPage() {
       label: copy({ en: "Qualified — ready to match", vi: "Đủ điều kiện — sẵn sàng ghép" }),
       value: formReady,
       caption: copy({ en: "Form done; not yet matched to an order", vi: "Đã có form; chưa ghép đơn hàng" }),
-      href: "/journey?stage=qualified",
+      href: "/leads?status=qualified",
       tone: "warning",
     },
     {
       label: copy({ en: "Application follow-up", vi: "Cần theo ứng tuyển" }),
       value: activeApplications,
       caption: copy({ en: "Active application records", vi: "Ứng tuyển đang xử lý" }),
-      href: "/journey?phase=application",
+      href: "/leads?status=matching",
       tone: "warning",
     },
     {
       label: copy({ en: "Document blockers", vi: "Vướng hồ sơ" }),
       value: documentIssues,
       caption: copy({ en: "Missing, rejected, or expired", vi: "Thiếu, bị từ chối hoặc hết hạn" }),
-      href: "/journey?phase=dossier",
+      href: "/leads",
       tone: "danger",
     },
     {
       label: copy({ en: "Departure pending", vi: "Chờ xuất cảnh" }),
       value: departurePending,
       caption: copy({ en: "Visa in flight without departure", vi: "Đã đóng visa, chưa có ngày xuất cảnh" }),
-      href: "/journey?phase=departure",
+      href: "/leads?status=visa_processing",
       tone: "success",
     },
   ];

@@ -1,7 +1,8 @@
 import { startTransition, useDeferredValue, useMemo, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Badge, Button, DataTable, Input, PaginationFooter, SectionHeader, Select, Toolbar, ToolbarActions } from "@social-crm/ui";
-import { apiClient, triggerBlobDownload, useLeadsQuery, type Lead } from "@social-crm/api";
+import { apiClient, triggerBlobDownload, useLeadsQuery, usePermissions, type Lead } from "@social-crm/api";
+import { FormIntakeModal } from "@/features/journey/form-intake-modal";
 import { createReturnState, saveRouteScroll, useRestoreRouteScroll } from "@/app/navigation-state";
 import { applySearchParamUpdates, readNumberOption, readPageIndex, readStringOption, type SearchParamValue } from "@/app/search-params";
 import { useI18n } from "@/i18n";
@@ -101,6 +102,10 @@ export function LeadsPage() {
   const dateTo = searchParams.get("to") ?? "";
   const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  // Create-from-form: the Journey "new" mode now lives here as a modal.
+  const [createFormOpen, setCreateFormOpen] = useState(false);
+  const navigate = useNavigate();
+  const { canEditLeads } = usePermissions();
   const deferredSearch = useDeferredValue(search);
   const leadReturnState = createReturnState(location, copy({ en: "Leads", vi: "Danh sách ứng viên" }));
 
@@ -240,6 +245,11 @@ export function LeadsPage() {
               ))}
             </Select>
             <ToolbarActions className="justify-start xl:justify-end">
+              {canEditLeads ? (
+                <Button onClick={() => setCreateFormOpen(true)}>
+                  {copy({ en: "Create from form", vi: "Tạo từ form" })}
+                </Button>
+              ) : null}
               <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
                 {isExporting
                   ? copy({ en: "Exporting...", vi: "Đang xuất..." })
@@ -521,6 +531,16 @@ export function LeadsPage() {
         </DataTable>
 
       </div>
+      {createFormOpen ? (
+        <FormIntakeModal
+          createMode
+          onLeadCommitted={(newLeadId) => {
+            setCreateFormOpen(false);
+            navigate(`/leads/${newLeadId}`, { state: leadReturnState });
+          }}
+          onClose={() => setCreateFormOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

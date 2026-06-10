@@ -21,8 +21,9 @@ export type WorkbenchSectionKey =
   | "basic"
   | "skills"
   | "documents"
-  | "recruitment"
-  | "finance"
+  | "application"
+  | "progressFinance"
+  | "departure"
   | "history"
   | "extraction";
 
@@ -52,8 +53,9 @@ const SECTION_META: Record<
   skills: { group: "profile", en: "Skills & experience", vi: "Kỹ năng & KN", icon: <IconBriefcase /> },
   extraction: { group: "profile", en: "AI extraction", vi: "Trích xuất AI", icon: <IconSpark /> },
   documents: { group: "process", en: "Form & documents", vi: "Hồ sơ & Form", icon: <IconDoc /> },
-  recruitment: { group: "process", en: "Recruitment", vi: "Tuyển dụng", icon: <IconCap /> },
-  finance: { group: "process", en: "Finance", vi: "Tài chính", icon: <IconMoney /> },
+  application: { group: "process", en: "Application", vi: "Ứng tuyển", icon: <IconCap /> },
+  progressFinance: { group: "process", en: "Progress & finance", vi: "Tiến độ & Tài chính", icon: <IconMoney /> },
+  departure: { group: "process", en: "Departure", vi: "Xuất cảnh", icon: <IconPlane /> },
   history: { group: "other", en: "History & notes", vi: "Lịch sử & Note", icon: <IconChat /> },
 };
 
@@ -167,6 +169,9 @@ function IconCap() {
 }
 function IconMoney() {
   return svg(<><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></>);
+}
+function IconPlane() {
+  return svg(<><path d="M21 4 3 11l7 2.5L12.5 21 21 4Z" /><path d="M10 13.5 21 4" /></>);
 }
 function IconChat() {
   return svg(<><path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6A2.5 2.5 0 0 1 16.5 15H10l-4 3v-3a1 1 0 0 1-1-1z" /></>);

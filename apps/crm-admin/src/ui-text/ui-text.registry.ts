@@ -1267,70 +1267,46 @@ export const uiTextRegistry = [
     description: "Lead workbench dossier panel subtitle."
   },
   {
-    key: "lead.workbench.recruitment.title",
+    key: "lead.workbench.application.title",
     namespace: "leads",
     screen: "lead-workbench",
     slot: "header",
-    defaultText: { en: "Recruitment", vi: "Tuyển dụng" },
+    defaultText: { en: "Application", vi: "Ứng tuyển" },
     maxLength: 60,
-    description: "Lead workbench recruitment tab panel title."
+    description: "Lead workbench application section panel title."
   },
   {
-    key: "lead.workbench.recruitment.subtitle",
+    key: "lead.workbench.application.subtitle",
     namespace: "leads",
     screen: "lead-workbench",
     slot: "subtitle",
     defaultText: {
-      en: "Advance the pipeline using the status controls at the top of this page.",
-      vi: "Dùng các nút trạng thái ở đầu trang để đẩy tiến trình hồ sơ."
+      en: "Match the candidate to an order and track interview progress.",
+      vi: "Ghép ứng viên vào đơn hàng và theo dõi tiến trình phỏng vấn."
     },
     maxLength: 180,
-    description: "Lead workbench recruitment tab subtitle."
+    description: "Lead workbench application section subtitle."
   },
   {
-    key: "lead.workbench.recruitment.body",
-    namespace: "leads",
-    screen: "lead-workbench",
-    slot: "helper",
-    defaultText: {
-      en: "Interview scheduling and order linkage live in the candidate journey workbench.",
-      vi: "Lên lịch phỏng vấn và ghép đơn nằm trong bàn xử lý hành trình ứng viên."
-    },
-    maxLength: 180,
-    description: "Lead workbench recruitment tab body text."
-  },
-  {
-    key: "lead.workbench.finance.title",
+    key: "lead.workbench.departure.title",
     namespace: "leads",
     screen: "lead-workbench",
     slot: "header",
-    defaultText: { en: "Finance", vi: "Tài chính" },
+    defaultText: { en: "Departure", vi: "Xuất cảnh" },
     maxLength: 60,
-    description: "Lead workbench finance tab panel title."
+    description: "Lead workbench departure section panel title."
   },
   {
-    key: "lead.workbench.finance.subtitle",
+    key: "lead.workbench.departure.subtitle",
     namespace: "leads",
     screen: "lead-workbench",
     slot: "subtitle",
     defaultText: {
-      en: "Deposit, training, visa and departure milestones.",
-      vi: "Các mốc đặt cọc, đào tạo, visa và xuất cảnh."
+      en: "Visa and departure milestones from the progress & finance record.",
+      vi: "Các mốc visa và xuất cảnh lấy từ hồ sơ tiến độ & tài chính."
     },
-    maxLength: 160,
-    description: "Lead workbench finance tab subtitle."
-  },
-  {
-    key: "lead.workbench.finance.body",
-    namespace: "leads",
-    screen: "lead-workbench",
-    slot: "helper",
-    defaultText: {
-      en: "Tracked in the Journey workbench Training & Finance section.",
-      vi: "Được theo dõi trong mục Đào tạo & tài chính của hành trình."
-    },
-    maxLength: 160,
-    description: "Lead workbench finance tab body text."
+    maxLength: 180,
+    description: "Lead workbench departure section subtitle."
   },
   {
     key: "lead.workbench.summary.title",

@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-06-10
+
+### Journey merged into the lead workbench (customer "Gộp mục" review)
+
+- the standalone **Hành trình** surface is retired as navigation: the sidebar item is removed and `/journey`, `/journey/new`, `/pipeline`, `/applications*`, `/documents`, and `/training-finance` now redirect to `/leads`; `/journey/:leadId` redirects to `/leads/:leadId`
+- the lead workbench's process sections are reshaped (`CandidateWorkbench` keys): the placeholder **Tuyển dụng** and **Tài chính** sections are replaced by
+  - **Ứng tuyển** — the full application create-gate + status transitions (`ApplicationPhasePanel`, formerly Journey §3), placed right below Hồ sơ & Form
+  - **Tiến độ & Tài chính** — the embedded Training & Finance editor (`TrainingFinanceDetailPage`, formerly Journey §4)
+  - **Xuất cảnh** — a read-only departure summary (departure/visa dates from the training-finance record, edited in Tiến độ & Tài chính)
+- the **"Mở hành trình"** buttons on Hồ sơ & Form now open the form-intake modal in place (upload / create / view form) instead of navigating to the Journey page
+- the leads inbox gains a **"Tạo từ form"** toolbar button (edit-permission gated) hosting the create-candidate-from-form flow that used to live at `/journey/new`
+- dashboard pipeline rows and workflow cards deep-link to `/leads…` (with status filters) instead of the removed `/journey…` routes
+- kept: `journey-workbench-page.tsx`, `journey-phases.ts`, and the Journey modal still power order-first matching on the Orders page; `journey-page.tsx` (cohort board) is now unreachable dead code pending removal
+- UiText: the six `lead.workbench.recruitment/finance.*` keys are replaced by `lead.workbench.application.*` and `lead.workbench.departure.*`
+
 ## 2026-06-09
 
 ### Journey — Training & Finance money UX

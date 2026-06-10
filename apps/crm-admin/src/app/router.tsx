@@ -13,8 +13,6 @@ import "./admin-shell.css";
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
 const LeadsPage = lazy(() => import("@/features/leads/leads-page").then((m) => ({ default: m.LeadsPage })));
 const ConversationsPage = lazy(() => import("@/features/conversations/conversations-page").then((m) => ({ default: m.ConversationsPage })));
-const JourneyPage = lazy(() => import("@/features/journey/journey-page").then((m) => ({ default: m.JourneyPage })));
-const JourneyWorkbenchPage = lazy(() => import("@/features/journey/journey-workbench-page").then((m) => ({ default: m.JourneyWorkbenchPage })));
 const LeadWorkbenchPage = lazy(() => import("@/features/leads/lead-workbench-page").then((m) => ({ default: m.LeadWorkbenchPage })));
 const CandidateDossierPage = lazy(() => import("@/features/leads/candidate-dossier-page").then((m) => ({ default: m.CandidateDossierPage })));
 const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) => ({ default: m.OrdersPage })));
@@ -29,7 +27,6 @@ type IconName =
   | "dashboard"
   | "leads"
   | "conversations"
-  | "journey"
   | "matching"
   | "orders"
   | "documents"
@@ -52,7 +49,6 @@ const navItems: NavItem[] = [
   { to: "/dashboard", icon: "dashboard", label: { en: "Dashboard", vi: "Tổng quan" }, hint: { en: "Overview and triage", vi: "Tổng quan và sàng lọc" } },
   { to: "/leads", icon: "leads", label: { en: "Leads", vi: "Ứng viên tiềm năng" }, hint: { en: "Inbox and workbench", vi: "Hộp tiếp nhận và xử lý hồ sơ" } },
   { to: "/conversations", icon: "conversations", label: { en: "Conversations", vi: "Hội thoại" }, hint: { en: "Zalo threads and messages", vi: "Luồng và tin nhắn Zalo" } },
-  { to: "/journey", icon: "journey", label: { en: "Journey", vi: "Hành trình" }, hint: { en: "Form, application, training & departure", vi: "Form, ứng tuyển, đào tạo & xuất cảnh" } },
   { to: "/orders", icon: "orders", label: { en: "Orders", vi: "Đơn hàng" }, hint: { en: "Demand & order-first matching", vi: "Đơn hàng & ghép ứng viên" } },
   { to: "/import", icon: "import", label: { en: "Import", vi: "Nhập dữ liệu" }, hint: { en: "Bulk import from XLSX", vi: "Nhập hàng loạt từ XLSX" } },
   { to: "/extract", icon: "extract", label: { en: "Extract notes", vi: "Trích xuất ghi chú" }, hint: { en: "Operator-gated AI extraction", vi: "AI trích xuất, nhân sự duyệt" } },
@@ -75,8 +71,6 @@ function NavIcon(props: { name: IconName }) {
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" {...common} /><circle cx="10" cy="8" r="3" {...common} /><path d="M20 19v-1a3 3 0 0 0-2-2.82" {...common} /><path d="M15 5.2a3 3 0 0 1 0 5.6" {...common} /></svg>;
     case "conversations":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v4A3.5 3.5 0 0 1 15.5 14H11l-4 3v-3A3.5 3.5 0 0 1 5 10.5z" {...common} /><path d="M9 8h6M9 11h3" {...common} /><path d="M8 18h7l3 3v-3a3 3 0 0 0 3-3v-2" {...common} /></svg>;
-    case "journey":
-      return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17h16" {...common} /><circle cx="5" cy="17" r="1.6" fill="currentColor" stroke="none" /><circle cx="12" cy="17" r="1.6" fill="currentColor" stroke="none" /><circle cx="19" cy="17" r="1.6" {...common} /><path d="M5 13V8M12 13V6M19 13v-3" {...common} /></svg>;
     case "matching":
       return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h4v4H7zM13 13h4v4h-4z" {...common} /><path d="M11 9h2l2 2v2" {...common} /><path d="M9 13H7v4h4v-2" {...common} /></svg>;
     case "orders":
@@ -99,7 +93,6 @@ function NavIcon(props: { name: IconName }) {
 const navTextKeys: Record<string, { label: string; hint: string }> = {
   "/dashboard": { label: "shell.nav.dashboard.label", hint: "shell.nav.dashboard.hint" },
   "/leads": { label: "shell.nav.leads.label", hint: "shell.nav.leads.hint" },
-  "/journey": { label: "shell.nav.journey.label", hint: "shell.nav.journey.hint" },
   "/conversations": { label: "shell.nav.conversations.label", hint: "shell.nav.conversations.hint" },
   "/orders": { label: "shell.nav.orders.label", hint: "shell.nav.orders.hint" },
   "/import": { label: "shell.nav.import.label", hint: "shell.nav.import.hint" },
@@ -122,9 +115,6 @@ function SidebarNavItem(props: { item: NavItem; active: boolean; copy: (value: {
 }
 
 function titleForPath(pathname: string, copy: (value: { en: string; vi: string }) => string) {
-  if (pathname === "/journey/new") return copy({ en: "New journey", vi: "Hành trình mới" });
-  if (pathname.match(/^\/journey\/[^/]+$/)) return copy({ en: "Candidate journey", vi: "Hành trình ứng viên" });
-  if (pathname === "/journey") return copy({ en: "Journey", vi: "Hành trình ứng viên" });
   if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   if (pathname === "/ui-text-overrides") return copy({ en: "UI text overrides", vi: "Tùy chỉnh chữ hiển thị" });
@@ -358,9 +348,10 @@ function RequireAdmin(props: { children: ReactNode }) {
   return user?.roles?.includes("admin") ? <>{props.children}</> : <Navigate to="/dashboard" replace />;
 }
 
-function RedirectToJourney() {
+function RedirectToLeadWorkbench() {
   const { leadId } = useParams();
-  return <Navigate to={leadId ? `/journey/${leadId}` : "/journey"} replace />;
+  // "new" was the Journey create-from-form mode; the leads page hosts it now.
+  return <Navigate to={leadId && leadId !== "new" ? `/leads/${leadId}` : "/leads"} replace />;
 }
 
 function RouteFallback() {
@@ -418,28 +409,29 @@ export function AppRouter() {
         <Route path="/leads/:leadId/dossier" element={<LazyRoute><CandidateDossierPage /></LazyRoute>} />
         <Route path="/leads/:leadId" element={<LazyRoute><LeadWorkbenchPage /></LazyRoute>} />
         <Route path="/conversations" element={<LazyRoute><ConversationsPage /></LazyRoute>} />
-        {/* Pipeline list is subsumed by the Journey board. */}
-        <Route path="/pipeline" element={<Navigate to="/journey" replace />} />
-        <Route path="/journey" element={<LazyRoute><JourneyPage /></LazyRoute>} />
-        {/* /journey/new is captured by :leadId (leadId="new" → workbench "new"
-            mode: same shell, intake hosts the upload → create-lead flow). */}
-        <Route path="/journey/:leadId" element={<LazyRoute><JourneyWorkbenchPage /></LazyRoute>} />
+        {/* The Journey surface is merged into the lead workbench: form intake
+            is a modal on Hồ sơ & Form, matching lives in Ứng tuyển, finance in
+            Tiến độ & Tài chính, departure in Xuất cảnh. Legacy URLs redirect. */}
+        <Route path="/pipeline" element={<Navigate to="/leads" replace />} />
+        <Route path="/journey" element={<Navigate to="/leads" replace />} />
+        <Route path="/journey/new" element={<Navigate to="/leads" replace />} />
+        <Route path="/journey/:leadId" element={<RedirectToLeadWorkbench />} />
         {/* Standalone matching console retired — order-first matching lives on
             the Orders page, candidate-first inside the Journey workbench. */}
         <Route path="/matching" element={<Navigate to="/orders" replace />} />
         <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
         <Route path="/orders/:orderId" element={<LazyRoute><OrderDetailPage /></LazyRoute>} />
         {/* Applications list, standalone form-intake, and the form-editor are
-            all subsumed by the Journey workbench (form intake is the §1 modal,
-            field editing lives in the workbench). Redirect legacy URLs. */}
-        <Route path="/applications" element={<Navigate to="/journey" replace />} />
-        <Route path="/applications/upload" element={<Navigate to="/journey" replace />} />
-        <Route path="/applications/detail" element={<Navigate to="/journey" replace />} />
-        <Route path="/applications/:leadId/edit" element={<RedirectToJourney />} />
-        <Route path="/documents" element={<Navigate to="/journey" replace />} />
-        {/* Training-finance ledger is subsumed by the Journey board; the
-            per-record detail stays reachable and is embedded inside Journey §4. */}
-        <Route path="/training-finance" element={<Navigate to="/journey" replace />} />
+            all subsumed by the lead workbench (form intake is a modal on the
+            Hồ sơ & Form section). Redirect legacy URLs. */}
+        <Route path="/applications" element={<Navigate to="/leads" replace />} />
+        <Route path="/applications/upload" element={<Navigate to="/leads" replace />} />
+        <Route path="/applications/detail" element={<Navigate to="/leads" replace />} />
+        <Route path="/applications/:leadId/edit" element={<RedirectToLeadWorkbench />} />
+        <Route path="/documents" element={<Navigate to="/leads" replace />} />
+        {/* Training-finance ledger is subsumed by the lead workbench Tiến độ &
+            Tài chính section; the per-record detail stays reachable. */}
+        <Route path="/training-finance" element={<Navigate to="/leads" replace />} />
         <Route path="/training-finance/:recordId" element={<LazyRoute><TrainingFinanceDetailPage /></LazyRoute>} />
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />

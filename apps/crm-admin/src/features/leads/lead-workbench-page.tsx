@@ -18,7 +18,9 @@ import {
 } from "@social-crm/ui";
 import {
   useAiQueryMutation,
+  useApplicationsQuery,
   useCandidateByLeadQuery,
+  useFormStandardRegisterQuery,
   useLeadAiSuggestionsQuery,
   useDismissLeadAiSuggestionMutation,
   useLeadDetailQuery,
@@ -26,6 +28,7 @@ import {
   useLeadTransitionsQuery,
   useProcessThreadExtractionMutation,
   useRestoreLeadMutation,
+  useTrainingFinanceByLeadQuery,
   useUpdateLeadMutation,
   useUpdateLeadQualificationMutation,
   usePermissions
@@ -43,6 +46,9 @@ import {
 } from "./field-with-provenance";
 import { LeadConversationInline } from "./lead-conversation-inline";
 import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
+import { ApplicationPhasePanel } from "@/features/journey/application-phase-panel";
+import { FormIntakeModal } from "@/features/journey/form-intake-modal";
+import { TrainingFinanceDetailPage } from "@/features/training-finance/training-finance-detail-page";
 
 function toneForStatus(status: string) {
   if (["INTERVIEW_FAILED", "DISQUALIFIED"].includes(status)) return "danger" as const;
@@ -111,6 +117,11 @@ export function LeadWorkbenchPage() {
   const transitionsQuery = useLeadTransitionsQuery(leadId);
   const qualificationQuery = useLeadQualificationQuery(leadId);
   const suggestionsQuery = useLeadAiSuggestionsQuery(leadId);
+  // Journey-merge data: application, staged form and training-finance record
+  // power the Ứng tuyển / Tiến độ & Tài chính / Xuất cảnh sections below.
+  const applicationsQuery = useApplicationsQuery({ offset: 0, limit: 1, leadId: leadId || undefined }, { enabled: Boolean(leadId) });
+  const formQuery = useFormStandardRegisterQuery(leadId ? { offset: 0, limit: 1, leadId } : undefined, { enabled: Boolean(leadId) });
+  const tfQuery = useTrainingFinanceByLeadQuery(leadId || undefined);
   const updateLead = useUpdateLeadMutation();
   const restoreLead = useRestoreLeadMutation();
   const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
@@ -127,6 +138,7 @@ export function LeadWorkbenchPage() {
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
   const [conversationVisible, setConversationVisible] = useState(false);
   const [dossierOpen, setDossierOpen] = useState(false);
+  const [formModalOpen, setFormModalOpen] = useState(false);
   // Editable identity (Lead channel fields). Staff can correct fullName/phone
   // directly here — important because the deterministic extractor can suggest
   // wrong values (e.g. a company name) and those suggestions aren't rejectable.
@@ -214,6 +226,9 @@ export function LeadWorkbenchPage() {
 
   const lead = leadQuery.data;
   const candidate = candidateQuery.data;
+  const application = applicationsQuery.data?.data?.[0] ?? null;
+  const form = formQuery.data?.data?.[0] ?? null;
+  const tf = tfQuery.data?.[0] ?? null;
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
   const hasCandidate = Boolean(candidate?.id);
 
@@ -825,12 +840,14 @@ export function LeadWorkbenchPage() {
                       >
                         {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
                       </Button>
-                      {canEditLeads && !candidate?.profile ? (
+                      {canEditLeads ? (
                         <Button
                           variant="secondary"
-                          onClick={() => navigate(`/journey/${lead.id}`)}
+                          onClick={() => setFormModalOpen(true)}
                         >
-                          {copy({ en: "Open journey", vi: "Mở hành trình" })}
+                          {form?.hasFile
+                            ? <UiText id="journey.workbench.form.manage" />
+                            : <UiText id="journey.workbench.form.upload" />}
                         </Button>
                       ) : null}
                     </div>
@@ -847,9 +864,9 @@ export function LeadWorkbenchPage() {
                     </div>
                     <Button
                       variant="secondary"
-                      onClick={() => navigate(`/journey/${lead.id}`)}
+                      onClick={() => setFormModalOpen(true)}
                     >
-                      {copy({ en: "Open journey →", vi: "Mở hành trình →" })}
+                      {copy({ en: "Manage form →", vi: "Quản lý form →" })}
                     </Button>
                   </div>
                 ) : null}
@@ -857,27 +874,44 @@ export function LeadWorkbenchPage() {
             ),
           },
           {
-            key: "recruitment",
+            key: "application",
             content: (
               <Panel
-                title={<UiText id="lead.workbench.recruitment.title" />}
-                subtitle={<UiText id="lead.workbench.recruitment.subtitle" />}
+                title={<UiText id="lead.workbench.application.title" />}
+                subtitle={<UiText id="lead.workbench.application.subtitle" />}
               >
-                <p className="text-sm leading-6 text-slate-500">
-                  <UiText id="lead.workbench.recruitment.body" />
-                </p>
+                <ApplicationPhasePanel
+                  leadId={leadId}
+                  leadStatus={lead.status}
+                  candidate={candidate ?? null}
+                  form={form}
+                  application={application}
+                />
               </Panel>
             ),
           },
           {
-            key: "finance",
+            key: "progressFinance",
+            content: (
+              <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />
+            ),
+          },
+          {
+            key: "departure",
             content: (
               <Panel
-                title={<UiText id="lead.workbench.finance.title" />}
-                subtitle={<UiText id="lead.workbench.finance.subtitle" />}
+                title={<UiText id="lead.workbench.departure.title" />}
+                subtitle={<UiText id="lead.workbench.departure.subtitle" />}
               >
-                <p className="text-sm leading-6 text-slate-500">
-                  <UiText id="lead.workbench.finance.body" />
+                <DescriptionList
+                  items={[
+                    { label: copy({ en: "Departure date", vi: "Ngày xuất cảnh" }), value: tf?.departureDate || copy({ en: "Not scheduled", vi: "Chưa lên lịch" }) },
+                    { label: copy({ en: "Visa date", vi: "Ngày có visa" }), value: tf?.visaDate || copy({ en: "Not set", vi: "Chưa có" }) },
+                    { label: copy({ en: "Pipeline status", vi: "Trạng thái quy trình" }), value: formatLeadStatus(lead.status) }
+                  ]}
+                />
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  <UiText id="journey.workbench.departure.helper" />
                 </p>
               </Panel>
             ),
@@ -922,6 +956,16 @@ export function LeadWorkbenchPage() {
           name={getLeadDisplayName(lead)}
           profile={candidate?.profile}
           onClose={() => setDossierOpen(false)}
+        />
+      ) : null}
+      {formModalOpen ? (
+        <FormIntakeModal
+          leadId={leadId}
+          onClose={() => setFormModalOpen(false)}
+          onViewDossier={() => {
+            setFormModalOpen(false);
+            setDossierOpen(true);
+          }}
         />
       ) : null}
     </div>
