@@ -424,6 +424,7 @@ export class SocialCrmApiClient {
     search?: string;
     dateFrom?: string;
     dateTo?: string;
+    hidePlaceholderNames?: boolean;
   }) {
     const response = await this.http.get<ApiEnvelope<LeadListResponse> | LeadListResponse>("/leads", { params });
     return unwrapEnvelope(response.data);

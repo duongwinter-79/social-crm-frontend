@@ -212,6 +212,7 @@ export function useLeadsQuery(params: {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  hidePlaceholderNames?: boolean;
 }) {
   return useQuery({
     queryKey: ["leads", params],

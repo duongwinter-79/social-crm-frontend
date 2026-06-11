@@ -100,6 +100,9 @@ export function LeadsPage() {
   const pageSize = readNumberOption(searchParams, "pageSize", PAGE_SIZE_OPTIONS, 20) as PageSize;
   const dateFrom = searchParams.get("from") ?? "";
   const dateTo = searchParams.get("to") ?? "";
+  // Default ON: unidentified Zalo intake rows (placeholder name, no phone/
+  // fullName) are hidden unless the operator opts in via ?hideUnnamed=0.
+  const hideUnnamed = searchParams.get("hideUnnamed") !== "0";
   const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   // Create-from-form: the Journey "new" mode now lives here as a modal.
@@ -126,7 +129,8 @@ export function LeadsPage() {
     status: status || undefined,
     source: source || undefined,
     dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined
+    dateTo: dateTo || undefined,
+    hidePlaceholderNames: hideUnnamed || undefined
   });
 
   const leads = query.data?.data ?? [];
@@ -206,7 +210,7 @@ export function LeadsPage() {
         <div className="flex flex-col gap-4">
           <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr_1fr_auto]">
             <Input
-              label={copy({ en: "Lead search", vi: "Tìm ứng viên" })}
+              label={copy({ en: "Name or phone", vi: "Tên hoặc SĐT ứng viên" })}
               value={search}
               onChange={(event) => {
                 const value = event.target.value;
@@ -214,7 +218,7 @@ export function LeadsPage() {
                   updateLeadParams({ q: value, ...resetPageUpdate }, { replace: true });
                 });
               }}
-              placeholder={copy({ en: "Name...", vi: "Tên ứng viên..." })}
+              placeholder={copy({ en: "Name or phone number...", vi: "Tên hoặc số điện thoại..." })}
             />
             <Select
               label={copy({ en: "Status", vi: "Trạng thái" })}
@@ -265,7 +269,8 @@ export function LeadsPage() {
                     from: null,
                     to: null,
                     page: null,
-                    pageSize: null
+                    pageSize: null,
+                    hideUnnamed: null
                   });
                 }}
               >
@@ -274,7 +279,20 @@ export function LeadsPage() {
             </ToolbarActions>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-[1fr_1fr_auto]">
+          <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-[1fr_1fr_1fr_auto]">
+            <Select
+              label={copy({ en: "Unidentified Zalo accounts", vi: "Tài khoản Zalo chưa định danh" })}
+              value={hideUnnamed ? "hide" : "show"}
+              onChange={(event) => {
+                updateLeadParams({
+                  hideUnnamed: event.target.value === "hide" ? null : "0",
+                  ...resetPageUpdate
+                });
+              }}
+            >
+              <option value="hide">{copy({ en: "Hide", vi: "Ẩn" })}</option>
+              <option value="show">{copy({ en: "Show", vi: "Hiện" })}</option>
+            </Select>
             <Input
               type="date"
               label={copy({ en: "Created from", vi: "Tạo từ" })}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-11
+
+### Leads inbox — name/phone search + unidentified-Zalo filter (customer "Gộp mục" review)
+
+- the search input is relabeled **"Tên hoặc SĐT ứng viên"** (it always hit the backend's name+phone+id search; operators just couldn't tell) — the backend now also normalizes phone formats, so `+84 912 345 678` finds `0912345678`
+- new **"Tài khoản Zalo chưa định danh"** Ẩn/Hiện filter, default **Ẩn**: hides placeholder-named Zalo intake rows with no phone and no fullName (sends `hidePlaceholderNames` to `/leads`); URL-param backed (`?hideUnnamed=0` to show), included in Reset
+- `listLeads` / `useLeadsQuery` gain the `hidePlaceholderNames` param
+
 ## 2026-06-10
 
 ### Journey merged into the lead workbench (customer "Gộp mục" review)
