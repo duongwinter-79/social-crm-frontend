@@ -45,7 +45,7 @@ const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error) => {
       emitRequestNotification({
-        message: getRequestErrorMessage(error, "Unable to load data from the backend.")
+        message: getRequestErrorMessage(error, { en: "Unable to load data. Please refresh the page.", vi: "Không tải được dữ liệu. Vui lòng tải lại trang." })
       });
     }
   }),
@@ -60,7 +60,7 @@ const queryClient = new QueryClient({
     },
     onError: (error) => {
       emitRequestNotification({
-        message: getRequestErrorMessage(error, "Unable to complete the backend request.")
+        message: getRequestErrorMessage(error, { en: "Unable to complete the request. Please try again.", vi: "Không thể thực hiện yêu cầu. Vui lòng thử lại." })
       });
     }
   })

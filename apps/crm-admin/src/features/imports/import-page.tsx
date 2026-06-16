@@ -14,6 +14,7 @@ import {
   type ImportRowDedupStatus
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
+import { getRequestErrorMessage } from "@/app/request-notifications";
 import { UiText } from "@/ui-text/ui-text";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
@@ -162,7 +163,7 @@ export function ImportPage() {
             </Button>
             {previewMutation.isError ? (
               <span className="self-center text-xs text-rose-600">
-                {(previewMutation.error as Error)?.message ?? "Failed"}
+                {getRequestErrorMessage(previewMutation.error, { en: "Could not parse the file. Please try again.", vi: "Không đọc được file. Vui lòng thử lại." })}
               </span>
             ) : null}
           </div>

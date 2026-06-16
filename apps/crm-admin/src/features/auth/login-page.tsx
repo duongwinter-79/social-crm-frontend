@@ -2,14 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient, useSessionStore } from "@social-crm/api";
 import { useImeSafeInput } from "@social-crm/ui";
-import { getRequestErrorMessage, useRequestNotifications } from "@/app/request-notifications";
 import { useI18n } from "@/i18n";
 import "./login-page.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { lang, setLang, copy } = useI18n();
-  const { notifyError } = useRequestNotifications();
   const consumeLogoutReason = useSessionStore((state) => state.consumeLogoutReason);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -42,10 +40,8 @@ export function LoginPage() {
     try {
       await apiClient.login(username.trim().toLowerCase(), password);
       navigate("/dashboard");
-    } catch (err: unknown) {
-      const message = getRequestErrorMessage(err, copy({ en: "Login failed", vi: "Đăng nhập thất bại" }));
-      setError(message);
-      notifyError(err, copy({ en: "Login failed", vi: "Đăng nhập thất bại" }));
+    } catch {
+      setError(copy({ en: "Incorrect username or password.", vi: "Tên đăng nhập hoặc mật khẩu không đúng." }));
     } finally {
       setLoading(false);
     }
