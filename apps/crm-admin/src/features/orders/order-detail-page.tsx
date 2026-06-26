@@ -8,6 +8,7 @@ import {
   useUpdateOrderMutation,
   type Order,
   type OrderMutationPayload,
+  type OrderRecruitmentStatus,
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import { UiText } from "@/ui-text/ui-text";
@@ -25,6 +26,7 @@ type OrderFormState = {
   heightMin: string;
   acceptsReturnees: "" | "true" | "false";
   experienceRequired: "" | "true" | "false";
+  recruitmentStatus: "" | OrderRecruitmentStatus;
 };
 
 const emptyOrderForm: OrderFormState = {
@@ -40,6 +42,7 @@ const emptyOrderForm: OrderFormState = {
   heightMin: "",
   acceptsReturnees: "",
   experienceRequired: "false",
+  recruitmentStatus: "",
 };
 
 export function OrderDetailPage() {
@@ -144,6 +147,11 @@ export function OrderDetailPage() {
               <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
             </Select>
             <Input label={copy({ en: "Salary range", vi: "Mức lương" })} value={form.salaryRange} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, salaryRange: e.target.value }))} />
+            <Select label={copy({ en: "Recruitment status", vi: "Trạng thái tuyển dụng" })} value={form.recruitmentStatus} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, recruitmentStatus: e.target.value as OrderFormState["recruitmentStatus"] }))}>
+              <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
+              <option value="recruiting">{copy({ en: "Recruiting", vi: "Đang tuyển" })}</option>
+              <option value="recruitment_complete">{copy({ en: "Recruitment complete", vi: "Đã tuyển xong" })}</option>
+            </Select>
           </FieldGroup>
 
           <FieldGroup className="mt-4" columns={2}>
@@ -215,6 +223,7 @@ function orderToForm(order: Order): OrderFormState {
     heightMin: order.heightMin != null ? String(order.heightMin) : "",
     acceptsReturnees: typeof order.acceptsReturnees === "boolean" ? String(order.acceptsReturnees) as OrderFormState["acceptsReturnees"] : "",
     experienceRequired: typeof order.experienceRequired === "boolean" ? String(order.experienceRequired) as OrderFormState["experienceRequired"] : "",
+    recruitmentStatus: order.recruitmentStatus ?? "",
   };
 }
 
@@ -238,6 +247,7 @@ function buildOrderPayload(form: OrderFormState): OrderMutationPayload {
     heightMin: parseOptionalNumber(form.heightMin),
     acceptsReturnees: parseOptionalBoolean(form.acceptsReturnees),
     experienceRequired: parseOptionalBoolean(form.experienceRequired) ?? false,
+    recruitmentStatus: (form.recruitmentStatus as OrderRecruitmentStatus) || null,
   };
 }
 

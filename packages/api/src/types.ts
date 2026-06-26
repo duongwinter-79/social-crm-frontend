@@ -514,6 +514,8 @@ export interface OrderSuggestedCandidate {
   requiresManagerApproval: boolean;
 }
 
+export type OrderRecruitmentStatus = "recruiting" | "recruitment_complete";
+
 export interface Order {
   id: string;
   name: string;
@@ -528,6 +530,7 @@ export interface Order {
   heightMin?: number | null;
   acceptsReturnees?: boolean | null;
   experienceRequired: boolean;
+  recruitmentStatus?: OrderRecruitmentStatus | null;
 }
 
 export interface OrderMutationPayload {
@@ -543,6 +546,7 @@ export interface OrderMutationPayload {
   heightMin?: number | null;
   acceptsReturnees?: boolean | null;
   experienceRequired?: boolean;
+  recruitmentStatus?: OrderRecruitmentStatus | null;
 }
 
 export interface MatchingResult {
