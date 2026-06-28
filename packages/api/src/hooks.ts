@@ -365,10 +365,18 @@ export function useCandidatesQuery(params: { offset: number; limit: number; lead
   });
 }
 
-export function useDocumentsQuery(params: { offset: number; limit: number; leadId?: string; candidateId?: string; docType?: string; status?: string }) {
+export function useDocumentsQuery(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; docType?: string; status?: string }) {
   return useQuery({
     queryKey: ["documents", params],
     queryFn: () => apiClient.listDocuments(params)
+  });
+}
+
+export function useOrderDocumentsQuery(orderId?: string) {
+  return useQuery({
+    queryKey: ["documents", "order", orderId],
+    queryFn: () => apiClient.listDocuments({ offset: 0, limit: 100, orderId: orderId as string }),
+    enabled: Boolean(orderId),
   });
 }
 
@@ -697,6 +705,9 @@ export function useUpdateApplicationMutation() {
     onSuccess: (application) => {
       queryClient.setQueryData(["application", application.id], application);
       queryClient.invalidateQueries({ queryKey: ["applications"] });
+      // Status transitions drive lead status forward — keep status bar in sync.
+      queryClient.invalidateQueries({ queryKey: ["lead", application.lead_id] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     meta: { successMessage: { en: "Application updated", vi: "Đã cập nhật hồ sơ ứng tuyển" } }
   });
@@ -705,11 +716,13 @@ export function useUpdateApplicationMutation() {
 export function useDeleteApplicationMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => apiClient.deleteApplication(id),
-    onSuccess: (_result, id) => {
+    mutationFn: ({ id }: { id: string; leadId: string }) => apiClient.deleteApplication(id),
+    onSuccess: (_result, { id, leadId }) => {
       queryClient.removeQueries({ queryKey: ["application", id] });
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     meta: { successMessage: { en: "Application deleted", vi: "Đã xoá hồ sơ ứng tuyển" } }
   });
@@ -723,6 +736,10 @@ export function useCreateApplicationMutation() {
     onSuccess: (application) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.setQueryData(["application", application.id], application);
+      // Creating an application auto-advances lead status via backend workflow
+      // side-effects — invalidate so the status bar reflects the new status.
+      queryClient.invalidateQueries({ queryKey: ["lead", application.lead_id] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     meta: { successMessage: { en: "Application created", vi: "Đã tạo hồ sơ ứng tuyển" } }
   });
@@ -731,7 +748,7 @@ export function useCreateApplicationMutation() {
 export function useCreateDocumentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { leadId: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) =>
+    mutationFn: (payload: { leadId?: string; orderId?: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) =>
       apiClient.createDocument(payload),
     onSuccess: (document) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
@@ -740,6 +757,9 @@ export function useCreateDocumentMutation() {
       }
       if (document.candidate_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
+      }
+      if ((document as any).order_id) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "order", (document as any).order_id] });
       }
     },
     meta: { successMessage: { en: "Document added", vi: "Đã thêm giấy tờ" } }

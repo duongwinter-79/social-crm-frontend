@@ -669,7 +669,7 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async listDocuments(params: { offset: number; limit: number; leadId?: string; candidateId?: string; docType?: string; status?: string }) {
+  async listDocuments(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; docType?: string; status?: string }) {
     const response = await this.http.get<ApiEnvelope<DocumentListResponse> | DocumentListResponse>("/documents", { params });
     return unwrapEnvelope(response.data);
   }
@@ -689,7 +689,7 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async createDocument(payload: { leadId: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) {
+  async createDocument(payload: { leadId?: string; orderId?: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) {
     const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents", payload);
     return unwrapEnvelope(response.data);
   }

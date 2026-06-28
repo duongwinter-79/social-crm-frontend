@@ -74,8 +74,22 @@ export function requiresRejectReason(status: string) {
   return ["interview_failed", "rejected", "withdrawn"].includes(status);
 }
 
+// Mirrors the backend application creation gate: any non-terminal lead status
+// at or beyond QUALIFIED may create a replacement application (e.g. re-linking
+// after a previous application was deleted or withdrawn at VISA_PROCESSING).
+const APPLICATION_CREATE_STAGES = new Set([
+  "qualified",
+  "matching",
+  "matched",
+  "interview_scheduled",
+  "interview_passed",
+  "interview_failed",
+  "contract_signed",
+  "visa_processing",
+]);
+
 export function isCreateStage(status?: string | null) {
-  return status === "qualified" || status === "matching";
+  return Boolean(status && APPLICATION_CREATE_STAGES.has(status));
 }
 
 export function readCandidateLeadId(candidate?: CandidateRef | null) {

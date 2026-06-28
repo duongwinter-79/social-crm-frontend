@@ -634,7 +634,8 @@ export interface CandidateListResponse {
 
 export interface DocumentRecord {
   id: string;
-  lead_id: string;
+  lead_id?: string | null;
+  order_id?: string | null;
   candidate_id?: string | null;
   docType: string;
   status: string;

@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, DescriptionList, EmptyState, FieldGroup, InfoCard, Input, Panel, SectionHeader, Select } from "@social-crm/ui";
 import {
+  useCreateDocumentMutation,
   useCreateOrderMutation,
   useOrderDetailQuery,
+  useOrderDocumentsQuery,
   useSessionStore,
   useUpdateOrderMutation,
+  type DocumentRecord,
   type Order,
   type OrderMutationPayload,
   type OrderRecruitmentStatus,
@@ -48,7 +51,7 @@ const emptyOrderForm: OrderFormState = {
 export function OrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { copy } = useI18n();
+  const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
   const user = useSessionStore((state) => state.user);
   const isAdmin = user?.roles?.includes("admin") ?? false;
   const isNew = orderId === "new";
@@ -191,6 +194,8 @@ export function OrderDetailPage() {
           {!isNew && orderQuery.data ? <ReadOnlyMetadata order={orderQuery.data} copy={copy} /> : null}
         </div>
       </div>
+
+      {!isNew && orderId ? <OrderDocumentsPanel orderId={orderId} isAdmin={isAdmin} copy={copy} formatDocumentType={formatDocumentType} formatDocumentStatus={formatDocumentStatus} /> : null}
     </div>
   );
 }
@@ -205,6 +210,71 @@ function ReadOnlyMetadata(props: { order: Order; copy: (value: { en: string; vi:
           { label: props.copy({ en: "Experience required", vi: "Yêu cầu kinh nghiệm" }), value: props.order.experienceRequired ? props.copy({ en: "Yes", vi: "Có" }) : props.copy({ en: "No", vi: "Không" }) },
         ]}
       />
+    </Panel>
+  );
+}
+
+const ORDER_DOC_TYPES = ["other", "work_permit", "diploma"] as const;
+
+function OrderDocumentsPanel(props: {
+  orderId: string;
+  isAdmin: boolean;
+  copy: (value: { en: string; vi: string }) => string;
+  formatDocumentType: (value: string) => string;
+  formatDocumentStatus: (value: string) => string;
+}) {
+  const { copy, formatDocumentType, formatDocumentStatus } = props;
+  const docsQuery = useOrderDocumentsQuery(props.orderId);
+  const createDoc = useCreateDocumentMutation();
+  const [addDocType, setAddDocType] = useState("other");
+  const [addIssueDate, setAddIssueDate] = useState("");
+  const [addExpiryDate, setAddExpiryDate] = useState("");
+  const docs: DocumentRecord[] = docsQuery.data?.data ?? [];
+
+  function handleAddDoc() {
+    if (!props.isAdmin || !addDocType) return;
+    createDoc.mutate(
+      { orderId: props.orderId, docType: addDocType, issueDate: addIssueDate || undefined, expiryDate: addExpiryDate || undefined },
+      { onSuccess: () => { setAddIssueDate(""); setAddExpiryDate(""); } },
+    );
+  }
+
+  return (
+    <Panel
+      title={copy({ en: "Order documents", vi: "Tài liệu đơn hàng" })}
+      subtitle={copy({ en: "Contracts and supporting files for this order.", vi: "Hợp đồng và tài liệu liên quan đến đơn hàng." })}
+    >
+      {docs.length > 0 ? (
+        <div className="mb-4 divide-y divide-slate-100 rounded-xl border border-slate-200">
+          {docs.map((doc) => (
+            <div key={doc.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
+              <span className="font-medium text-slate-800">{formatDocumentType(doc.docType)}</span>
+              <Badge tone="neutral">{formatDocumentStatus(doc.status)}</Badge>
+              {doc.issueDate ? <span className="text-slate-500">{copy({ en: "Issued", vi: "Phát hành" })}: {doc.issueDate}</span> : null}
+              {doc.expiryDate ? <span className="text-slate-500">{copy({ en: "Expires", vi: "Hết hạn" })}: {doc.expiryDate}</span> : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mb-4 text-sm text-slate-500">{copy({ en: "No documents yet.", vi: "Chưa có tài liệu." })}</p>
+      )}
+
+      {props.isAdmin ? (
+        <FieldGroup columns={4}>
+          <Select label={copy({ en: "Document type", vi: "Loại tài liệu" })} value={addDocType} onChange={(e) => setAddDocType(e.target.value)}>
+            {ORDER_DOC_TYPES.map((t) => (
+              <option key={t} value={t}>{formatDocumentType(t)}</option>
+            ))}
+          </Select>
+          <Input label={copy({ en: "Issue date", vi: "Ngày phát hành" })} type="date" value={addIssueDate} onChange={(e) => setAddIssueDate(e.target.value)} />
+          <Input label={copy({ en: "Expiry date", vi: "Ngày hết hạn" })} type="date" value={addExpiryDate} onChange={(e) => setAddExpiryDate(e.target.value)} />
+          <div className="flex items-end">
+            <Button onClick={handleAddDoc} disabled={!addDocType || createDoc.isPending}>
+              {createDoc.isPending ? copy({ en: "Adding...", vi: "Đang thêm..." }) : copy({ en: "Add document", vi: "Thêm tài liệu" })}
+            </Button>
+          </div>
+        </FieldGroup>
+      ) : null}
     </Panel>
   );
 }

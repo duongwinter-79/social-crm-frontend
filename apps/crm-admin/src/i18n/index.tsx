@@ -83,6 +83,7 @@ const enumLabels: Record<string, Copy> = {
   passport: { en: "Passport", vi: "Hộ chiếu" },
   form_standard: { en: "Standard worker form", vi: "Form chuẩn lao động" },
   criminal_record: { en: "Criminal record", vi: "Lý lịch tư pháp" },
+  criminal_record_2: { en: "Criminal record #2", vi: "Lý lịch tư pháp số 2" },
   health_check: { en: "Health check", vi: "Khám sức khỏe" },
   diploma: { en: "Diploma", vi: "Bằng cấp" },
   work_permit: { en: "Work permit", vi: "Giấy phép lao động" },

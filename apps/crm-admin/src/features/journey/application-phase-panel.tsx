@@ -69,7 +69,7 @@ function CreateApplication(props: {
   const gate = useMemo(() => {
     if (!candidateOk) return { ok: false, message: copy({ en: "This lead has no candidate dossier yet.", vi: "Lead này chưa có hồ sơ ứng viên." }) };
     if (!formOk) return { ok: false, message: copy({ en: "A verified standard form is required first.", vi: "Cần form chuẩn đã xác minh trước." }) };
-    if (!stageOk) return { ok: false, message: copy({ en: "Lead must be Form ready or Matching.", vi: "Lead phải ở trạng thái Đã có form hoặc Đang ghép đơn." }) };
+    if (!stageOk) return { ok: false, message: copy({ en: "Lead must be at Qualified stage or later.", vi: "Lead phải ở trạng thái Đã có form hoặc xa hơn." }) };
     if (!orderOk) return { ok: false, message: copy({ en: "Select the target order.", vi: "Chọn đơn hàng mục tiêu." }) };
     return { ok: true, message: copy({ en: "Ready to create application.", vi: "Đủ điều kiện tạo ứng tuyển." }) };
   }, [candidateOk, formOk, stageOk, orderOk, copy]);
@@ -253,7 +253,7 @@ function EditApplication(props: { application: ApplicationRecord }) {
         cancelLabel={copy({ en: "Cancel", vi: "Hủy" })}
         isPending={deleteApplication.isPending}
         onCancel={() => setConfirmDelete(false)}
-        onConfirm={() => deleteApplication.mutate(application.id, { onSuccess: () => setConfirmDelete(false) })}
+        onConfirm={() => deleteApplication.mutate({ id: application.id, leadId: application.lead_id }, { onSuccess: () => setConfirmDelete(false) })}
       />
     </div>
   );
