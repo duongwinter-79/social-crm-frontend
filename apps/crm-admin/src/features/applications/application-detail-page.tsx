@@ -10,6 +10,7 @@ import {
   apiClient,
   useFormStandardRegisterQuery,
   useLeadDetailQuery,
+  usePermissions,
   useUnlinkFormStandardMutation,
   useStageFormStandardMutation,
   useOpenPendingEditSessionMutation,
@@ -287,6 +288,8 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   const [newLeadPhone, setNewLeadPhone] = useState(restoredSession?.newLeadPhone ?? "");
   const [newLeadAcquisitionSource, setNewLeadAcquisitionSource] = useState<LeadAcquisitionSource>(restoredSession?.newLeadAcquisitionSource ?? "zalo");
 
+  const { canEditLeads } = usePermissions();
+
   // Mutations / queries
   const unlinkFormStandard = useUnlinkFormStandardMutation();
   const stageMutation = useStageFormStandardMutation();
@@ -405,7 +408,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleUnlink() {
-    if (!selectedLeadId) return;
+    if (!selectedLeadId || !canEditLeads) return;
     setFileActionError("");
     unlinkFormStandard.mutate(selectedLeadId, {
       onSuccess: () => {
@@ -455,7 +458,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleStageUpload() {
-    if (!uploadFile) return;
+    if (!uploadFile || !canEditLeads) return;
     setStageError("");
     setUploadProgress(0);
     stageMutation.mutate(
@@ -549,7 +552,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleVerify() {
-    if (!pending) return;
+    if (!pending || !canEditLeads) return;
     setStageError("");
     verifyMutation.mutate(
       { pendingId: pending.pendingId, leadId: selectedLeadId || undefined },
@@ -585,7 +588,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleConfirmWithExistingLead(leadId: string) {
-    if (!pending || !verifyResult) return;
+    if (!pending || !verifyResult || !canEditLeads) return;
     setStageError("");
     const dossierFields = buildDossierFields(verifyResult, choices, overrides);
     commitMutation.mutate(
@@ -609,7 +612,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleConfirmCreateNew() {
-    if (!pending || !verifyResult) return;
+    if (!pending || !verifyResult || !canEditLeads) return;
     if (!newLeadFullName.trim() && !newLeadDisplayName.trim() && !newLeadPhone.trim()) {
       setStageError(copy({
         en: "Enter at least a name, display name, or phone before creating a lead.",

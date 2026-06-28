@@ -6,7 +6,7 @@ import {
   useCreateOrderMutation,
   useOrderDetailQuery,
   useOrderDocumentsQuery,
-  useSessionStore,
+  usePermissions,
   useUpdateOrderMutation,
   type DocumentRecord,
   type Order,
@@ -52,9 +52,12 @@ export function OrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
-  const user = useSessionStore((state) => state.user);
-  const isAdmin = user?.roles?.includes("admin") ?? false;
+  const { isAdmin } = usePermissions();
   const isNew = orderId === "new";
+
+  useEffect(() => {
+    if (isNew && !isAdmin) navigate("/orders", { replace: true });
+  }, [isNew, isAdmin, navigate]);
   const orderQuery = useOrderDetailQuery(isNew ? undefined : orderId);
   const createOrder = useCreateOrderMutation();
   const updateOrder = useUpdateOrderMutation();
