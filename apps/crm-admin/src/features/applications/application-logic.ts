@@ -77,13 +77,14 @@ export function requiresRejectReason(status: string) {
 // Mirrors the backend application creation gate: any non-terminal lead status
 // at or beyond QUALIFIED may create a replacement application (e.g. re-linking
 // after a previous application was deleted or withdrawn at VISA_PROCESSING).
+// interview_failed is excluded — the lead must first be reset to CONTACTED
+// ("rớt đơn quay về Đang tư vấn") before a new application can be created.
 const APPLICATION_CREATE_STAGES = new Set([
   "qualified",
   "matching",
   "matched",
   "interview_scheduled",
   "interview_passed",
-  "interview_failed",
   "contract_signed",
   "visa_processing",
 ]);
