@@ -654,6 +654,12 @@ export interface DocumentListResponse {
   total: number;
 }
 
+/**
+ * Post-commit form-document extraction status for a lead. Drives the
+ * "đang trích xuất" progress indicator in the lead information panel.
+ */
+export type FormExtractionStatus = "processing" | "done" | "failed" | null;
+
 export interface FormStandardRegisterRow {
   documentId: string;
   activeVersionId?: string | null;

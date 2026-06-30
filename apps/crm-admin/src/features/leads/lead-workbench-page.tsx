@@ -46,6 +46,7 @@ import {
 } from "./field-with-provenance";
 import { LeadConversationInline } from "./lead-conversation-inline";
 import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
+import { FormExtractionProgress } from "./form-extraction-progress";
 import { ApplicationPhasePanel } from "@/features/journey/application-phase-panel";
 import { FormIntakeModal } from "@/features/journey/form-intake-modal";
 import { TrainingFinanceDetailPage } from "@/features/training-finance/training-finance-detail-page";
@@ -480,6 +481,7 @@ export function LeadWorkbenchPage() {
             key: "extraction",
             content: (
               <div className="space-y-6">
+      <FormExtractionProgress leadId={leadId} />
       <LeadAiSnapshotCard
         lead={lead}
         suggestions={suggestionsQuery.data ?? []}

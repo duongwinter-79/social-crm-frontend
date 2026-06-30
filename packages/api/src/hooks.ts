@@ -852,18 +852,29 @@ export function useCommitPendingFormMutation() {
         queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "transitions"] });
         // Field extraction from the committed form runs server-side AFTER the
         // commit response returns (fire-and-forget so a slow AI call never holds
-        // up the upload). The enriched qualification + AI-suggestion values land
-        // a beat later, so refetch all lead-scoped queries on a short delay to
-        // surface them without a manual reload. Prefix key matches lead detail,
-        // qualification, ai-suggestions, transitions, and order-suggestions.
-        const leadId = document.lead_id;
-        window.setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
-        }, 3000);
+        // up the upload). The backend flips the lead's formExtractionStatus to
+        // `processing` then `done`/`failed`. Kick the status poll so the
+        // information panel shows the "đang trích xuất" indicator and
+        // auto-refreshes the lead-scoped queries when extraction completes.
+        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "form-extraction-status"] });
       }
       queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
     },
     meta: { successMessage: { en: "Form verified and linked", vi: "Đã xác nhận và gắn hồ sơ" } }
+  });
+}
+
+/**
+ * Polls the post-commit form-extraction status for a lead. Refetches every
+ * 1.5s while the backend reports `processing`, then stops. Drives the
+ * extraction progress indicator in the lead information panel.
+ */
+export function useFormExtractionStatusQuery(leadId?: string) {
+  return useQuery({
+    queryKey: ["lead", leadId, "form-extraction-status"],
+    queryFn: () => apiClient.getFormExtractionStatus(leadId as string),
+    enabled: Boolean(leadId),
+    refetchInterval: (query) => (query.state.data?.status === "processing" ? 1500 : false),
   });
 }
 

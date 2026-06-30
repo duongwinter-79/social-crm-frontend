@@ -9,6 +9,7 @@ import type {
   AiExtractionWorkerStatus,
   ZaloNameEnrichmentWorkerStatus,
   AiQueryResult,
+  FormExtractionStatus,
   AiSuggestion,
   LeadOrderSuggestion,
   OrderSuggestedCandidate,
@@ -793,6 +794,13 @@ export class SocialCrmApiClient {
 
   async cancelPending(pendingId: string): Promise<void> {
     await this.http.delete(`/documents/form-standard/pending/${pendingId}`);
+  }
+
+  async getFormExtractionStatus(leadId: string): Promise<{ status: FormExtractionStatus }> {
+    const response = await this.http.get<ApiEnvelope<{ status: FormExtractionStatus }> | { status: FormExtractionStatus }>(
+      `/leads/${leadId}/form-extraction-status`,
+    );
+    return unwrapEnvelope(response.data);
   }
 
   async updateDocument(id: string, patch: Record<string, unknown>) {
