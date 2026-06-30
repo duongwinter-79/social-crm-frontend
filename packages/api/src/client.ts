@@ -694,6 +694,33 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async uploadOrderDocument(payload: {
+    orderId: string;
+    file: File;
+    docType?: string;
+    issueDate?: string;
+    expiryDate?: string;
+    onUploadProgress?: (progress: number) => void;
+  }): Promise<DocumentRecord> {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    if (payload.docType) formData.append("docType", payload.docType);
+    if (payload.issueDate) formData.append("issueDate", payload.issueDate);
+    if (payload.expiryDate) formData.append("expiryDate", payload.expiryDate);
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>(
+      `/documents/order/${payload.orderId}/upload`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!payload.onUploadProgress || !event.total) return;
+          payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
   async unlinkFormStandardDocument(leadId: string): Promise<void> {
     await this.http.delete(`/documents/form-standard/${leadId}`);
   }

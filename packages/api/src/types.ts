@@ -640,6 +640,7 @@ export interface DocumentRecord {
   docType: string;
   status: string;
   fileUrl?: string | null;
+  fileKey?: string | null;
   storageBucket?: string | null;
   issueDate?: string | null;
   expiryDate?: string | null;

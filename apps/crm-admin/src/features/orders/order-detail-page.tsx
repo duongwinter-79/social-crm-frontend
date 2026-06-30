@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, DescriptionList, EmptyState, FieldGroup, InfoCard, Input, Panel, SectionHeader, Select } from "@social-crm/ui";
 import {
-  useCreateDocumentMutation,
+  apiClient,
   useCreateOrderMutation,
   useOrderDetailQuery,
   useOrderDocumentsQuery,
   usePermissions,
   useUpdateOrderMutation,
+  useUploadOrderDocumentMutation,
   type DocumentRecord,
   type Order,
   type OrderMutationPayload,
@@ -228,18 +229,41 @@ function OrderDocumentsPanel(props: {
 }) {
   const { copy, formatDocumentType, formatDocumentStatus } = props;
   const docsQuery = useOrderDocumentsQuery(props.orderId);
-  const createDoc = useCreateDocumentMutation();
+  const uploadDoc = useUploadOrderDocumentMutation();
   const [addDocType, setAddDocType] = useState("other");
   const [addIssueDate, setAddIssueDate] = useState("");
   const [addExpiryDate, setAddExpiryDate] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState("");
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const docs: DocumentRecord[] = docsQuery.data?.data ?? [];
 
-  function handleAddDoc() {
-    if (!props.isAdmin || !addDocType) return;
-    createDoc.mutate(
-      { orderId: props.orderId, docType: addDocType, issueDate: addIssueDate || undefined, expiryDate: addExpiryDate || undefined },
-      { onSuccess: () => { setAddIssueDate(""); setAddExpiryDate(""); } },
+  function handleUpload() {
+    if (!props.isAdmin || !file) return;
+    setUploadError("");
+    uploadDoc.mutate(
+      { orderId: props.orderId, file, docType: addDocType, issueDate: addIssueDate || undefined, expiryDate: addExpiryDate || undefined },
+      {
+        onSuccess: () => { setFile(null); setAddIssueDate(""); setAddExpiryDate(""); },
+        onError: (err: unknown) => {
+          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          setUploadError(message ?? copy({ en: "Upload failed.", vi: "Tải lên thất bại." }));
+        },
+      },
     );
+  }
+
+  async function handleOpen(doc: DocumentRecord) {
+    setOpeningId(doc.id);
+    try {
+      const { url, isObjectUrl } = await apiClient.getDocumentUrl(doc.id);
+      window.open(url, "_blank", "noopener,noreferrer");
+      if (isObjectUrl) window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+    } catch {
+      setUploadError(copy({ en: "Could not open this file.", vi: "Không mở được file này." }));
+    } finally {
+      setOpeningId(null);
+    }
   }
 
   return (
@@ -255,6 +279,16 @@ function OrderDocumentsPanel(props: {
               <Badge tone="neutral">{formatDocumentStatus(doc.status)}</Badge>
               {doc.issueDate ? <span className="text-slate-500">{copy({ en: "Issued", vi: "Phát hành" })}: {doc.issueDate}</span> : null}
               {doc.expiryDate ? <span className="text-slate-500">{copy({ en: "Expires", vi: "Hết hạn" })}: {doc.expiryDate}</span> : null}
+              {doc.fileUrl || doc.fileKey ? (
+                <button
+                  type="button"
+                  className="ml-auto font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-700 disabled:opacity-50"
+                  onClick={() => handleOpen(doc)}
+                  disabled={openingId === doc.id}
+                >
+                  {openingId === doc.id ? copy({ en: "Opening...", vi: "Đang mở..." }) : copy({ en: "Open file", vi: "Mở file" })}
+                </button>
+              ) : null}
             </div>
           ))}
         </div>
@@ -263,20 +297,32 @@ function OrderDocumentsPanel(props: {
       )}
 
       {props.isAdmin ? (
-        <FieldGroup columns={4}>
-          <Select label={copy({ en: "Document type", vi: "Loại tài liệu" })} value={addDocType} onChange={(e) => setAddDocType(e.target.value)}>
-            {ORDER_DOC_TYPES.map((t) => (
-              <option key={t} value={t}>{formatDocumentType(t)}</option>
-            ))}
-          </Select>
-          <Input label={copy({ en: "Issue date", vi: "Ngày phát hành" })} type="date" value={addIssueDate} onChange={(e) => setAddIssueDate(e.target.value)} />
-          <Input label={copy({ en: "Expiry date", vi: "Ngày hết hạn" })} type="date" value={addExpiryDate} onChange={(e) => setAddExpiryDate(e.target.value)} />
-          <div className="flex items-end">
-            <Button onClick={handleAddDoc} disabled={!addDocType || createDoc.isPending}>
-              {createDoc.isPending ? copy({ en: "Adding...", vi: "Đang thêm..." }) : copy({ en: "Add document", vi: "Thêm tài liệu" })}
+        <>
+          <FieldGroup columns={4}>
+            <Select label={copy({ en: "Document type", vi: "Loại tài liệu" })} value={addDocType} onChange={(e) => setAddDocType(e.target.value)}>
+              {ORDER_DOC_TYPES.map((t) => (
+                <option key={t} value={t}>{formatDocumentType(t)}</option>
+              ))}
+            </Select>
+            <Input label={copy({ en: "Issue date", vi: "Ngày phát hành" })} type="date" value={addIssueDate} onChange={(e) => setAddIssueDate(e.target.value)} />
+            <Input label={copy({ en: "Expiry date", vi: "Ngày hết hạn" })} type="date" value={addExpiryDate} onChange={(e) => setAddExpiryDate(e.target.value)} />
+            <div className="flex flex-col justify-end gap-1">
+              <label className="text-xs font-medium text-slate-600">{copy({ en: "File", vi: "Tệp" })}</label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+              />
+            </div>
+          </FieldGroup>
+          <div className="mt-3 flex items-center gap-3">
+            <Button onClick={handleUpload} disabled={!file || uploadDoc.isPending}>
+              {uploadDoc.isPending ? copy({ en: "Uploading...", vi: "Đang tải lên..." }) : copy({ en: "Upload document", vi: "Tải lên tài liệu" })}
             </Button>
+            {uploadError ? <span className="text-sm text-red-600">{uploadError}</span> : null}
           </div>
-        </FieldGroup>
+        </>
       ) : null}
     </Panel>
   );

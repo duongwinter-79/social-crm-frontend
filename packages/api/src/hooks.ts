@@ -766,6 +766,28 @@ export function useCreateDocumentMutation() {
   });
 }
 
+export function useUploadOrderDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      orderId: string;
+      file: File;
+      docType?: string;
+      issueDate?: string;
+      expiryDate?: string;
+      onUploadProgress?: (progress: number) => void;
+    }) => apiClient.uploadOrderDocument(payload),
+    onSuccess: (document) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      const orderId = (document as { order_id?: string | null }).order_id;
+      if (orderId) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "order", orderId] });
+      }
+    },
+    meta: { successMessage: { en: "Document uploaded", vi: "Đã tải lên giấy tờ" } }
+  });
+}
+
 export function useLeadsSearchQuery(search: string) {
   return useQuery({
     queryKey: ["leads", "search", search],
@@ -828,6 +850,16 @@ export function useCommitPendingFormMutation() {
       if (document.lead_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
         queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "transitions"] });
+        // Field extraction from the committed form runs server-side AFTER the
+        // commit response returns (fire-and-forget so a slow AI call never holds
+        // up the upload). The enriched qualification + AI-suggestion values land
+        // a beat later, so refetch all lead-scoped queries on a short delay to
+        // surface them without a manual reload. Prefix key matches lead detail,
+        // qualification, ai-suggestions, transitions, and order-suggestions.
+        const leadId = document.lead_id;
+        window.setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+        }, 3000);
       }
       queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
     },

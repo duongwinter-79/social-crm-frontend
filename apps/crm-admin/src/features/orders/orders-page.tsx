@@ -180,9 +180,18 @@ function OrderRow(props: {
     <>
       <tr className="border-t border-slate-100 align-top transition-colors hover:bg-slate-50/70">
         <td className="px-4 py-4">
-          <Link to={`/orders/${order.id}`} className="font-semibold text-indigo-700 hover:underline">
-            {order.name}
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to={`/orders/${order.id}`} className="font-semibold text-indigo-700 hover:underline">
+              {order.name}
+            </Link>
+            {order.recruitmentStatus ? (
+              <Badge tone={order.recruitmentStatus === "recruiting" ? "success" : "neutral"}>
+                {order.recruitmentStatus === "recruiting"
+                  ? copy({ en: "Recruiting", vi: "Đang tuyển" })
+                  : copy({ en: "Recruitment complete", vi: "Đã tuyển xong" })}
+              </Badge>
+            ) : null}
+          </div>
           <div className="mt-1 line-clamp-2 max-w-md text-xs leading-5 text-slate-500">
             {order.description || copy({ en: "No description provided.", vi: "Chưa có mô tả." })}
           </div>
