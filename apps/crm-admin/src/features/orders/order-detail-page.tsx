@@ -4,6 +4,7 @@ import { Badge, Button, DescriptionList, EmptyState, FieldGroup, InfoCard, Input
 import {
   apiClient,
   useCreateOrderMutation,
+  useDeleteOrderDocumentMutation,
   useOrderDetailQuery,
   useOrderDocumentsQuery,
   usePermissions,
@@ -16,6 +17,7 @@ import {
 } from "@social-crm/api";
 import { useI18n } from "@/i18n";
 import { UiText } from "@/ui-text/ui-text";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 type OrderFormState = {
   name: string;
@@ -219,6 +221,7 @@ function ReadOnlyMetadata(props: { order: Order; copy: (value: { en: string; vi:
 }
 
 const ORDER_DOC_TYPES = ["other", "work_permit", "diploma"] as const;
+const ORDER_DOCS_PAGE_SIZE = 20;
 
 function OrderDocumentsPanel(props: {
   orderId: string;
@@ -228,15 +231,20 @@ function OrderDocumentsPanel(props: {
   formatDocumentStatus: (value: string) => string;
 }) {
   const { copy, formatDocumentType, formatDocumentStatus } = props;
-  const docsQuery = useOrderDocumentsQuery(props.orderId);
+  const [offset, setOffset] = useState(0);
+  const docsQuery = useOrderDocumentsQuery(props.orderId, { offset, limit: ORDER_DOCS_PAGE_SIZE });
   const uploadDoc = useUploadOrderDocumentMutation();
+  const deleteDoc = useDeleteOrderDocumentMutation();
   const [addDocType, setAddDocType] = useState("other");
   const [addIssueDate, setAddIssueDate] = useState("");
   const [addExpiryDate, setAddExpiryDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentRecord | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const docs: DocumentRecord[] = docsQuery.data?.data ?? [];
+  const total = docsQuery.data?.total ?? 0;
 
   function handleUpload() {
     if (!props.isAdmin || !file) return;
@@ -244,10 +252,25 @@ function OrderDocumentsPanel(props: {
     uploadDoc.mutate(
       { orderId: props.orderId, file, docType: addDocType, issueDate: addIssueDate || undefined, expiryDate: addExpiryDate || undefined },
       {
-        onSuccess: () => { setFile(null); setAddIssueDate(""); setAddExpiryDate(""); },
+        onSuccess: () => { setFile(null); setAddIssueDate(""); setAddExpiryDate(""); setOffset(0); },
         onError: (err: unknown) => {
           const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
           setUploadError(message ?? copy({ en: "Upload failed.", vi: "Tải lên thất bại." }));
+        },
+      },
+    );
+  }
+
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteError("");
+    deleteDoc.mutate(
+      { id: deleteTarget.id, orderId: props.orderId },
+      {
+        onSuccess: () => setDeleteTarget(null),
+        onError: (err: unknown) => {
+          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          setDeleteError(message ?? copy({ en: "Delete failed.", vi: "Xoá thất bại." }));
         },
       },
     );
@@ -272,29 +295,56 @@ function OrderDocumentsPanel(props: {
       subtitle={copy({ en: "Contracts and supporting files for this order.", vi: "Hợp đồng và tài liệu liên quan đến đơn hàng." })}
     >
       {docs.length > 0 ? (
-        <div className="mb-4 divide-y divide-slate-100 rounded-xl border border-slate-200">
+        <div className="mb-2 divide-y divide-slate-100 rounded-xl border border-slate-200">
           {docs.map((doc) => (
             <div key={doc.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
               <span className="font-medium text-slate-800">{formatDocumentType(doc.docType)}</span>
               <Badge tone="neutral">{formatDocumentStatus(doc.status)}</Badge>
               {doc.issueDate ? <span className="text-slate-500">{copy({ en: "Issued", vi: "Phát hành" })}: {doc.issueDate}</span> : null}
               {doc.expiryDate ? <span className="text-slate-500">{copy({ en: "Expires", vi: "Hết hạn" })}: {doc.expiryDate}</span> : null}
-              {doc.fileUrl || doc.fileKey ? (
-                <button
-                  type="button"
-                  className="ml-auto font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-700 disabled:opacity-50"
-                  onClick={() => handleOpen(doc)}
-                  disabled={openingId === doc.id}
-                >
-                  {openingId === doc.id ? copy({ en: "Opening...", vi: "Đang mở..." }) : copy({ en: "Open file", vi: "Mở file" })}
-                </button>
-              ) : null}
+              <div className="ml-auto flex items-center gap-3">
+                {doc.fileUrl || doc.fileKey ? (
+                  <button
+                    type="button"
+                    className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-700 disabled:opacity-50"
+                    onClick={() => handleOpen(doc)}
+                    disabled={openingId === doc.id}
+                  >
+                    {openingId === doc.id ? copy({ en: "Opening...", vi: "Đang mở..." }) : copy({ en: "Open file", vi: "Mở file" })}
+                  </button>
+                ) : null}
+                {props.isAdmin ? (
+                  <button
+                    type="button"
+                    className="font-semibold text-red-600 underline decoration-red-300 underline-offset-4 hover:text-red-700"
+                    onClick={() => { setDeleteError(""); setDeleteTarget(doc); }}
+                  >
+                    {copy({ en: "Delete", vi: "Xoá" })}
+                  </button>
+                ) : null}
+              </div>
             </div>
           ))}
         </div>
       ) : (
         <p className="mb-4 text-sm text-slate-500">{copy({ en: "No documents yet.", vi: "Chưa có tài liệu." })}</p>
       )}
+
+      {total > ORDER_DOCS_PAGE_SIZE ? (
+        <div className="mb-4 flex items-center justify-between text-xs text-slate-500">
+          <span>
+            {copy({ en: "Showing", vi: "Hiển thị" })} {docs.length ? offset + 1 : 0}–{offset + docs.length} {copy({ en: "of", vi: "trong" })} {total}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - ORDER_DOCS_PAGE_SIZE))}>
+              {copy({ en: "Prev", vi: "Trước" })}
+            </Button>
+            <Button variant="secondary" size="sm" disabled={offset + ORDER_DOCS_PAGE_SIZE >= total} onClick={() => setOffset(offset + ORDER_DOCS_PAGE_SIZE)}>
+              {copy({ en: "Next", vi: "Sau" })}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {props.isAdmin ? (
         <>
@@ -324,6 +374,23 @@ function OrderDocumentsPanel(props: {
           </div>
         </>
       ) : null}
+
+      <ConfirmationDialog
+        open={Boolean(deleteTarget)}
+        title={copy({ en: "Delete document?", vi: "Xoá tài liệu?" })}
+        description={copy({
+          en: "This permanently removes the file and its record. This cannot be undone.",
+          vi: "Thao tác này sẽ xoá vĩnh viễn tệp và bản ghi. Không thể hoàn tác.",
+        })}
+        details={deleteTarget ? [{ label: copy({ en: "Type", vi: "Loại" }), value: formatDocumentType(deleteTarget.docType) }] : []}
+        warning={deleteError || undefined}
+        confirmLabel={copy({ en: "Delete", vi: "Xoá" })}
+        cancelLabel={copy({ en: "Cancel", vi: "Hủy" })}
+        pendingLabel={copy({ en: "Deleting...", vi: "Đang xoá..." })}
+        isPending={deleteDoc.isPending}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </Panel>
   );
 }

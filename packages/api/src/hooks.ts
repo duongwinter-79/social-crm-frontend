@@ -372,10 +372,12 @@ export function useDocumentsQuery(params: { offset: number; limit: number; leadI
   });
 }
 
-export function useOrderDocumentsQuery(orderId?: string) {
+export function useOrderDocumentsQuery(orderId?: string, params: { offset?: number; limit?: number } = {}) {
+  const offset = params.offset ?? 0;
+  const limit = params.limit ?? 20;
   return useQuery({
-    queryKey: ["documents", "order", orderId],
-    queryFn: () => apiClient.listDocuments({ offset: 0, limit: 100, orderId: orderId as string }),
+    queryKey: ["documents", "order", orderId, { offset, limit }],
+    queryFn: () => apiClient.listDocuments({ offset, limit, orderId: orderId as string }),
     enabled: Boolean(orderId),
   });
 }
@@ -805,6 +807,18 @@ export function useUploadOrderDocumentMutation() {
       }
     },
     meta: { successMessage: { en: "Document uploaded", vi: "Đã tải lên giấy tờ" } }
+  });
+}
+
+export function useDeleteOrderDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; orderId: string }) => apiClient.deleteOrderDocument(id),
+    onSuccess: (_result, { orderId }) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "order", orderId] });
+    },
+    meta: { successMessage: { en: "Document deleted", vi: "Đã xoá giấy tờ" } }
   });
 }
 

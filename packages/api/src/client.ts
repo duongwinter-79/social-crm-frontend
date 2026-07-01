@@ -736,6 +736,13 @@ export class SocialCrmApiClient {
     await this.http.delete(`/documents/form-standard/${leadId}`);
   }
 
+  async deleteOrderDocument(id: string): Promise<{ documentId: string; orderId: string }> {
+    const response = await this.http.delete<ApiEnvelope<{ documentId: string; orderId: string }> | { documentId: string; orderId: string }>(
+      `/documents/order/${id}`,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
   // ── Staging-first upload flow ─────────────────────────────────────────────
 
   async stageFormStandard(payload: {
