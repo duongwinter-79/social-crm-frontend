@@ -48,6 +48,7 @@ import {
 import { LeadConversationInline } from "./lead-conversation-inline";
 import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
 import { FormExtractionProgress } from "./form-extraction-progress";
+import { useFormExtractionWatcher } from "./use-form-extraction-watcher";
 import { LeadDocumentsPanel } from "./lead-documents-panel";
 import { ApplicationPhasePanel } from "@/features/journey/application-phase-panel";
 import { FormIntakeModal } from "@/features/journey/form-intake-modal";
@@ -133,6 +134,10 @@ export function LeadWorkbenchPage() {
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
   const { canEditLeads, canTransitionLeadStatus, isAdmin } = usePermissions();
+  // Page-level, not tab-scoped — see useFormExtractionWatcher for why the
+  // poll/toast/refresh must survive the operator switching away from the
+  // "extraction" tab.
+  useFormExtractionWatcher(leadId);
 
   // Two-step disqualification: clicking "Move to disqualified" opens an inline
   // reason form; the operator types a reason and confirms. Backend rejects the
