@@ -48,6 +48,7 @@ import {
 import { LeadConversationInline } from "./lead-conversation-inline";
 import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
 import { FormExtractionProgress } from "./form-extraction-progress";
+import { LeadDocumentsPanel } from "./lead-documents-panel";
 import { ApplicationPhasePanel } from "@/features/journey/application-phase-panel";
 import { FormIntakeModal } from "@/features/journey/form-intake-modal";
 import { TrainingFinanceDetailPage } from "@/features/training-finance/training-finance-detail-page";
@@ -874,6 +875,8 @@ export function LeadWorkbenchPage() {
                     </Button>
                   </div>
                 ) : null}
+
+                <LeadDocumentsPanel leadId={leadId} />
               </div>
             ),
           },

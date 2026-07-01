@@ -822,6 +822,43 @@ export function useDeleteOrderDocumentMutation() {
   });
 }
 
+/**
+ * Upload (or replace) a lead checklist document — passport, criminal_record,
+ * criminal_record_2, health_check, diploma, work_permit. See
+ * POST /documents/lead/:leadId/upload — re-uploading the same docType
+ * replaces the existing file rather than creating a duplicate.
+ */
+export function useUploadLeadDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      leadId: string;
+      file: File;
+      docType: string;
+      issueDate?: string;
+      expiryDate?: string;
+      onUploadProgress?: (progress: number) => void;
+    }) => apiClient.uploadLeadDocument(payload),
+    onSuccess: (_document, { leadId }) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", leadId] });
+    },
+    meta: { successMessage: { en: "Document uploaded", vi: "Đã tải lên giấy tờ" } }
+  });
+}
+
+export function useDeleteLeadDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; leadId: string }) => apiClient.deleteLeadDocument(id),
+    onSuccess: (_result, { leadId }) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", leadId] });
+    },
+    meta: { successMessage: { en: "Document deleted", vi: "Đã xoá giấy tờ" } }
+  });
+}
+
 export function useLeadsSearchQuery(search: string) {
   return useQuery({
     queryKey: ["leads", "search", search],

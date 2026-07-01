@@ -743,6 +743,40 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async uploadLeadDocument(payload: {
+    leadId: string;
+    file: File;
+    docType: string;
+    issueDate?: string;
+    expiryDate?: string;
+    onUploadProgress?: (progress: number) => void;
+  }): Promise<DocumentRecord> {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    formData.append("docType", payload.docType);
+    if (payload.issueDate) formData.append("issueDate", payload.issueDate);
+    if (payload.expiryDate) formData.append("expiryDate", payload.expiryDate);
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>(
+      `/documents/lead/${payload.leadId}/upload`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!payload.onUploadProgress || !event.total) return;
+          payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async deleteLeadDocument(id: string): Promise<{ documentId: string; leadId: string }> {
+    const response = await this.http.delete<ApiEnvelope<{ documentId: string; leadId: string }> | { documentId: string; leadId: string }>(
+      `/documents/lead/${id}`,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
   // ── Staging-first upload flow ─────────────────────────────────────────────
 
   async stageFormStandard(payload: {
