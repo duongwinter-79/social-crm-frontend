@@ -29,6 +29,7 @@ import {
   useProcessThreadExtractionMutation,
   useRestoreLeadMutation,
   useTrainingFinanceByLeadQuery,
+  useTransitionLeadMutation,
   useUpdateLeadMutation,
   useUpdateLeadQualificationMutation,
   usePermissions
@@ -124,12 +125,13 @@ export function LeadWorkbenchPage() {
   const formQuery = useFormStandardRegisterQuery(leadId ? { offset: 0, limit: 1, leadId } : undefined, { enabled: Boolean(leadId) });
   const tfQuery = useTrainingFinanceByLeadQuery(leadId || undefined);
   const updateLead = useUpdateLeadMutation();
+  const transitionLead = useTransitionLeadMutation();
   const restoreLead = useRestoreLeadMutation();
   const qualificationMutation = useUpdateLeadQualificationMutation(leadId);
   const dismissSuggestion = useDismissLeadAiSuggestionMutation(leadId);
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
-  const { canEditLeads, isAdmin } = usePermissions();
+  const { canEditLeads, canTransitionLeadStatus, isAdmin } = usePermissions();
 
   // Two-step disqualification: clicking "Move to disqualified" opens an inline
   // reason form; the operator types a reason and confirms. Backend rejects the
@@ -293,7 +295,7 @@ export function LeadWorkbenchPage() {
             <InfoCard label={copy({ en: "Threads", vi: "Luồng hội thoại" })} value={lead.threads?.length ?? 0} className="bg-slate-50" />
           </div>
           <ToolbarActions className="xl:justify-end">
-            {canEditLeads && (transitionsQuery.data?.allowed ?? []).map((next) => {
+            {canTransitionLeadStatus && (transitionsQuery.data?.allowed ?? []).map((next) => {
               const blocker = (transitionsQuery.data?.blocked ?? []).find((b) => b.status === next);
               const isBlocked = Boolean(blocker);
               const isDisqualify = next === "disqualified";
@@ -305,13 +307,13 @@ export function LeadWorkbenchPage() {
                     size="sm"
                     onClick={() => {
                       if (isDisqualify) {
-                        // Two-step: open the inline reason form instead of patching immediately.
+                        // Two-step: open the inline reason form instead of transitioning immediately.
                         setDisqualifyDraft("");
                         return;
                       }
-                      updateLead.mutate({ id: leadId, patch: { status: next } });
+                      transitionLead.mutate({ id: leadId, status: next });
                     }}
-                    disabled={updateLead.isPending || isBlocked}
+                    disabled={transitionLead.isPending || isBlocked}
                   >
                     {copy({ en: "Move to", vi: "Chuyển sang" })} {formatLeadStatus(next)}
                     {isBlocked ? " 🔒" : ""}
@@ -348,19 +350,19 @@ export function LeadWorkbenchPage() {
               <Button
                 variant="danger"
                 size="sm"
-                disabled={updateLead.isPending || disqualifyDraft.trim().length === 0}
+                disabled={transitionLead.isPending || disqualifyDraft.trim().length === 0}
                 onClick={() => {
-                  updateLead.mutate(
-                    { id: leadId, patch: { status: "disqualified", disqualifiedReason: disqualifyDraft.trim() } },
+                  transitionLead.mutate(
+                    { id: leadId, status: "disqualified", disqualifiedReason: disqualifyDraft.trim() },
                     { onSuccess: () => setDisqualifyDraft(null) }
                   );
                 }}
               >
-                {updateLead.isPending
+                {transitionLead.isPending
                   ? copy({ en: "Disqualifying…", vi: "Đang loại…" })
                   : copy({ en: "Confirm disqualify", vi: "Xác nhận loại" })}
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => setDisqualifyDraft(null)} disabled={updateLead.isPending}>
+              <Button variant="secondary" size="sm" onClick={() => setDisqualifyDraft(null)} disabled={transitionLead.isPending}>
                 {copy({ en: "Cancel", vi: "Hủy" })}
               </Button>
             </div>

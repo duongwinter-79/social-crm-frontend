@@ -537,6 +537,26 @@ export function useUpdateLeadMutation() {
   });
 }
 
+/**
+ * Move a lead to a new pipeline status via the dedicated transition action
+ * (POST /leads/:id/transition), gated server-side by the
+ * transition_lead_status permission — separate from useUpdateLeadMutation's
+ * field-only PATCH.
+ */
+export function useTransitionLeadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status, disqualifiedReason }: { id: string; status: string; disqualifiedReason?: string }) =>
+      apiClient.transitionLead(id, { status, disqualifiedReason }),
+    onSuccess: (lead) => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.setQueryData(["lead", lead.id], lead);
+      queryClient.invalidateQueries({ queryKey: ["lead", lead.id, "transitions"] });
+    },
+    meta: { successMessage: { en: "Lead status updated", vi: "Đã cập nhật trạng thái ứng viên" } }
+  });
+}
+
 export function useRestoreLeadMutation() {
   const queryClient = useQueryClient();
   return useMutation({
