@@ -20,6 +20,7 @@ const OrderDetailPage = lazy(() => import("@/features/orders/order-detail-page")
 const TrainingFinanceDetailPage = lazy(() => import("@/features/training-finance/training-finance-detail-page").then((m) => ({ default: m.TrainingFinanceDetailPage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 const UiTextOverridesPage = lazy(() => import("@/features/admin/ui-text-overrides-page").then((m) => ({ default: m.UiTextOverridesPage })));
+const RegionGroupsPage = lazy(() => import("@/features/admin/region-groups-page").then((m) => ({ default: m.RegionGroupsPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
 const ExtractPage = lazy(() => import("@/features/imports/extract-page").then((m) => ({ default: m.ExtractPage })));
 
@@ -118,6 +119,7 @@ function titleForPath(pathname: string, copy: (value: { en: string; vi: string }
   if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   if (pathname === "/ui-text-overrides") return copy({ en: "UI text overrides", vi: "Tùy chỉnh chữ hiển thị" });
+  if (pathname === "/region-groups") return copy({ en: "Region groups", vi: "Nhóm khu vực" });
   if (pathname === "/applications/detail") return copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" });
   if (pathname.match(/^\/applications\/[^/]+\/edit$/)) return copy({ en: "Form editor", vi: "Chỉnh sửa hồ sơ ứng tuyển" });
   return navItems.find((item) => pathname === item.to)?.label
@@ -442,6 +444,7 @@ export function AppRouter() {
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
         <Route path="/ui-text-overrides" element={<RequireAdmin><LazyRoute><UiTextOverridesPage /></LazyRoute></RequireAdmin>} />
+        <Route path="/region-groups" element={<RequireAdmin><LazyRoute><RegionGroupsPage /></LazyRoute></RequireAdmin>} />
       </Route>
     </Routes>
   );

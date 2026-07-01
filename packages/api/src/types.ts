@@ -538,6 +538,32 @@ export interface OrderDetailFields {
   excludedCandidateRegions?: string[] | null;
 }
 
+/**
+ * Admin-editable named group of provinces (e.g. "Miền Trung") — what an
+ * operator picks from (by name) when filling Order.excludedCandidateRegions.
+ * provinceKeys are canonical province keys resolved server-side; the FE
+ * never needs to interpret them, only display/manage the group's name.
+ */
+export interface RegionGroup {
+  id: string;
+  name: string;
+  provinceKeys: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpsertRegionGroupPayload {
+  name: string;
+  provinceNames: string[];
+}
+
+/** Canonical province taxonomy entry — used to build a region group without typos. */
+export interface VietnamProvinceOption {
+  key: string;
+  name: string;
+  macroRegion: "bac" | "trung" | "nam";
+}
+
 export interface Order extends OrderDetailFields {
   id: string;
   name: string;

@@ -174,6 +174,25 @@ export function AdminPage() {
               <Badge tone="accent">{copy({ en: "Open", vi: "Mở" })}</Badge>
             </div>
           </Link>
+          <Link
+            to="/region-groups"
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50/70"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {copy({ en: "Region groups", vi: "Nhóm khu vực" })}
+                </div>
+                <div className="mt-1 text-xs leading-5 text-slate-500">
+                  {copy({
+                    en: "Manage named province groups (e.g. \"Miền Trung\") used by orders to exclude candidates from a region.",
+                    vi: "Quản lý các nhóm tỉnh/thành có tên gọi (vd. \"Miền Trung\") để đơn hàng loại trừ ứng viên theo khu vực."
+                  })}
+                </div>
+              </div>
+              <Badge tone="accent">{copy({ en: "Open", vi: "Mở" })}</Badge>
+            </div>
+          </Link>
         </div>
       </Panel>
 

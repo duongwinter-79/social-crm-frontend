@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus, TrainingFinanceCurrency, DepositStatusMode } from "./types";
+import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus, TrainingFinanceCurrency, DepositStatusMode, UpsertRegionGroupPayload } from "./types";
 
 export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
 
@@ -430,6 +430,21 @@ export function useTrainingFinanceByLeadQuery(leadId?: string) {
     queryKey: ["training-finance", "lead", leadId],
     queryFn: () => apiClient.getTrainingFinanceByLead(leadId as string),
     enabled: Boolean(leadId)
+  });
+}
+
+export function useRegionGroupsQuery() {
+  return useQuery({
+    queryKey: ["region-groups"],
+    queryFn: () => apiClient.listRegionGroups()
+  });
+}
+
+export function useRegionGroupProvincesQuery() {
+  return useQuery({
+    queryKey: ["region-groups", "provinces"],
+    queryFn: () => apiClient.listRegionGroupProvinces(),
+    staleTime: Infinity
   });
 }
 
@@ -1087,6 +1102,39 @@ export function useDeleteTrainingFinanceMutation() {
       queryClient.invalidateQueries({ queryKey: ["lead"] });
     },
     meta: { successMessage: { en: "Training/finance record deleted", vi: "Đã xoá hồ sơ đào tạo/tài chính" } }
+  });
+}
+
+export function useCreateRegionGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpsertRegionGroupPayload) => apiClient.createRegionGroup(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["region-groups"] });
+    },
+    meta: { successMessage: { en: "Region group created", vi: "Đã tạo nhóm khu vực" } }
+  });
+}
+
+export function useUpdateRegionGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpsertRegionGroupPayload }) => apiClient.updateRegionGroup(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["region-groups"] });
+    },
+    meta: { successMessage: { en: "Region group updated", vi: "Đã cập nhật nhóm khu vực" } }
+  });
+}
+
+export function useDeleteRegionGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.deleteRegionGroup(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["region-groups"] });
+    },
+    meta: { successMessage: { en: "Region group deleted", vi: "Đã xoá nhóm khu vực" } }
   });
 }
 

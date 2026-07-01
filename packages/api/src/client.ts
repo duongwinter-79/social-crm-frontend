@@ -58,6 +58,9 @@ import type {
   OrderDocExtractionResult,
   OrderDocStagedUpload,
   PipelineResponse,
+  RegionGroup,
+  UpsertRegionGroupPayload,
+  VietnamProvinceOption,
   ThreadListResponse,
   ThreadSummary,
   TrainingFinanceListResponse,
@@ -971,6 +974,30 @@ export class SocialCrmApiClient {
   async deleteTrainingFinance(id: string) {
     const response = await this.http.delete<ApiEnvelope<{ deleted: boolean; id: string }> | { deleted: boolean; id: string }>(`/training-finance/${id}`);
     return unwrapEnvelope(response.data);
+  }
+
+  async listRegionGroups() {
+    const response = await this.http.get<ApiEnvelope<RegionGroup[]> | RegionGroup[]>("/region-groups");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listRegionGroupProvinces() {
+    const response = await this.http.get<ApiEnvelope<VietnamProvinceOption[]> | VietnamProvinceOption[]>("/region-groups/provinces");
+    return unwrapEnvelope(response.data);
+  }
+
+  async createRegionGroup(payload: UpsertRegionGroupPayload) {
+    const response = await this.http.post<ApiEnvelope<RegionGroup> | RegionGroup>("/region-groups", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateRegionGroup(id: string, payload: UpsertRegionGroupPayload) {
+    const response = await this.http.put<ApiEnvelope<RegionGroup> | RegionGroup>(`/region-groups/${id}`, payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async deleteRegionGroup(id: string): Promise<void> {
+    await this.http.delete(`/region-groups/${id}`);
   }
 
   async getPipeline(params: { offset: number; limit: number; stage?: string; search?: string }) {
