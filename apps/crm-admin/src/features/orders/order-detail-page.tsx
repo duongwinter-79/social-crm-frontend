@@ -12,6 +12,7 @@ import {
   useUploadOrderDocumentMutation,
   type DocumentRecord,
   type Order,
+  type OrderMaritalStatusRequired,
   type OrderMutationPayload,
   type OrderRecruitmentStatus,
 } from "@social-crm/api";
@@ -33,6 +34,24 @@ type OrderFormState = {
   acceptsReturnees: "" | "true" | "false";
   experienceRequired: "" | "true" | "false";
   recruitmentStatus: "" | OrderRecruitmentStatus;
+  // ── Order-detail fields (from the real per-order spec .docx) ────────────
+  agentName: string;
+  dateReceived: string;
+  quantity: string;
+  factoryAddress: string;
+  factoryNameLocal: string;
+  referenceWebsite: string;
+  existingVnWorkers: "" | "true" | "false";
+  workShiftPattern: string;
+  housingMealsInfo: string;
+  overtimeInfo: string;
+  weightMin: string;
+  educationLevel: string;
+  maritalStatusRequired: "" | OrderMaritalStatusRequired;
+  selectionMethod: string;
+  expectedDeparture: string;
+  /** Comma-separated in the UI; split/joined to/from string[] on the wire. */
+  excludedCandidateRegions: string;
 };
 
 const emptyOrderForm: OrderFormState = {
@@ -49,6 +68,22 @@ const emptyOrderForm: OrderFormState = {
   acceptsReturnees: "",
   experienceRequired: "false",
   recruitmentStatus: "",
+  agentName: "",
+  dateReceived: "",
+  quantity: "",
+  factoryAddress: "",
+  factoryNameLocal: "",
+  referenceWebsite: "",
+  existingVnWorkers: "",
+  workShiftPattern: "",
+  housingMealsInfo: "",
+  overtimeInfo: "",
+  weightMin: "",
+  educationLevel: "",
+  maritalStatusRequired: "",
+  selectionMethod: "",
+  expectedDeparture: "",
+  excludedCandidateRegions: "",
 };
 
 export function OrderDetailPage() {
@@ -160,12 +195,69 @@ export function OrderDetailPage() {
               <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
               <option value="recruiting">{copy({ en: "Recruiting", vi: "Đang tuyển" })}</option>
               <option value="recruitment_complete">{copy({ en: "Recruitment complete", vi: "Đã tuyển xong" })}</option>
+              <option value="cancelled">{copy({ en: "Cancelled", vi: "Đã hủy" })}</option>
             </Select>
           </FieldGroup>
 
           <FieldGroup className="mt-4" columns={2}>
             <Input label={copy({ en: "Description", vi: "Mô tả" })} value={form.description} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} />
             <Input label={copy({ en: "Requirement notes", vi: "Ghi chú yêu cầu" })} value={form.requirements} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, requirements: e.target.value }))} />
+          </FieldGroup>
+
+          <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {copy({ en: "Order intake", vi: "Tiếp nhận đơn hàng" })}
+          </h3>
+          <FieldGroup className="mt-2" columns={3}>
+            <Input label={copy({ en: "Agent / broker", vi: "Môi giới" })} value={form.agentName} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, agentName: e.target.value }))} />
+            <Input label={copy({ en: "Date received", vi: "Ngày nhận đơn" })} type="date" value={form.dateReceived} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, dateReceived: e.target.value }))} />
+            <Input label={copy({ en: "Quantity", vi: "Số lượng" })} type="number" min={0} value={form.quantity} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, quantity: e.target.value }))} />
+          </FieldGroup>
+
+          <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {copy({ en: "Employer / factory", vi: "Chủ sử dụng / Nhà máy" })}
+          </h3>
+          <FieldGroup className="mt-2" columns={3}>
+            <Input label={copy({ en: "Factory address", vi: "Địa chỉ nhà máy" })} value={form.factoryAddress} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, factoryAddress: e.target.value }))} />
+            <Input label={copy({ en: "Factory name (local)", vi: "Tên nhà máy (bản địa)" })} value={form.factoryNameLocal} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, factoryNameLocal: e.target.value }))} />
+            <Input label={copy({ en: "Reference website", vi: "Website tham khảo" })} value={form.referenceWebsite} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, referenceWebsite: e.target.value }))} />
+            <Select label={copy({ en: "Has Vietnamese workers already", vi: "Đã có lao động Việt Nam" })} value={form.existingVnWorkers} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, existingVnWorkers: e.target.value as OrderFormState["existingVnWorkers"] }))}>
+              <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
+              <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
+              <option value="false">{copy({ en: "No", vi: "Không" })}</option>
+            </Select>
+            <Input label={copy({ en: "Work shift pattern", vi: "Chế độ ca làm việc" })} value={form.workShiftPattern} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, workShiftPattern: e.target.value }))} />
+          </FieldGroup>
+
+          <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {copy({ en: "Benefits", vi: "Chế độ phúc lợi" })}
+          </h3>
+          <FieldGroup className="mt-2" columns={2}>
+            <Input label={copy({ en: "Housing / meals", vi: "Ăn ở" })} value={form.housingMealsInfo} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, housingMealsInfo: e.target.value }))} />
+            <Input label={copy({ en: "Overtime", vi: "Tăng ca" })} value={form.overtimeInfo} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, overtimeInfo: e.target.value }))} />
+          </FieldGroup>
+
+          <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {copy({ en: "Candidate criteria & process", vi: "Điều kiện tuyển & quy trình" })}
+          </h3>
+          <FieldGroup className="mt-2" columns={3}>
+            <Input label={copy({ en: "Minimum weight (kg)", vi: "Cân nặng tối thiểu (kg)" })} type="number" min={0} value={form.weightMin} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, weightMin: e.target.value }))} />
+            <Input label={copy({ en: "Education level", vi: "Trình độ" })} value={form.educationLevel} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, educationLevel: e.target.value }))} />
+            <Select label={copy({ en: "Marital status requirement", vi: "Yêu cầu hôn nhân" })} value={form.maritalStatusRequired} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, maritalStatusRequired: e.target.value as OrderFormState["maritalStatusRequired"] }))}>
+              <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
+              <option value="any">{copy({ en: "Any", vi: "Không yêu cầu" })}</option>
+              <option value="single">{copy({ en: "Single", vi: "Độc thân" })}</option>
+              <option value="married">{copy({ en: "Married", vi: "Đã kết hôn" })}</option>
+              <option value="married_with_children">{copy({ en: "Married with children", vi: "Đã kết hôn và có con" })}</option>
+            </Select>
+            <Input label={copy({ en: "Selection method", vi: "Hình thức tuyển chọn" })} value={form.selectionMethod} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, selectionMethod: e.target.value }))} />
+            <Input label={copy({ en: "Expected departure", vi: "Dự kiến xuất cảnh" })} value={form.expectedDeparture} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, expectedDeparture: e.target.value }))} />
+            <Input
+              label={copy({ en: "Excluded candidate regions", vi: "Khu vực ứng viên không nhận" })}
+              hint={copy({ en: "Comma-separated, e.g. Miền Trung, Nghệ An", vi: "Cách nhau bằng dấu phẩy, VD: Miền Trung, Nghệ An" })}
+              value={form.excludedCandidateRegions}
+              disabled={!isAdmin}
+              onChange={(e) => setForm((s) => ({ ...s, excludedCandidateRegions: e.target.value }))}
+            />
           </FieldGroup>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -410,6 +502,22 @@ function orderToForm(order: Order): OrderFormState {
     acceptsReturnees: typeof order.acceptsReturnees === "boolean" ? String(order.acceptsReturnees) as OrderFormState["acceptsReturnees"] : "",
     experienceRequired: typeof order.experienceRequired === "boolean" ? String(order.experienceRequired) as OrderFormState["experienceRequired"] : "",
     recruitmentStatus: order.recruitmentStatus ?? "",
+    agentName: order.agentName ?? "",
+    dateReceived: order.dateReceived ?? "",
+    quantity: order.quantity != null ? String(order.quantity) : "",
+    factoryAddress: order.factoryAddress ?? "",
+    factoryNameLocal: order.factoryNameLocal ?? "",
+    referenceWebsite: order.referenceWebsite ?? "",
+    existingVnWorkers: typeof order.existingVnWorkers === "boolean" ? String(order.existingVnWorkers) as OrderFormState["existingVnWorkers"] : "",
+    workShiftPattern: order.workShiftPattern ?? "",
+    housingMealsInfo: order.housingMealsInfo ?? "",
+    overtimeInfo: order.overtimeInfo ?? "",
+    weightMin: order.weightMin != null ? String(order.weightMin) : "",
+    educationLevel: order.educationLevel ?? "",
+    maritalStatusRequired: order.maritalStatusRequired ?? "",
+    selectionMethod: order.selectionMethod ?? "",
+    expectedDeparture: order.expectedDeparture ?? "",
+    excludedCandidateRegions: (order.excludedCandidateRegions ?? []).join(", "),
   };
 }
 
@@ -434,7 +542,28 @@ function buildOrderPayload(form: OrderFormState): OrderMutationPayload {
     acceptsReturnees: parseOptionalBoolean(form.acceptsReturnees),
     experienceRequired: parseOptionalBoolean(form.experienceRequired) ?? false,
     recruitmentStatus: (form.recruitmentStatus as OrderRecruitmentStatus) || null,
+    agentName: optionalText(form.agentName),
+    dateReceived: optionalText(form.dateReceived),
+    quantity: parseOptionalNumber(form.quantity),
+    factoryAddress: optionalText(form.factoryAddress),
+    factoryNameLocal: optionalText(form.factoryNameLocal),
+    referenceWebsite: optionalText(form.referenceWebsite),
+    existingVnWorkers: parseOptionalBoolean(form.existingVnWorkers),
+    workShiftPattern: optionalText(form.workShiftPattern),
+    housingMealsInfo: optionalText(form.housingMealsInfo),
+    overtimeInfo: optionalText(form.overtimeInfo),
+    weightMin: parseOptionalNumber(form.weightMin),
+    educationLevel: optionalText(form.educationLevel),
+    maritalStatusRequired: (form.maritalStatusRequired as OrderMaritalStatusRequired) || null,
+    selectionMethod: optionalText(form.selectionMethod),
+    expectedDeparture: optionalText(form.expectedDeparture),
+    excludedCandidateRegions: parseOptionalStringList(form.excludedCandidateRegions),
   };
+}
+
+function parseOptionalStringList(value: string): string[] | null {
+  const items = value.split(",").map((v) => v.trim()).filter(Boolean);
+  return items.length ? items : null;
 }
 
 function optionalText(value: string) {

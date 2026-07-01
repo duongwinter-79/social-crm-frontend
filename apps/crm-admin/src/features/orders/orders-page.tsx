@@ -185,10 +185,12 @@ function OrderRow(props: {
               {order.name}
             </Link>
             {order.recruitmentStatus ? (
-              <Badge tone={order.recruitmentStatus === "recruiting" ? "success" : "neutral"}>
+              <Badge tone={order.recruitmentStatus === "recruiting" ? "success" : order.recruitmentStatus === "cancelled" ? "danger" : "neutral"}>
                 {order.recruitmentStatus === "recruiting"
                   ? copy({ en: "Recruiting", vi: "Đang tuyển" })
-                  : copy({ en: "Recruitment complete", vi: "Đã tuyển xong" })}
+                  : order.recruitmentStatus === "cancelled"
+                    ? copy({ en: "Cancelled", vi: "Đã hủy" })
+                    : copy({ en: "Recruitment complete", vi: "Đã tuyển xong" })}
               </Badge>
             ) : null}
           </div>

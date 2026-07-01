@@ -514,9 +514,31 @@ export interface OrderSuggestedCandidate {
   requiresManagerApproval: boolean;
 }
 
-export type OrderRecruitmentStatus = "recruiting" | "recruitment_complete";
+export type OrderRecruitmentStatus = "recruiting" | "recruitment_complete" | "cancelled";
 
-export interface Order {
+export type OrderMaritalStatusRequired = "any" | "single" | "married" | "married_with_children";
+
+/** Order-detail fields sourced from the real per-order spec .docx — see order-detail-page.tsx grouping. */
+export interface OrderDetailFields {
+  agentName?: string | null;
+  dateReceived?: string | null;
+  quantity?: number | null;
+  factoryAddress?: string | null;
+  factoryNameLocal?: string | null;
+  referenceWebsite?: string | null;
+  existingVnWorkers?: boolean | null;
+  workShiftPattern?: string | null;
+  housingMealsInfo?: string | null;
+  overtimeInfo?: string | null;
+  weightMin?: number | null;
+  educationLevel?: string | null;
+  maritalStatusRequired?: OrderMaritalStatusRequired | null;
+  selectionMethod?: string | null;
+  expectedDeparture?: string | null;
+  excludedCandidateRegions?: string[] | null;
+}
+
+export interface Order extends OrderDetailFields {
   id: string;
   name: string;
   description?: string | null;
@@ -533,7 +555,7 @@ export interface Order {
   recruitmentStatus?: OrderRecruitmentStatus | null;
 }
 
-export interface OrderMutationPayload {
+export interface OrderMutationPayload extends OrderDetailFields {
   name?: string;
   description?: string | null;
   region?: string | null;
