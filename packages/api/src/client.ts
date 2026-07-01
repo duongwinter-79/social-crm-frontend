@@ -55,6 +55,8 @@ import type {
   MessageListResponse,
   Order,
   OrderMutationPayload,
+  OrderDocExtractionResult,
+  OrderDocStagedUpload,
   PipelineResponse,
   ThreadListResponse,
   ThreadSummary,
@@ -561,6 +563,47 @@ export class SocialCrmApiClient {
   async updateOrder(id: string, patch: OrderMutationPayload) {
     const response = await this.http.patch<ApiEnvelope<Order> | Order>(`/orders/${id}`, patch);
     return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Order-document intake — upload a per-order spec document, extract
+   * fields, review, then commit to create the Order. Three-step flow
+   * mirroring the lead form-standard staged upload.
+   */
+  async stageOrderIntakeDocument(payload: { file: File; onUploadProgress?: (progress: number) => void }): Promise<OrderDocStagedUpload> {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    const response = await this.http.post<ApiEnvelope<OrderDocStagedUpload> | OrderDocStagedUpload>(
+      "/documents/order-intake/upload",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!payload.onUploadProgress || !event.total) return;
+          payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async verifyOrderIntakePending(pendingId: string): Promise<OrderDocExtractionResult> {
+    const response = await this.http.post<ApiEnvelope<OrderDocExtractionResult> | OrderDocExtractionResult>(
+      `/documents/order-intake/${pendingId}/verify`,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async commitOrderIntakePending(pendingId: string, payload: OrderMutationPayload & { name: string }): Promise<Order> {
+    const response = await this.http.post<ApiEnvelope<Order> | Order>(
+      `/documents/order-intake/${pendingId}/commit`,
+      payload,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async cancelOrderIntakePending(pendingId: string): Promise<void> {
+    await this.http.delete(`/documents/order-intake/${pendingId}`);
   }
 
   async listApplications(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; status?: string }) {

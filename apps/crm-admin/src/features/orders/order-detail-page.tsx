@@ -3,15 +3,20 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, DescriptionList, EmptyState, FieldGroup, InfoCard, Input, Panel, SectionHeader, Select } from "@social-crm/ui";
 import {
   apiClient,
+  useCancelOrderIntakePendingMutation,
+  useCommitOrderIntakePendingMutation,
   useCreateOrderMutation,
   useDeleteOrderDocumentMutation,
   useOrderDetailQuery,
   useOrderDocumentsQuery,
   usePermissions,
+  useStageOrderIntakeDocumentMutation,
   useUpdateOrderMutation,
   useUploadOrderDocumentMutation,
+  useVerifyOrderIntakePendingMutation,
   type DocumentRecord,
   type Order,
+  type OrderDocExtractedFields,
   type OrderMaritalStatusRequired,
   type OrderMutationPayload,
   type OrderRecruitmentStatus,
@@ -101,9 +106,50 @@ export function OrderDetailPage() {
   const updateOrder = useUpdateOrderMutation();
   const [form, setForm] = useState<OrderFormState>(emptyOrderForm);
 
+  // ── Order-document intake (upload → extract → review → commit) ───────────
+  // Only offered on the "new order" screen. Staging + extraction pre-fill the
+  // same manual form below so the operator reviews/edits using the existing
+  // field-by-field UI rather than a separate preview screen.
+  const stageIntake = useStageOrderIntakeDocumentMutation();
+  const verifyIntake = useVerifyOrderIntakePendingMutation();
+  const commitIntake = useCommitOrderIntakePendingMutation();
+  const cancelIntake = useCancelOrderIntakePendingMutation();
+  const [intakeFile, setIntakeFile] = useState<File | null>(null);
+  const [intakeError, setIntakeError] = useState("");
+  const [pendingUpload, setPendingUpload] = useState<{ pendingId: string; originalFilename: string } | null>(null);
+  const [unrecognizedLines, setUnrecognizedLines] = useState<string[]>([]);
+  const isExtracting = stageIntake.isPending || verifyIntake.isPending;
+
+  async function handleUploadIntakeDocument() {
+    if (!intakeFile) return;
+    setIntakeError("");
+    try {
+      const staged = await stageIntake.mutateAsync({ file: intakeFile });
+      const result = await verifyIntake.mutateAsync(staged.pendingId);
+      setPendingUpload({ pendingId: staged.pendingId, originalFilename: staged.originalFilename });
+      setUnrecognizedLines(result.unrecognizedLines);
+      setForm((s) => applyExtractedFieldsToForm(s, result.fields));
+      setIntakeFile(null);
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setIntakeError(message ?? copy({ en: "Could not extract this document.", vi: "Không trích xuất được tài liệu này." }));
+    }
+  }
+
+  function handleCancelIntake() {
+    if (pendingUpload) cancelIntake.mutate(pendingUpload.pendingId);
+    setPendingUpload(null);
+    setUnrecognizedLines([]);
+    setIntakeFile(null);
+    setIntakeError("");
+    setForm(emptyOrderForm);
+  }
+
   useEffect(() => {
     if (isNew) {
       setForm(emptyOrderForm);
+      setPendingUpload(null);
+      setUnrecognizedLines([]);
       return;
     }
     if (orderQuery.data) {
@@ -114,11 +160,18 @@ export function OrderDetailPage() {
   const savedForm = useMemo(() => (orderQuery.data ? orderToForm(orderQuery.data) : emptyOrderForm), [orderQuery.data]);
   const dirty = isNew || JSON.stringify(form) !== JSON.stringify(savedForm);
   const canSubmit = isAdmin && form.name.trim().length > 0 && dirty;
-  const pending = createOrder.isPending || updateOrder.isPending;
+  const pending = createOrder.isPending || updateOrder.isPending || commitIntake.isPending;
   const orderPayload = buildOrderPayload(form);
 
   function submitOrder() {
     if (!canSubmit || pending) return;
+    if (isNew && pendingUpload) {
+      commitIntake.mutate(
+        { pendingId: pendingUpload.pendingId, payload: { ...orderPayload, name: form.name.trim() } },
+        { onSuccess: (created) => navigate(`/orders/${created.id}`) },
+      );
+      return;
+    }
     if (isNew) {
       createOrder.mutate(
         { ...orderPayload, name: form.name.trim() },
@@ -168,6 +221,56 @@ export function OrderDetailPage() {
           title={<UiText id="orders.requirement.title" />}
           subtitle={<UiText id="orders.requirement.subtitle" />}
         >
+          {isNew ? (
+            <div className="mb-5 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4">
+              <div className="text-sm font-semibold text-indigo-900">
+                {copy({ en: "Upload order document to auto-fill", vi: "Tải lên tài liệu đơn hàng để tự động điền" })}
+              </div>
+              <p className="mt-1 text-xs text-indigo-800/80">
+                {copy({
+                  en: "Upload the per-order spec .docx — fields below will be pre-filled from it for you to review and correct before creating the order.",
+                  vi: "Tải lên file .docx thông tin chi tiết đơn hàng — các trường bên dưới sẽ được điền sẵn để bạn kiểm tra và sửa trước khi tạo đơn.",
+                })}
+              </p>
+              {pendingUpload ? (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <Badge tone="success">{pendingUpload.originalFilename}</Badge>
+                  <span className="text-xs text-indigo-800">
+                    {copy({ en: "Fields below have been pre-filled — review before creating.", vi: "Các trường bên dưới đã được điền sẵn — hãy kiểm tra trước khi tạo." })}
+                  </span>
+                  <Button variant="secondary" size="sm" onClick={handleCancelIntake} disabled={cancelIntake.isPending}>
+                    {copy({ en: "Start over", vi: "Làm lại từ đầu" })}
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => setIntakeFile(e.target.files?.[0] ?? null)}
+                    className="text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                  />
+                  <Button onClick={handleUploadIntakeDocument} disabled={!intakeFile || isExtracting}>
+                    {isExtracting ? copy({ en: "Extracting...", vi: "Đang trích xuất..." }) : copy({ en: "Extract fields", vi: "Trích xuất dữ liệu" })}
+                  </Button>
+                  {intakeError ? <span className="text-sm text-red-600">{intakeError}</span> : null}
+                </div>
+              )}
+              {unrecognizedLines.length > 0 ? (
+                <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                  <div className="font-semibold">
+                    {copy({ en: "Could not parse these lines — check manually:", vi: "Không trích xuất được các dòng sau — vui lòng kiểm tra thủ công:" })}
+                  </div>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {unrecognizedLines.map((line, idx) => (
+                      <li key={idx}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <FieldGroup columns={3}>
             <Input label={copy({ en: "Order name", vi: "Tên đơn" })} value={form.name} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} />
             <Input label={copy({ en: "Region", vi: "Khu vực" })} value={form.region} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))} />
@@ -485,6 +588,45 @@ function OrderDocumentsPanel(props: {
       />
     </Panel>
   );
+}
+
+/**
+ * Merges deterministically extracted order-document fields into the current
+ * form state. Only overwrites keys the extractor actually matched (undefined
+ * fields are left as whatever the operator already had) — see
+ * OrderDocExtractionService on the backend for what "matched" means and why
+ * unmatched sections are surfaced separately rather than guessed.
+ *
+ * Fields the source document never carries — region, agentName, dateReceived,
+ * acceptsReturnees, recruitmentStatus, excludedCandidateRegions — are left
+ * untouched; those come from the order register (xlsx) or operator judgment,
+ * not the per-order spec document.
+ */
+function applyExtractedFieldsToForm(current: OrderFormState, fields: OrderDocExtractedFields): OrderFormState {
+  const next = { ...current };
+  if (fields.name !== undefined) next.name = fields.name;
+  if (fields.factoryNameLocal !== undefined) next.factoryNameLocal = fields.factoryNameLocal;
+  if (fields.factoryAddress !== undefined) next.factoryAddress = fields.factoryAddress;
+  if (fields.industry !== undefined) next.industry = fields.industry;
+  if (fields.referenceWebsite !== undefined) next.referenceWebsite = fields.referenceWebsite;
+  if (fields.description !== undefined) next.description = fields.description;
+  if (fields.existingVnWorkers !== undefined) next.existingVnWorkers = String(fields.existingVnWorkers) as OrderFormState["existingVnWorkers"];
+  if (fields.salaryRange !== undefined) next.salaryRange = fields.salaryRange;
+  if (fields.workShiftPattern !== undefined) next.workShiftPattern = fields.workShiftPattern;
+  if (fields.housingMealsInfo !== undefined) next.housingMealsInfo = fields.housingMealsInfo;
+  if (fields.overtimeInfo !== undefined) next.overtimeInfo = fields.overtimeInfo;
+  if (fields.quantity !== undefined) next.quantity = String(fields.quantity);
+  if (fields.genderRequired !== undefined) next.genderRequired = fields.genderRequired;
+  if (fields.ageMin !== undefined) next.ageMin = String(fields.ageMin);
+  if (fields.ageMax !== undefined) next.ageMax = String(fields.ageMax);
+  if (fields.maritalStatusRequired !== undefined) next.maritalStatusRequired = fields.maritalStatusRequired;
+  if (fields.heightMin !== undefined) next.heightMin = String(fields.heightMin);
+  if (fields.weightMin !== undefined) next.weightMin = String(fields.weightMin);
+  if (fields.educationLevel !== undefined) next.educationLevel = fields.educationLevel;
+  if (fields.requirements !== undefined) next.requirements = fields.requirements;
+  if (fields.selectionMethod !== undefined) next.selectionMethod = fields.selectionMethod;
+  if (fields.expectedDeparture !== undefined) next.expectedDeparture = fields.expectedDeparture;
+  return next;
 }
 
 function orderToForm(order: Order): OrderFormState {

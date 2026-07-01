@@ -571,6 +571,52 @@ export interface OrderMutationPayload extends OrderDetailFields {
   recruitmentStatus?: OrderRecruitmentStatus | null;
 }
 
+/** Best-effort fields deterministically parsed from an uploaded per-order spec document. */
+export interface OrderDocExtractedFields {
+  name?: string;
+  factoryNameLocal?: string;
+  factoryAddress?: string;
+  industry?: string;
+  referenceWebsite?: string;
+  description?: string;
+  existingVnWorkers?: boolean;
+  salaryRange?: string;
+  workShiftPattern?: string;
+  housingMealsInfo?: string;
+  overtimeInfo?: string;
+  quantity?: number;
+  genderRequired?: "male" | "female" | "both";
+  ageMin?: number;
+  ageMax?: number;
+  maritalStatusRequired?: OrderMaritalStatusRequired;
+  heightMin?: number;
+  weightMin?: number;
+  educationLevel?: string;
+  requirements?: string;
+  selectionMethod?: string;
+  expectedDeparture?: string;
+}
+
+export interface OrderDocFieldMeta {
+  key: keyof OrderDocExtractedFields;
+  label: string;
+  matched: boolean;
+}
+
+export interface OrderDocExtractionResult {
+  fields: OrderDocExtractedFields;
+  fieldMeta: OrderDocFieldMeta[];
+  /** Lines the extractor couldn't confidently place — surfaced instead of guessed. */
+  unrecognizedLines: string[];
+}
+
+export interface OrderDocStagedUpload {
+  pendingId: string;
+  originalFilename: string;
+  mimeType: string;
+  fileSize: number;
+}
+
 export interface MatchingResult {
   conclusion: string;
   totalScore: number;

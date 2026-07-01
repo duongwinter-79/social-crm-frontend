@@ -720,6 +720,41 @@ export function useUpdateOrderMutation() {
   });
 }
 
+/** Order-document intake step 1: stage the uploaded file, no side effects yet. */
+export function useStageOrderIntakeDocumentMutation() {
+  return useMutation({
+    mutationFn: (payload: { file: File; onUploadProgress?: (progress: number) => void }) =>
+      apiClient.stageOrderIntakeDocument(payload),
+  });
+}
+
+/** Order-document intake step 2: deterministic extraction, no side effects yet. */
+export function useVerifyOrderIntakePendingMutation() {
+  return useMutation({
+    mutationFn: (pendingId: string) => apiClient.verifyOrderIntakePending(pendingId),
+  });
+}
+
+/** Order-document intake step 3: creates the Order and attaches the document as evidence. */
+export function useCommitOrderIntakePendingMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pendingId, payload }: { pendingId: string; payload: OrderMutationPayload & { name: string } }) =>
+      apiClient.commitOrderIntakePending(pendingId, payload),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.setQueryData(["order", order.id], order);
+    },
+    meta: { successMessage: { en: "Order created from document", vi: "Đã tạo đơn hàng từ tài liệu" } }
+  });
+}
+
+export function useCancelOrderIntakePendingMutation() {
+  return useMutation({
+    mutationFn: (pendingId: string) => apiClient.cancelOrderIntakePending(pendingId),
+  });
+}
+
 export function useUpdateApplicationMutation() {
   const queryClient = useQueryClient();
   return useMutation({
