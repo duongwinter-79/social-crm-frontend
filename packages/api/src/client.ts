@@ -469,8 +469,18 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async updateLead(id: string, patch: Partial<Lead> & { disqualifiedReason?: string }) {
+  async updateLead(id: string, patch: Omit<Partial<Lead>, "status"> & { disqualifiedReason?: string }) {
     const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Move a lead to a new pipeline status. Separate from updateLead so the
+   * backend can require the transition_lead_status permission independently
+   * of general field edits — see POST /leads/:id/transition.
+   */
+  async transitionLead(id: string, payload: { status: string; disqualifiedReason?: string }) {
+    const response = await this.http.post<ApiEnvelope<Lead> | Lead>(`/leads/${id}/transition`, payload);
     return unwrapEnvelope(response.data);
   }
 
