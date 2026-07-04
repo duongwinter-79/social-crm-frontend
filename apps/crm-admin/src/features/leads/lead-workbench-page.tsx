@@ -107,7 +107,7 @@ function ReturnNavigation(props: {
 }
 
 export function LeadWorkbenchPage() {
-  const { copy, formatLeadStatus, formatEnum, yesNoUnknown } = useI18n();
+  const { copy, formatLeadStatus, formatEnum, formatDocumentStatus, yesNoUnknown } = useI18n();
   const { leadId = "" } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -238,6 +238,14 @@ export function LeadWorkbenchPage() {
   const application = applicationsQuery.data?.data?.[0] ?? null;
   const form = formQuery.data?.data?.[0] ?? null;
   const tf = tfQuery.data?.[0] ?? null;
+  // Standard-form gate summary for the dossier panel: the form must be
+  // uploaded and verified before the lead can advance to matching.
+  const formHasFile = Boolean(form?.hasFile);
+  const formVerified = formHasFile && form?.documentStatus === "verified";
+  const formStatusTone = formVerified ? ("success" as const) : formHasFile ? ("warning" as const) : ("neutral" as const);
+  const formStatusLabel = form && formHasFile
+    ? formatDocumentStatus(form.documentStatus)
+    : copy({ en: "Form missing", vi: "Chưa có form" });
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
   const hasCandidate = Boolean(candidate?.id);
 
@@ -829,57 +837,57 @@ export function LeadWorkbenchPage() {
                 <Panel
                   title={<UiText id="lead.workbench.dossier.title" />}
                   subtitle={<UiText id="lead.workbench.dossier.subtitle" />}
+                  action={<Badge tone={formStatusTone}>{formStatusLabel}</Badge>}
                 >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-1 text-sm text-slate-600">
-                      <div>
-                        <span className="font-semibold text-slate-800">{copy({ en: "Candidate:", vi: "Ứng viên:" })}</span>{" "}
-                        {candidate?.code ?? candidate?.id ?? copy({ en: "Not created yet", vi: "Chưa tạo" })}
-                      </div>
-                      <div>
-                        {candidate?.profile
-                          ? copy({ en: "Open the dossier to review form fields and document evidence.", vi: "Mở hồ sơ để xem dữ liệu từ form và bằng chứng tài liệu." })
-                          : copy({ en: "Upload and verify the standard worker form to create the candidate dossier.", vi: "Tải lên và xác minh form lao động chuẩn để tạo hồ sơ ứng viên." })}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        onClick={() => setDossierOpen(true)}
-                        disabled={!candidate?.profile}
-                      >
-                        {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
-                      </Button>
-                      {canEditLeads ? (
-                        <Button
-                          variant="secondary"
-                          onClick={() => setFormModalOpen(true)}
-                        >
-                          {form?.hasFile
-                            ? <UiText id="journey.workbench.form.manage" />
-                            : <UiText id="journey.workbench.form.upload" />}
-                        </Button>
-                      ) : null}
-                    </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <InfoCard
+                      label={copy({ en: "Candidate", vi: "Ứng viên" })}
+                      value={candidate?.code ?? candidate?.id ?? copy({ en: "Not created yet", vi: "Chưa tạo" })}
+                      hint={candidate?.profile
+                        ? copy({ en: "Open the dossier to review form fields and document evidence.", vi: "Mở hồ sơ để xem dữ liệu từ form và bằng chứng tài liệu." })
+                        : copy({ en: "Upload and verify the standard worker form to create the candidate dossier.", vi: "Tải lên và xác minh form lao động chuẩn để tạo hồ sơ ứng viên." })}
+                    />
+                    <InfoCard
+                      label={copy({ en: "Standard worker form", vi: "Form lao động chuẩn" })}
+                      value={formStatusLabel}
+                      hint={form?.updatedAt
+                        ? `${copy({ en: "Last updated:", vi: "Cập nhật:" })} ${form.updatedAt}`
+                        : copy({ en: "No form file on record yet.", vi: "Chưa có file form nào được lưu." })}
+                    />
                   </div>
-                </Panel>
 
-                {canEditLeads ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-3">
-                    <div className="text-sm text-indigo-900">
-                      {copy({
-                        en: "Standard worker form is required before the lead can advance to matching.",
-                        vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
-                      })}
+                  {!formVerified ? (
+                    <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm leading-6 text-indigo-900">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-indigo-500">
+                        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+                        <path d="M12 8h.01M12 11v5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                      </svg>
+                      <span>
+                        {copy({
+                          en: "Standard worker form is required before the lead can advance to matching.",
+                          vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
+                        })}
+                      </span>
                     </div>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+                    {canEditLeads ? (
+                      <Button onClick={() => setFormModalOpen(true)}>
+                        {form?.hasFile
+                          ? <UiText id="journey.workbench.form.manage" />
+                          : <UiText id="journey.workbench.form.upload" />}
+                      </Button>
+                    ) : null}
                     <Button
                       variant="secondary"
-                      onClick={() => setFormModalOpen(true)}
+                      onClick={() => setDossierOpen(true)}
+                      disabled={!candidate?.profile}
                     >
-                      {copy({ en: "Manage form →", vi: "Quản lý form →" })}
+                      {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
                     </Button>
                   </div>
-                ) : null}
+                </Panel>
 
                 <LeadDocumentsPanel leadId={leadId} />
               </div>
