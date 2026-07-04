@@ -21,11 +21,14 @@ export type Permission =
   | "verify_documents"
   | "manage_finance"
   | "manage_recruitment"
+  | "transition_lead_status"
   | "admin_all";
 
 const ROLE_PERMISSIONS: Record<Role, ReadonlyArray<Permission>> = {
   admin: ["admin_all"],
-  recruiter: ["view_leads", "edit_leads", "manage_recruitment"],
+  recruiter: ["view_leads", "edit_leads", "manage_recruitment", "transition_lead_status"],
+  // Document/finance staff verify docs / manage money — pipeline-stage moves
+  // are withheld from them (mirrors backend ROLE_PERMISSIONS).
   document_staff: ["view_leads", "edit_leads", "verify_documents"],
   finance_staff: ["view_leads", "edit_leads", "manage_finance"],
   user: ["view_leads"],
@@ -78,5 +81,6 @@ export function usePermissions() {
     canVerifyDocuments: hasPermission(user, "verify_documents"),
     canManageFinance: hasPermission(user, "manage_finance"),
     canManageRecruitment: hasPermission(user, "manage_recruitment"),
+    canTransitionLeadStatus: hasPermission(user, "transition_lead_status"),
   };
 }

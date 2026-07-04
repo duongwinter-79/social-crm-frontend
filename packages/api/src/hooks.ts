@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus, TrainingFinanceCurrency, DepositStatusMode } from "./types";
+import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus, TrainingFinanceCurrency, DepositStatusMode, UpsertRegionGroupPayload } from "./types";
 
 export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
 
@@ -365,10 +365,20 @@ export function useCandidatesQuery(params: { offset: number; limit: number; lead
   });
 }
 
-export function useDocumentsQuery(params: { offset: number; limit: number; leadId?: string; candidateId?: string; docType?: string; status?: string }) {
+export function useDocumentsQuery(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; docType?: string; status?: string }) {
   return useQuery({
     queryKey: ["documents", params],
     queryFn: () => apiClient.listDocuments(params)
+  });
+}
+
+export function useOrderDocumentsQuery(orderId?: string, params: { offset?: number; limit?: number } = {}) {
+  const offset = params.offset ?? 0;
+  const limit = params.limit ?? 20;
+  return useQuery({
+    queryKey: ["documents", "order", orderId, { offset, limit }],
+    queryFn: () => apiClient.listDocuments({ offset, limit, orderId: orderId as string }),
+    enabled: Boolean(orderId),
   });
 }
 
@@ -420,6 +430,21 @@ export function useTrainingFinanceByLeadQuery(leadId?: string) {
     queryKey: ["training-finance", "lead", leadId],
     queryFn: () => apiClient.getTrainingFinanceByLead(leadId as string),
     enabled: Boolean(leadId)
+  });
+}
+
+export function useRegionGroupsQuery() {
+  return useQuery({
+    queryKey: ["region-groups"],
+    queryFn: () => apiClient.listRegionGroups()
+  });
+}
+
+export function useRegionGroupProvincesQuery() {
+  return useQuery({
+    queryKey: ["region-groups", "provinces"],
+    queryFn: () => apiClient.listRegionGroupProvinces(),
+    staleTime: Infinity
   });
 }
 
@@ -526,6 +551,26 @@ export function useUpdateLeadMutation() {
       queryClient.invalidateQueries({ queryKey: ["lead", lead.id, "transitions"] });
     },
     meta: { successMessage: { en: "Lead updated", vi: "Đã cập nhật ứng viên" } }
+  });
+}
+
+/**
+ * Move a lead to a new pipeline status via the dedicated transition action
+ * (POST /leads/:id/transition), gated server-side by the
+ * transition_lead_status permission — separate from useUpdateLeadMutation's
+ * field-only PATCH.
+ */
+export function useTransitionLeadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status, disqualifiedReason }: { id: string; status: string; disqualifiedReason?: string }) =>
+      apiClient.transitionLead(id, { status, disqualifiedReason }),
+    onSuccess: (lead) => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.setQueryData(["lead", lead.id], lead);
+      queryClient.invalidateQueries({ queryKey: ["lead", lead.id, "transitions"] });
+    },
+    meta: { successMessage: { en: "Lead status updated", vi: "Đã cập nhật trạng thái ứng viên" } }
   });
 }
 
@@ -690,6 +735,41 @@ export function useUpdateOrderMutation() {
   });
 }
 
+/** Order-document intake step 1: stage the uploaded file, no side effects yet. */
+export function useStageOrderIntakeDocumentMutation() {
+  return useMutation({
+    mutationFn: (payload: { file: File; onUploadProgress?: (progress: number) => void }) =>
+      apiClient.stageOrderIntakeDocument(payload),
+  });
+}
+
+/** Order-document intake step 2: deterministic extraction, no side effects yet. */
+export function useVerifyOrderIntakePendingMutation() {
+  return useMutation({
+    mutationFn: (pendingId: string) => apiClient.verifyOrderIntakePending(pendingId),
+  });
+}
+
+/** Order-document intake step 3: creates the Order and attaches the document as evidence. */
+export function useCommitOrderIntakePendingMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pendingId, payload }: { pendingId: string; payload: OrderMutationPayload & { name: string } }) =>
+      apiClient.commitOrderIntakePending(pendingId, payload),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.setQueryData(["order", order.id], order);
+    },
+    meta: { successMessage: { en: "Order created from document", vi: "Đã tạo đơn hàng từ tài liệu" } }
+  });
+}
+
+export function useCancelOrderIntakePendingMutation() {
+  return useMutation({
+    mutationFn: (pendingId: string) => apiClient.cancelOrderIntakePending(pendingId),
+  });
+}
+
 export function useUpdateApplicationMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -697,6 +777,9 @@ export function useUpdateApplicationMutation() {
     onSuccess: (application) => {
       queryClient.setQueryData(["application", application.id], application);
       queryClient.invalidateQueries({ queryKey: ["applications"] });
+      // Status transitions drive lead status forward — keep status bar in sync.
+      queryClient.invalidateQueries({ queryKey: ["lead", application.lead_id] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     meta: { successMessage: { en: "Application updated", vi: "Đã cập nhật hồ sơ ứng tuyển" } }
   });
@@ -705,11 +788,13 @@ export function useUpdateApplicationMutation() {
 export function useDeleteApplicationMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => apiClient.deleteApplication(id),
-    onSuccess: (_result, id) => {
+    mutationFn: ({ id }: { id: string; leadId: string }) => apiClient.deleteApplication(id),
+    onSuccess: (_result, { id, leadId }) => {
       queryClient.removeQueries({ queryKey: ["application", id] });
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     meta: { successMessage: { en: "Application deleted", vi: "Đã xoá hồ sơ ứng tuyển" } }
   });
@@ -723,6 +808,10 @@ export function useCreateApplicationMutation() {
     onSuccess: (application) => {
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.setQueryData(["application", application.id], application);
+      // Creating an application auto-advances lead status via backend workflow
+      // side-effects — invalidate so the status bar reflects the new status.
+      queryClient.invalidateQueries({ queryKey: ["lead", application.lead_id] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
     meta: { successMessage: { en: "Application created", vi: "Đã tạo hồ sơ ứng tuyển" } }
   });
@@ -731,7 +820,7 @@ export function useCreateApplicationMutation() {
 export function useCreateDocumentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { leadId: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) =>
+    mutationFn: (payload: { leadId?: string; orderId?: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) =>
       apiClient.createDocument(payload),
     onSuccess: (document) => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
@@ -741,8 +830,82 @@ export function useCreateDocumentMutation() {
       if (document.candidate_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "candidate-checklist", document.candidate_id] });
       }
+      if ((document as any).order_id) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "order", (document as any).order_id] });
+      }
     },
     meta: { successMessage: { en: "Document added", vi: "Đã thêm giấy tờ" } }
+  });
+}
+
+export function useUploadOrderDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      orderId: string;
+      file: File;
+      docType?: string;
+      issueDate?: string;
+      expiryDate?: string;
+      onUploadProgress?: (progress: number) => void;
+    }) => apiClient.uploadOrderDocument(payload),
+    onSuccess: (document) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      const orderId = (document as { order_id?: string | null }).order_id;
+      if (orderId) {
+        queryClient.invalidateQueries({ queryKey: ["documents", "order", orderId] });
+      }
+    },
+    meta: { successMessage: { en: "Document uploaded", vi: "Đã tải lên giấy tờ" } }
+  });
+}
+
+export function useDeleteOrderDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; orderId: string }) => apiClient.deleteOrderDocument(id),
+    onSuccess: (_result, { orderId }) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "order", orderId] });
+    },
+    meta: { successMessage: { en: "Document deleted", vi: "Đã xoá giấy tờ" } }
+  });
+}
+
+/**
+ * Upload (or replace) a lead checklist document — passport, criminal_record,
+ * criminal_record_2, health_check, diploma, work_permit. See
+ * POST /documents/lead/:leadId/upload — re-uploading the same docType
+ * replaces the existing file rather than creating a duplicate.
+ */
+export function useUploadLeadDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      leadId: string;
+      file: File;
+      docType: string;
+      issueDate?: string;
+      expiryDate?: string;
+      onUploadProgress?: (progress: number) => void;
+    }) => apiClient.uploadLeadDocument(payload),
+    onSuccess: (_document, { leadId }) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", leadId] });
+    },
+    meta: { successMessage: { en: "Document uploaded", vi: "Đã tải lên giấy tờ" } }
+  });
+}
+
+export function useDeleteLeadDocumentMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; leadId: string }) => apiClient.deleteLeadDocument(id),
+    onSuccess: (_result, { leadId }) => {
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", leadId] });
+    },
+    meta: { successMessage: { en: "Document deleted", vi: "Đã xoá giấy tờ" } }
   });
 }
 
@@ -808,10 +971,31 @@ export function useCommitPendingFormMutation() {
       if (document.lead_id) {
         queryClient.invalidateQueries({ queryKey: ["documents", "lead-checklist", document.lead_id] });
         queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "transitions"] });
+        // Field extraction from the committed form runs server-side AFTER the
+        // commit response returns (fire-and-forget so a slow AI call never holds
+        // up the upload). The backend flips the lead's formExtractionStatus to
+        // `processing` then `done`/`failed`. Kick the status poll so the
+        // information panel shows the "đang trích xuất" indicator and
+        // auto-refreshes the lead-scoped queries when extraction completes.
+        queryClient.invalidateQueries({ queryKey: ["lead", document.lead_id, "form-extraction-status"] });
       }
       queryClient.invalidateQueries({ queryKey: ["documents", "form-standard-register"] });
     },
     meta: { successMessage: { en: "Form verified and linked", vi: "Đã xác nhận và gắn hồ sơ" } }
+  });
+}
+
+/**
+ * Polls the post-commit form-extraction status for a lead. Refetches every
+ * 1.5s while the backend reports `processing`, then stops. Drives the
+ * extraction progress indicator in the lead information panel.
+ */
+export function useFormExtractionStatusQuery(leadId?: string) {
+  return useQuery({
+    queryKey: ["lead", leadId, "form-extraction-status"],
+    queryFn: () => apiClient.getFormExtractionStatus(leadId as string),
+    enabled: Boolean(leadId),
+    refetchInterval: (query) => (query.state.data?.status === "processing" ? 1500 : false),
   });
 }
 
@@ -918,6 +1102,39 @@ export function useDeleteTrainingFinanceMutation() {
       queryClient.invalidateQueries({ queryKey: ["lead"] });
     },
     meta: { successMessage: { en: "Training/finance record deleted", vi: "Đã xoá hồ sơ đào tạo/tài chính" } }
+  });
+}
+
+export function useCreateRegionGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpsertRegionGroupPayload) => apiClient.createRegionGroup(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["region-groups"] });
+    },
+    meta: { successMessage: { en: "Region group created", vi: "Đã tạo nhóm khu vực" } }
+  });
+}
+
+export function useUpdateRegionGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpsertRegionGroupPayload }) => apiClient.updateRegionGroup(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["region-groups"] });
+    },
+    meta: { successMessage: { en: "Region group updated", vi: "Đã cập nhật nhóm khu vực" } }
+  });
+}
+
+export function useDeleteRegionGroupMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.deleteRegionGroup(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["region-groups"] });
+    },
+    meta: { successMessage: { en: "Region group deleted", vi: "Đã xoá nhóm khu vực" } }
   });
 }
 

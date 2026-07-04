@@ -514,7 +514,57 @@ export interface OrderSuggestedCandidate {
   requiresManagerApproval: boolean;
 }
 
-export interface Order {
+export type OrderRecruitmentStatus = "recruiting" | "recruitment_complete" | "cancelled";
+
+export type OrderMaritalStatusRequired = "any" | "single" | "married" | "married_with_children";
+
+/** Order-detail fields sourced from the real per-order spec .docx — see order-detail-page.tsx grouping. */
+export interface OrderDetailFields {
+  agentName?: string | null;
+  dateReceived?: string | null;
+  quantity?: number | null;
+  factoryAddress?: string | null;
+  factoryNameLocal?: string | null;
+  referenceWebsite?: string | null;
+  existingVnWorkers?: boolean | null;
+  workShiftPattern?: string | null;
+  housingMealsInfo?: string | null;
+  overtimeInfo?: string | null;
+  weightMin?: number | null;
+  educationLevel?: string | null;
+  maritalStatusRequired?: OrderMaritalStatusRequired | null;
+  selectionMethod?: string | null;
+  expectedDeparture?: string | null;
+  excludedCandidateRegions?: string[] | null;
+}
+
+/**
+ * Admin-editable named group of provinces (e.g. "Miền Trung") — what an
+ * operator picks from (by name) when filling Order.excludedCandidateRegions.
+ * provinceKeys are canonical province keys resolved server-side; the FE
+ * never needs to interpret them, only display/manage the group's name.
+ */
+export interface RegionGroup {
+  id: string;
+  name: string;
+  provinceKeys: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpsertRegionGroupPayload {
+  name: string;
+  provinceNames: string[];
+}
+
+/** Canonical province taxonomy entry — used to build a region group without typos. */
+export interface VietnamProvinceOption {
+  key: string;
+  name: string;
+  macroRegion: "bac" | "trung" | "nam";
+}
+
+export interface Order extends OrderDetailFields {
   id: string;
   name: string;
   description?: string | null;
@@ -528,9 +578,10 @@ export interface Order {
   heightMin?: number | null;
   acceptsReturnees?: boolean | null;
   experienceRequired: boolean;
+  recruitmentStatus?: OrderRecruitmentStatus | null;
 }
 
-export interface OrderMutationPayload {
+export interface OrderMutationPayload extends OrderDetailFields {
   name?: string;
   description?: string | null;
   region?: string | null;
@@ -543,6 +594,53 @@ export interface OrderMutationPayload {
   heightMin?: number | null;
   acceptsReturnees?: boolean | null;
   experienceRequired?: boolean;
+  recruitmentStatus?: OrderRecruitmentStatus | null;
+}
+
+/** Best-effort fields deterministically parsed from an uploaded per-order spec document. */
+export interface OrderDocExtractedFields {
+  name?: string;
+  factoryNameLocal?: string;
+  factoryAddress?: string;
+  industry?: string;
+  referenceWebsite?: string;
+  description?: string;
+  existingVnWorkers?: boolean;
+  salaryRange?: string;
+  workShiftPattern?: string;
+  housingMealsInfo?: string;
+  overtimeInfo?: string;
+  quantity?: number;
+  genderRequired?: "male" | "female" | "both";
+  ageMin?: number;
+  ageMax?: number;
+  maritalStatusRequired?: OrderMaritalStatusRequired;
+  heightMin?: number;
+  weightMin?: number;
+  educationLevel?: string;
+  requirements?: string;
+  selectionMethod?: string;
+  expectedDeparture?: string;
+}
+
+export interface OrderDocFieldMeta {
+  key: keyof OrderDocExtractedFields;
+  label: string;
+  matched: boolean;
+}
+
+export interface OrderDocExtractionResult {
+  fields: OrderDocExtractedFields;
+  fieldMeta: OrderDocFieldMeta[];
+  /** Lines the extractor couldn't confidently place — surfaced instead of guessed. */
+  unrecognizedLines: string[];
+}
+
+export interface OrderDocStagedUpload {
+  pendingId: string;
+  originalFilename: string;
+  mimeType: string;
+  fileSize: number;
 }
 
 export interface MatchingResult {
@@ -630,11 +728,13 @@ export interface CandidateListResponse {
 
 export interface DocumentRecord {
   id: string;
-  lead_id: string;
+  lead_id?: string | null;
+  order_id?: string | null;
   candidate_id?: string | null;
   docType: string;
   status: string;
   fileUrl?: string | null;
+  fileKey?: string | null;
   storageBucket?: string | null;
   issueDate?: string | null;
   expiryDate?: string | null;
@@ -647,6 +747,12 @@ export interface DocumentListResponse {
   data: DocumentRecord[];
   total: number;
 }
+
+/**
+ * Post-commit form-document extraction status for a lead. Drives the
+ * "đang trích xuất" progress indicator in the lead information panel.
+ */
+export type FormExtractionStatus = "processing" | "done" | "failed" | null;
 
 export interface FormStandardRegisterRow {
   documentId: string;

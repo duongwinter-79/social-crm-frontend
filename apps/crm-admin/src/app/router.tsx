@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation, useParams, Link } from "react-router-dom";
 import { Badge, ShellFrame } from "@social-crm/ui";
-import { apiClient, startSessionLifecycle, useHealthQuery, useSessionStore } from "@social-crm/api";
+import { apiClient, hasPermission, startSessionLifecycle, useHealthQuery, useSessionStore, type Permission } from "@social-crm/api";
 import { LoginPage } from "@/features/auth/login-page";
 import { useI18n } from "@/i18n";
 import { useUiText } from "@/ui-text/ui-text-provider";
@@ -20,6 +20,7 @@ const OrderDetailPage = lazy(() => import("@/features/orders/order-detail-page")
 const TrainingFinanceDetailPage = lazy(() => import("@/features/training-finance/training-finance-detail-page").then((m) => ({ default: m.TrainingFinanceDetailPage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
 const UiTextOverridesPage = lazy(() => import("@/features/admin/ui-text-overrides-page").then((m) => ({ default: m.UiTextOverridesPage })));
+const RegionGroupsPage = lazy(() => import("@/features/admin/region-groups-page").then((m) => ({ default: m.RegionGroupsPage })));
 const ImportPage = lazy(() => import("@/features/imports/import-page").then((m) => ({ default: m.ImportPage })));
 const ExtractPage = lazy(() => import("@/features/imports/extract-page").then((m) => ({ default: m.ExtractPage })));
 
@@ -118,6 +119,7 @@ function titleForPath(pathname: string, copy: (value: { en: string; vi: string }
   if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   if (pathname === "/ui-text-overrides") return copy({ en: "UI text overrides", vi: "Tùy chỉnh chữ hiển thị" });
+  if (pathname === "/region-groups") return copy({ en: "Region groups", vi: "Nhóm khu vực" });
   if (pathname === "/applications/detail") return copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" });
   if (pathname.match(/^\/applications\/[^/]+\/edit$/)) return copy({ en: "Form editor", vi: "Chỉnh sửa hồ sơ ứng tuyển" });
   return navItems.find((item) => pathname === item.to)?.label
@@ -348,6 +350,11 @@ function RequireAdmin(props: { children: ReactNode }) {
   return user?.roles?.includes("admin") ? <>{props.children}</> : <Navigate to="/dashboard" replace />;
 }
 
+function RequirePermission(props: { permission: Permission; children: ReactNode }) {
+  const user = useSessionStore((state) => state.user);
+  return hasPermission(user, props.permission) ? <>{props.children}</> : <Navigate to="/dashboard" replace />;
+}
+
 function RedirectToLeadWorkbench() {
   const { leadId } = useParams();
   // "new" was the Journey create-from-form mode; the leads page hosts it now.
@@ -404,11 +411,11 @@ export function AppRouter() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<LazyRoute><DashboardPage /></LazyRoute>} />
-        <Route path="/leads" element={<LazyRoute><LeadsPage /></LazyRoute>} />
-        <Route path="/leads/:leadId/dossier" element={<LazyRoute><CandidateDossierPage /></LazyRoute>} />
-        <Route path="/leads/:leadId" element={<LazyRoute><LeadWorkbenchPage /></LazyRoute>} />
-        <Route path="/conversations" element={<LazyRoute><ConversationsPage /></LazyRoute>} />
+        <Route path="/dashboard" element={<RequirePermission permission="view_leads"><LazyRoute><DashboardPage /></LazyRoute></RequirePermission>} />
+        <Route path="/leads" element={<RequirePermission permission="view_leads"><LazyRoute><LeadsPage /></LazyRoute></RequirePermission>} />
+        <Route path="/leads/:leadId/dossier" element={<RequirePermission permission="view_leads"><LazyRoute><CandidateDossierPage /></LazyRoute></RequirePermission>} />
+        <Route path="/leads/:leadId" element={<RequirePermission permission="view_leads"><LazyRoute><LeadWorkbenchPage /></LazyRoute></RequirePermission>} />
+        <Route path="/conversations" element={<RequirePermission permission="view_leads"><LazyRoute><ConversationsPage /></LazyRoute></RequirePermission>} />
         {/* The Journey surface is merged into the lead workbench: form intake
             is a modal on Hồ sơ & Form, matching lives in Ứng tuyển, finance in
             Tiến độ & Tài chính, departure in Xuất cảnh. Legacy URLs redirect. */}
@@ -419,8 +426,8 @@ export function AppRouter() {
         {/* Standalone matching console retired — order-first matching lives on
             the Orders page, candidate-first inside the Journey workbench. */}
         <Route path="/matching" element={<Navigate to="/orders" replace />} />
-        <Route path="/orders" element={<LazyRoute><OrdersPage /></LazyRoute>} />
-        <Route path="/orders/:orderId" element={<LazyRoute><OrderDetailPage /></LazyRoute>} />
+        <Route path="/orders" element={<RequirePermission permission="view_leads"><LazyRoute><OrdersPage /></LazyRoute></RequirePermission>} />
+        <Route path="/orders/:orderId" element={<RequirePermission permission="view_leads"><LazyRoute><OrderDetailPage /></LazyRoute></RequirePermission>} />
         {/* Applications list, standalone form-intake, and the form-editor are
             all subsumed by the lead workbench (form intake is a modal on the
             Hồ sơ & Form section). Redirect legacy URLs. */}
@@ -432,11 +439,12 @@ export function AppRouter() {
         {/* Training-finance ledger is subsumed by the lead workbench Tiến độ &
             Tài chính section; the per-record detail stays reachable. */}
         <Route path="/training-finance" element={<Navigate to="/leads" replace />} />
-        <Route path="/training-finance/:recordId" element={<LazyRoute><TrainingFinanceDetailPage /></LazyRoute>} />
+        <Route path="/training-finance/:recordId" element={<RequirePermission permission="view_leads"><LazyRoute><TrainingFinanceDetailPage /></LazyRoute></RequirePermission>} />
         <Route path="/import" element={<RequireAdmin><LazyRoute><ImportPage /></LazyRoute></RequireAdmin>} />
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
         <Route path="/ui-text-overrides" element={<RequireAdmin><LazyRoute><UiTextOverridesPage /></LazyRoute></RequireAdmin>} />
+        <Route path="/region-groups" element={<RequireAdmin><LazyRoute><RegionGroupsPage /></LazyRoute></RequireAdmin>} />
       </Route>
     </Routes>
   );

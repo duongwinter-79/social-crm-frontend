@@ -9,6 +9,7 @@ import type {
   AiExtractionWorkerStatus,
   ZaloNameEnrichmentWorkerStatus,
   AiQueryResult,
+  FormExtractionStatus,
   AiSuggestion,
   LeadOrderSuggestion,
   OrderSuggestedCandidate,
@@ -54,7 +55,12 @@ import type {
   MessageListResponse,
   Order,
   OrderMutationPayload,
+  OrderDocExtractionResult,
+  OrderDocStagedUpload,
   PipelineResponse,
+  RegionGroup,
+  UpsertRegionGroupPayload,
+  VietnamProvinceOption,
   ThreadListResponse,
   ThreadSummary,
   TrainingFinanceListResponse,
@@ -468,8 +474,18 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async updateLead(id: string, patch: Partial<Lead> & { disqualifiedReason?: string }) {
+  async updateLead(id: string, patch: Omit<Partial<Lead>, "status"> & { disqualifiedReason?: string }) {
     const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${id}`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Move a lead to a new pipeline status. Separate from updateLead so the
+   * backend can require the transition_lead_status permission independently
+   * of general field edits — see POST /leads/:id/transition.
+   */
+  async transitionLead(id: string, payload: { status: string; disqualifiedReason?: string }) {
+    const response = await this.http.post<ApiEnvelope<Lead> | Lead>(`/leads/${id}/transition`, payload);
     return unwrapEnvelope(response.data);
   }
 
@@ -550,6 +566,47 @@ export class SocialCrmApiClient {
   async updateOrder(id: string, patch: OrderMutationPayload) {
     const response = await this.http.patch<ApiEnvelope<Order> | Order>(`/orders/${id}`, patch);
     return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Order-document intake — upload a per-order spec document, extract
+   * fields, review, then commit to create the Order. Three-step flow
+   * mirroring the lead form-standard staged upload.
+   */
+  async stageOrderIntakeDocument(payload: { file: File; onUploadProgress?: (progress: number) => void }): Promise<OrderDocStagedUpload> {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    const response = await this.http.post<ApiEnvelope<OrderDocStagedUpload> | OrderDocStagedUpload>(
+      "/documents/order-intake/upload",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!payload.onUploadProgress || !event.total) return;
+          payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async verifyOrderIntakePending(pendingId: string): Promise<OrderDocExtractionResult> {
+    const response = await this.http.post<ApiEnvelope<OrderDocExtractionResult> | OrderDocExtractionResult>(
+      `/documents/order-intake/${pendingId}/verify`,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async commitOrderIntakePending(pendingId: string, payload: OrderMutationPayload & { name: string }): Promise<Order> {
+    const response = await this.http.post<ApiEnvelope<Order> | Order>(
+      `/documents/order-intake/${pendingId}/commit`,
+      payload,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async cancelOrderIntakePending(pendingId: string): Promise<void> {
+    await this.http.delete(`/documents/order-intake/${pendingId}`);
   }
 
   async listApplications(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; status?: string }) {
@@ -669,7 +726,7 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async listDocuments(params: { offset: number; limit: number; leadId?: string; candidateId?: string; docType?: string; status?: string }) {
+  async listDocuments(params: { offset: number; limit: number; leadId?: string; candidateId?: string; orderId?: string; docType?: string; status?: string }) {
     const response = await this.http.get<ApiEnvelope<DocumentListResponse> | DocumentListResponse>("/documents", { params });
     return unwrapEnvelope(response.data);
   }
@@ -689,13 +746,81 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
-  async createDocument(payload: { leadId: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) {
+  async createDocument(payload: { leadId?: string; orderId?: string; candidateId?: string; docType: string; status?: string; fileUrl?: string; storageBucket?: string; issueDate?: string; expiryDate?: string }) {
     const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>("/documents", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async uploadOrderDocument(payload: {
+    orderId: string;
+    file: File;
+    docType?: string;
+    issueDate?: string;
+    expiryDate?: string;
+    onUploadProgress?: (progress: number) => void;
+  }): Promise<DocumentRecord> {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    if (payload.docType) formData.append("docType", payload.docType);
+    if (payload.issueDate) formData.append("issueDate", payload.issueDate);
+    if (payload.expiryDate) formData.append("expiryDate", payload.expiryDate);
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>(
+      `/documents/order/${payload.orderId}/upload`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!payload.onUploadProgress || !event.total) return;
+          payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      }
+    );
     return unwrapEnvelope(response.data);
   }
 
   async unlinkFormStandardDocument(leadId: string): Promise<void> {
     await this.http.delete(`/documents/form-standard/${leadId}`);
+  }
+
+  async deleteOrderDocument(id: string): Promise<{ documentId: string; orderId: string }> {
+    const response = await this.http.delete<ApiEnvelope<{ documentId: string; orderId: string }> | { documentId: string; orderId: string }>(
+      `/documents/order/${id}`,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async uploadLeadDocument(payload: {
+    leadId: string;
+    file: File;
+    docType: string;
+    issueDate?: string;
+    expiryDate?: string;
+    onUploadProgress?: (progress: number) => void;
+  }): Promise<DocumentRecord> {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    formData.append("docType", payload.docType);
+    if (payload.issueDate) formData.append("issueDate", payload.issueDate);
+    if (payload.expiryDate) formData.append("expiryDate", payload.expiryDate);
+    const response = await this.http.post<ApiEnvelope<DocumentRecord> | DocumentRecord>(
+      `/documents/lead/${payload.leadId}/upload`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (event) => {
+          if (!payload.onUploadProgress || !event.total) return;
+          payload.onUploadProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        }
+      }
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async deleteLeadDocument(id: string): Promise<{ documentId: string; leadId: string }> {
+    const response = await this.http.delete<ApiEnvelope<{ documentId: string; leadId: string }> | { documentId: string; leadId: string }>(
+      `/documents/lead/${id}`,
+    );
+    return unwrapEnvelope(response.data);
   }
 
   // ── Staging-first upload flow ─────────────────────────────────────────────
@@ -766,6 +891,13 @@ export class SocialCrmApiClient {
 
   async cancelPending(pendingId: string): Promise<void> {
     await this.http.delete(`/documents/form-standard/pending/${pendingId}`);
+  }
+
+  async getFormExtractionStatus(leadId: string): Promise<{ status: FormExtractionStatus }> {
+    const response = await this.http.get<ApiEnvelope<{ status: FormExtractionStatus }> | { status: FormExtractionStatus }>(
+      `/leads/${leadId}/form-extraction-status`,
+    );
+    return unwrapEnvelope(response.data);
   }
 
   async updateDocument(id: string, patch: Record<string, unknown>) {
@@ -842,6 +974,30 @@ export class SocialCrmApiClient {
   async deleteTrainingFinance(id: string) {
     const response = await this.http.delete<ApiEnvelope<{ deleted: boolean; id: string }> | { deleted: boolean; id: string }>(`/training-finance/${id}`);
     return unwrapEnvelope(response.data);
+  }
+
+  async listRegionGroups() {
+    const response = await this.http.get<ApiEnvelope<RegionGroup[]> | RegionGroup[]>("/region-groups");
+    return unwrapEnvelope(response.data);
+  }
+
+  async listRegionGroupProvinces() {
+    const response = await this.http.get<ApiEnvelope<VietnamProvinceOption[]> | VietnamProvinceOption[]>("/region-groups/provinces");
+    return unwrapEnvelope(response.data);
+  }
+
+  async createRegionGroup(payload: UpsertRegionGroupPayload) {
+    const response = await this.http.post<ApiEnvelope<RegionGroup> | RegionGroup>("/region-groups", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateRegionGroup(id: string, payload: UpsertRegionGroupPayload) {
+    const response = await this.http.put<ApiEnvelope<RegionGroup> | RegionGroup>(`/region-groups/${id}`, payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async deleteRegionGroup(id: string): Promise<void> {
+    await this.http.delete(`/region-groups/${id}`);
   }
 
   async getPipeline(params: { offset: number; limit: number; stage?: string; search?: string }) {
