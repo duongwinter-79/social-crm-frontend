@@ -800,6 +800,27 @@ export function useDeleteApplicationMutation() {
   });
 }
 
+/**
+ * Order-cancellation re-match: withdraw the application, return the candidate
+ * to consulting, and roll the lead back to CONTACTED. Invalidates the lead and
+ * application caches so the workbench reflects the reset pipeline stage.
+ */
+export function useWithdrawApplicationForRematchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string; leadId: string }) =>
+      apiClient.withdrawApplicationForRematch(id, reason),
+    onSuccess: (application, { leadId }) => {
+      queryClient.setQueryData(["application", application.id], application);
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["candidates"] });
+    },
+    meta: { successMessage: { en: "Application withdrawn — lead returned to consulting for re-match", vi: "Đã rút hồ sơ — ứng viên quay lại tư vấn để ghép đơn mới" } }
+  });
+}
+
 export function useCreateApplicationMutation() {
   const queryClient = useQueryClient();
   return useMutation({
