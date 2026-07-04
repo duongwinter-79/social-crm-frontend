@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Badge, Button, FieldGroup, Input, Panel, Select } from "@social-crm/ui";
+import { Badge, Button, Input, Panel } from "@social-crm/ui";
 import {
-  apiClient,
+  useCreateDocumentMutation,
   useDeleteLeadDocumentMutation,
   useDocumentsQuery,
-  useUploadLeadDocumentMutation,
-  useVerifyDocumentMutation,
+  useUpdateDocumentMutation,
   usePermissions,
   type DocumentRecord,
 } from "@social-crm/api";
@@ -13,116 +12,112 @@ import { useI18n } from "../../i18n";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 // Kept in sync manually with LEAD_DOCUMENT_TYPES / REQUIRED_DOCUMENT_TYPES in
-// the backend's document-rules.ts. work_permit is uploadable here but is not
+// the backend's document-rules.ts. work_permit can be tracked here but is not
 // required — it's obtained after departure, so it never blocks the
 // VISA_PROCESSING -> DEPARTED gate.
 const LEAD_DOC_TYPES = ["passport", "criminal_record", "criminal_record_2", "health_check", "diploma", "work_permit"] as const;
 const LEAD_DOC_REQUIRED = new Set<string>(["passport", "criminal_record", "criminal_record_2", "health_check", "diploma"]);
 
-function toneForDocStatus(status: string) {
-  if (status === "verified") return "success" as const;
-  if (status === "rejected" || status === "expired") return "danger" as const;
-  if (status === "submitted") return "warning" as const;
-  return "neutral" as const;
+function isDocExpired(doc: DocumentRecord | undefined): boolean {
+  if (!doc?.expiryDate) return false;
+  return new Date(doc.expiryDate).getTime() < Date.now();
 }
 
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+    </svg>
+  );
+}
+
+/**
+ * Per-lead document checklist. Operators mark each paper as prepared (no
+ * file upload — the physical/scanned documents live outside the CRM) and
+ * record its issue and expiry dates. Marking creates a file-less document
+ * record with status "verified" so the existing pipeline gates, which count
+ * verified required documents, keep working unchanged.
+ */
 export function LeadDocumentsPanel(props: { leadId: string }) {
   const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
-  const { canEditLeads, canVerifyDocuments } = usePermissions();
+  const { canEditLeads } = usePermissions();
   const docsQuery = useDocumentsQuery({ leadId: props.leadId, offset: 0, limit: 50 });
-  const uploadDoc = useUploadLeadDocumentMutation();
+  const createDoc = useCreateDocumentMutation();
+  const updateDoc = useUpdateDocumentMutation();
   const deleteDoc = useDeleteLeadDocumentMutation();
-  const verifyDoc = useVerifyDocumentMutation();
 
-  const [addDocType, setAddDocType] = useState<string>(LEAD_DOC_TYPES[0]);
-  const [addIssueDate, setAddIssueDate] = useState("");
-  const [addExpiryDate, setAddExpiryDate] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadError, setUploadError] = useState("");
-  const [openingId, setOpeningId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<DocumentRecord | null>(null);
-  const [deleteError, setDeleteError] = useState("");
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
-  const [actionError, setActionError] = useState("");
+  // docType currently showing the inline date editor (create or edit mode).
+  const [editorFor, setEditorFor] = useState<string | null>(null);
+  const [editorIssueDate, setEditorIssueDate] = useState("");
+  const [editorExpiryDate, setEditorExpiryDate] = useState("");
+  const [editorError, setEditorError] = useState("");
+  const [uncheckTarget, setUncheckTarget] = useState<DocumentRecord | null>(null);
+  const [uncheckError, setUncheckError] = useState("");
 
   // Documents come back ordered updatedAt DESC (see findAll) — the first row
-  // per docType is always the current one, matching the backend's upsert
-  // (re-upload replaces rather than duplicates).
+  // per docType is always the current one (backend enforces one per type).
   const docs: DocumentRecord[] = docsQuery.data?.data ?? [];
   const byType = new Map<string, DocumentRecord>();
   for (const doc of docs) {
     if (!byType.has(doc.docType)) byType.set(doc.docType, doc);
   }
 
-  const requiredVerified = [...LEAD_DOC_REQUIRED].filter((t) => byType.get(t)?.status === "verified").length;
+  const requiredDone = [...LEAD_DOC_REQUIRED].filter((t) => byType.has(t)).length;
+  const requiredTotal = LEAD_DOC_REQUIRED.size;
+  const progressPct = Math.round((requiredDone / requiredTotal) * 100);
+  const allDone = requiredDone === requiredTotal;
+  const isSaving = createDoc.isPending || updateDoc.isPending;
 
-  function handleUpload() {
-    if (!canEditLeads || !file) return;
-    setUploadError("");
-    uploadDoc.mutate(
-      { leadId: props.leadId, file, docType: addDocType, issueDate: addIssueDate || undefined, expiryDate: addExpiryDate || undefined },
-      {
-        onSuccess: () => { setFile(null); setAddIssueDate(""); setAddExpiryDate(""); },
-        onError: (err: unknown) => {
-          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          setUploadError(message ?? copy({ en: "Upload failed.", vi: "Tải lên thất bại." }));
-        },
-      },
-    );
+  function openEditor(docType: string, doc?: DocumentRecord) {
+    setEditorError("");
+    setEditorFor(docType);
+    setEditorIssueDate(doc?.issueDate ?? new Date().toISOString().slice(0, 10));
+    setEditorExpiryDate(doc?.expiryDate ?? "");
   }
 
-  function handleConfirmDelete() {
-    if (!deleteTarget) return;
-    setDeleteError("");
-    deleteDoc.mutate(
-      { id: deleteTarget.id, leadId: props.leadId },
-      {
-        onSuccess: () => setDeleteTarget(null),
-        onError: (err: unknown) => {
-          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          setDeleteError(message ?? copy({ en: "Delete failed.", vi: "Xoá thất bại." }));
-        },
-      },
-    );
+  function closeEditor() {
+    setEditorFor(null);
+    setEditorError("");
   }
 
-  async function handleOpen(doc: DocumentRecord) {
-    setOpeningId(doc.id);
-    try {
-      const { url, isObjectUrl } = await apiClient.getDocumentUrl(doc.id);
-      window.open(url, "_blank", "noopener,noreferrer");
-      if (isObjectUrl) window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
-    } catch {
-      setActionError(copy({ en: "Could not open this file.", vi: "Không mở được file này." }));
-    } finally {
-      setOpeningId(null);
+  function handleSave(docType: string, doc: DocumentRecord | undefined) {
+    if (!canEditLeads) return;
+    setEditorError("");
+    const onError = (err: unknown) => {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setEditorError(message ?? copy({ en: "Saving failed.", vi: "Lưu thất bại." }));
+    };
+    if (doc) {
+      updateDoc.mutate(
+        { id: doc.id, patch: { issueDate: editorIssueDate || null, expiryDate: editorExpiryDate || null } },
+        { onSuccess: closeEditor, onError },
+      );
+    } else {
+      createDoc.mutate(
+        {
+          leadId: props.leadId,
+          docType,
+          // Checklist semantics: marking means the paper exists and is good —
+          // create as "verified" so required-document gates count it.
+          status: "verified",
+          issueDate: editorIssueDate || undefined,
+          expiryDate: editorExpiryDate || undefined,
+        },
+        { onSuccess: closeEditor, onError },
+      );
     }
   }
 
-  function handleApprove(doc: DocumentRecord) {
-    setActionError("");
-    verifyDoc.mutate(
-      { id: doc.id, action: "approve" },
+  function handleConfirmUncheck() {
+    if (!uncheckTarget) return;
+    setUncheckError("");
+    deleteDoc.mutate(
+      { id: uncheckTarget.id, leadId: props.leadId },
       {
+        onSuccess: () => setUncheckTarget(null),
         onError: (err: unknown) => {
           const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          setActionError(message ?? copy({ en: "Approve failed.", vi: "Duyệt thất bại." }));
-        },
-      },
-    );
-  }
-
-  function handleConfirmReject() {
-    if (!rejectingId) return;
-    setActionError("");
-    verifyDoc.mutate(
-      { id: rejectingId, action: "reject", rejectionReason: rejectReason.trim() },
-      {
-        onSuccess: () => { setRejectingId(null); setRejectReason(""); },
-        onError: (err: unknown) => {
-          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-          setActionError(message ?? copy({ en: "Reject failed.", vi: "Từ chối thất bại." }));
+          setUncheckError(message ?? copy({ en: "Could not unmark.", vi: "Không bỏ đánh dấu được." }));
         },
       },
     );
@@ -130,155 +125,160 @@ export function LeadDocumentsPanel(props: { leadId: string }) {
 
   return (
     <Panel
-      title={copy({ en: "Candidate documents", vi: "Giấy tờ ứng viên" })}
+      title={copy({ en: "Document checklist", vi: "Danh sách giấy tờ" })}
       subtitle={copy({
-        en: `Passport, judicial record, health check, diploma, work permit — ${requiredVerified}/${LEAD_DOC_REQUIRED.size} required verified.`,
-        vi: `Hộ chiếu, lý lịch tư pháp, khám sức khỏe, bằng cấp, giấy phép lao động — đã xác minh ${requiredVerified}/${LEAD_DOC_REQUIRED.size} giấy tờ bắt buộc.`,
+        en: "Tick each paper once it has been prepared for this lead, and track its issue and expiry dates.",
+        vi: "Đánh dấu từng giấy tờ đã làm xong cho ứng viên và theo dõi ngày tạo, ngày hết hạn.",
       })}
+      action={
+        <Badge tone={allDone ? "success" : "warning"}>
+          {copy({
+            en: `${requiredDone}/${requiredTotal} required done`,
+            vi: `Hoàn thành ${requiredDone}/${requiredTotal} bắt buộc`,
+          })}
+        </Badge>
+      }
     >
-      <div className="mb-4 divide-y divide-slate-100 rounded-xl border border-slate-200">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-500" : "bg-indigo-500"}`}
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        <span className="text-xs font-semibold tabular-nums text-slate-500">{progressPct}%</span>
+      </div>
+
+      <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200">
         {LEAD_DOC_TYPES.map((docType) => {
           const doc = byType.get(docType);
           const required = LEAD_DOC_REQUIRED.has(docType);
-          const isRejecting = rejectingId === doc?.id;
+          const done = Boolean(doc);
+          const expired = isDocExpired(doc);
+          const isEditing = editorFor === docType;
           return (
-            <div key={docType} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
-              <span className="font-medium text-slate-800">{formatDocumentType(docType)}</span>
-              <Badge tone={required ? "neutral" : "accent"}>
-                {required ? copy({ en: "Required", vi: "Bắt buộc" }) : copy({ en: "Optional", vi: "Tùy chọn" })}
-              </Badge>
-              {doc ? (
-                <>
-                  <Badge tone={toneForDocStatus(doc.status)}>{formatDocumentStatus(doc.status)}</Badge>
-                  {doc.issueDate ? <span className="text-slate-500">{copy({ en: "Issued", vi: "Phát hành" })}: {doc.issueDate}</span> : null}
-                  {doc.expiryDate ? <span className="text-slate-500">{copy({ en: "Expires", vi: "Hết hạn" })}: {doc.expiryDate}</span> : null}
-                  <div className="ml-auto flex flex-wrap items-center gap-3">
-                    {doc.fileUrl || doc.fileKey ? (
-                      <button
-                        type="button"
-                        className="font-semibold text-blue-600 underline decoration-blue-300 underline-offset-4 hover:text-blue-700 disabled:opacity-50"
-                        onClick={() => handleOpen(doc)}
-                        disabled={openingId === doc.id}
-                      >
-                        {openingId === doc.id ? copy({ en: "Opening...", vi: "Đang mở..." }) : copy({ en: "Open file", vi: "Mở file" })}
-                      </button>
-                    ) : null}
-                    {canVerifyDocuments && doc.status === "submitted" ? (
-                      <>
-                        <button
-                          type="button"
-                          className="font-semibold text-green-600 underline decoration-green-300 underline-offset-4 hover:text-green-700"
-                          onClick={() => handleApprove(doc)}
-                          disabled={verifyDoc.isPending}
-                        >
-                          {copy({ en: "Approve", vi: "Duyệt" })}
-                        </button>
-                        <button
-                          type="button"
-                          className="font-semibold text-amber-600 underline decoration-amber-300 underline-offset-4 hover:text-amber-700"
-                          onClick={() => { setActionError(""); setRejectingId(doc.id); setRejectReason(""); }}
-                        >
-                          {copy({ en: "Reject", vi: "Từ chối" })}
-                        </button>
-                      </>
-                    ) : null}
-                    {canEditLeads ? (
-                      <button
-                        type="button"
-                        className="font-semibold text-red-600 underline decoration-red-300 underline-offset-4 hover:text-red-700"
-                        onClick={() => { setDeleteError(""); setDeleteTarget(doc); }}
-                      >
-                        {copy({ en: "Delete", vi: "Xoá" })}
-                      </button>
+            <li key={docType} className={`px-4 py-3 transition-colors ${done ? "bg-emerald-50/40" : "bg-white"}`}>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canEditLeads) return;
+                    if (doc) {
+                      setUncheckError("");
+                      setUncheckTarget(doc);
+                    } else {
+                      openEditor(docType);
+                    }
+                  }}
+                  disabled={!canEditLeads || deleteDoc.isPending}
+                  aria-label={
+                    done
+                      ? copy({ en: `Unmark ${formatDocumentType(docType)}`, vi: `Bỏ đánh dấu ${formatDocumentType(docType)}` })
+                      : copy({ en: `Mark ${formatDocumentType(docType)} as created`, vi: `Đánh dấu đã tạo ${formatDocumentType(docType)}` })
+                  }
+                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                    done
+                      ? "border-emerald-500 bg-emerald-500 text-white hover:border-emerald-400 hover:bg-emerald-400"
+                      : "border-slate-300 bg-white text-transparent hover:border-indigo-400"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  {done ? <CheckIcon /> : null}
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-800">{formatDocumentType(docType)}</span>
+                    <Badge tone={required ? "neutral" : "accent"}>
+                      {required ? copy({ en: "Required", vi: "Bắt buộc" }) : copy({ en: "Optional", vi: "Tùy chọn" })}
+                    </Badge>
+                    {expired ? <Badge tone="danger">{copy({ en: "Expired", vi: "Hết hạn" })}</Badge> : null}
+                    {doc && !expired && doc.status === "rejected" ? (
+                      <Badge tone="danger">{formatDocumentStatus(doc.status)}</Badge>
                     ) : null}
                   </div>
-                </>
-              ) : (
-                <>
-                  <Badge tone="warning">{copy({ en: "Not uploaded", vi: "Chưa có" })}</Badge>
-                  <span className="ml-auto text-xs text-slate-400">
-                    {copy({ en: "Select this type below to upload", vi: "Chọn loại này bên dưới để tải lên" })}
-                  </span>
-                </>
-              )}
-              {isRejecting ? (
-                <div className="mt-2 flex w-full flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
-                  <Input
-                    label={copy({ en: "Rejection reason", vi: "Lý do từ chối" })}
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder={copy({ en: "e.g. blurry scan, wrong document, expired", vi: "VD: ảnh mờ, sai giấy tờ, đã hết hạn" })}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      disabled={verifyDoc.isPending || rejectReason.trim().length === 0}
-                      onClick={handleConfirmReject}
-                    >
-                      {verifyDoc.isPending ? copy({ en: "Rejecting...", vi: "Đang từ chối..." }) : copy({ en: "Confirm reject", vi: "Xác nhận từ chối" })}
+                  <div className="mt-1 text-xs text-slate-500">
+                    {doc ? (
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                        <span>
+                          {copy({ en: "Created", vi: "Ngày tạo" })}:{" "}
+                          <span className="font-medium text-slate-700">{doc.issueDate ?? "—"}</span>
+                        </span>
+                        <span aria-hidden="true" className="text-slate-300">·</span>
+                        <span className={expired ? "font-semibold text-rose-600" : ""}>
+                          {copy({ en: "Expires", vi: "Hết hạn" })}:{" "}
+                          <span className={expired ? "" : "font-medium text-slate-700"}>{doc.expiryDate ?? "—"}</span>
+                        </span>
+                      </span>
+                    ) : (
+                      copy({ en: "Not marked yet — tick the circle once this paper is done.", vi: "Chưa đánh dấu — tích vào ô tròn khi đã làm xong giấy tờ này." })
+                    )}
+                  </div>
+                </div>
+
+                {doc && canEditLeads && !isEditing ? (
+                  <Button variant="ghost" size="sm" onClick={() => openEditor(docType, doc)}>
+                    {copy({ en: "Edit dates", vi: "Sửa ngày" })}
+                  </Button>
+                ) : null}
+              </div>
+
+              {isEditing ? (
+                <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input
+                      label={copy({ en: "Issue date", vi: "Ngày tạo" })}
+                      type="date"
+                      value={editorIssueDate}
+                      onChange={(e) => setEditorIssueDate(e.target.value)}
+                    />
+                    <Input
+                      label={copy({ en: "Expiry date", vi: "Ngày hết hạn" })}
+                      type="date"
+                      value={editorExpiryDate}
+                      onChange={(e) => setEditorExpiryDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button size="sm" onClick={() => handleSave(docType, doc)} disabled={isSaving}>
+                      {isSaving
+                        ? copy({ en: "Saving...", vi: "Đang lưu..." })
+                        : doc
+                          ? copy({ en: "Save dates", vi: "Lưu ngày" })
+                          : copy({ en: "Mark as created", vi: "Xác nhận đã tạo" })}
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setRejectingId(null)} disabled={verifyDoc.isPending}>
+                    <Button variant="secondary" size="sm" onClick={closeEditor} disabled={isSaving}>
                       {copy({ en: "Cancel", vi: "Hủy" })}
                     </Button>
+                    {editorError ? <span className="text-sm text-red-600">{editorError}</span> : null}
                   </div>
                 </div>
               ) : null}
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
-      {actionError ? <p className="mb-4 text-sm text-red-600">{actionError}</p> : null}
-
-      {canEditLeads ? (
-        <>
-          <FieldGroup columns={4}>
-            <Select label={copy({ en: "Document type", vi: "Loại tài liệu" })} value={addDocType} onChange={(e) => setAddDocType(e.target.value)}>
-              {LEAD_DOC_TYPES.map((t) => (
-                <option key={t} value={t}>{formatDocumentType(t)}</option>
-              ))}
-            </Select>
-            <Input label={copy({ en: "Issue date", vi: "Ngày phát hành" })} type="date" value={addIssueDate} onChange={(e) => setAddIssueDate(e.target.value)} />
-            <Input label={copy({ en: "Expiry date", vi: "Ngày hết hạn" })} type="date" value={addExpiryDate} onChange={(e) => setAddExpiryDate(e.target.value)} />
-            <div className="flex flex-col justify-end gap-1">
-              <label className="text-xs font-medium text-slate-600">{copy({ en: "File", vi: "Tệp" })}</label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
-              />
-            </div>
-          </FieldGroup>
-          <div className="mt-3 flex items-center gap-3">
-            <Button onClick={handleUpload} disabled={!file || uploadDoc.isPending}>
-              {uploadDoc.isPending
-                ? copy({ en: "Uploading...", vi: "Đang tải lên..." })
-                : byType.has(addDocType)
-                  ? copy({ en: "Replace document", vi: "Thay thế giấy tờ" })
-                  : copy({ en: "Upload document", vi: "Tải lên giấy tờ" })}
-            </Button>
-            {uploadError ? <span className="text-sm text-red-600">{uploadError}</span> : null}
-          </div>
-        </>
+      {!canEditLeads ? (
+        <p className="mt-3 text-xs italic text-slate-500">
+          {copy({ en: "Read-only — requires edit_leads permission to update the checklist.", vi: "Chỉ xem — cần quyền edit_leads để cập nhật danh sách." })}
+        </p>
       ) : null}
 
       <ConfirmationDialog
-        open={Boolean(deleteTarget)}
-        title={copy({ en: "Delete document?", vi: "Xoá tài liệu?" })}
+        open={Boolean(uncheckTarget)}
+        title={copy({ en: "Unmark this document?", vi: "Bỏ đánh dấu giấy tờ này?" })}
         description={copy({
-          en: "This permanently removes the file and its record. This cannot be undone.",
-          vi: "Thao tác này sẽ xoá vĩnh viễn tệp và bản ghi. Không thể hoàn tác.",
+          en: "This removes the record and its dates from the checklist. You can mark it again later.",
+          vi: "Thao tác này xoá bản ghi và các ngày khỏi danh sách. Bạn có thể đánh dấu lại sau.",
         })}
-        details={deleteTarget ? [{ label: copy({ en: "Type", vi: "Loại" }), value: formatDocumentType(deleteTarget.docType) }] : []}
-        warning={deleteError || undefined}
-        confirmLabel={copy({ en: "Delete", vi: "Xoá" })}
+        details={uncheckTarget ? [{ label: copy({ en: "Type", vi: "Loại" }), value: formatDocumentType(uncheckTarget.docType) }] : []}
+        warning={uncheckError || undefined}
+        confirmLabel={copy({ en: "Unmark", vi: "Bỏ đánh dấu" })}
         cancelLabel={copy({ en: "Cancel", vi: "Hủy" })}
-        pendingLabel={copy({ en: "Deleting...", vi: "Đang xoá..." })}
+        pendingLabel={copy({ en: "Removing...", vi: "Đang xoá..." })}
         isPending={deleteDoc.isPending}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmUncheck}
+        onCancel={() => setUncheckTarget(null)}
       />
     </Panel>
   );
