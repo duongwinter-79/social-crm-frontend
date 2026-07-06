@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, DescriptionList, EmptyState, FieldGroup, InfoCard, Input, Panel, SectionHeader, Select } from "@social-crm/ui";
 import {
   apiClient,
+  useApplicationsQuery,
   useCancelOrderIntakePendingMutation,
   useCommitOrderIntakePendingMutation,
   useCreateOrderMutation,
@@ -14,6 +15,7 @@ import {
   useUpdateOrderMutation,
   useUploadOrderDocumentMutation,
   useVerifyOrderIntakePendingMutation,
+  type ApplicationRecord,
   type DocumentRecord,
   type Order,
   type OrderDocExtractedFields,
@@ -21,9 +23,85 @@ import {
   type OrderMutationPayload,
   type OrderRecruitmentStatus,
 } from "@social-crm/api";
+import { getLeadDisplayName } from "@/lib/lead-display";
 import { useI18n } from "@/i18n";
 import { UiText } from "@/ui-text/ui-text";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
+
+// Applications that still tie a candidate to this order — anything not already
+// closed. These are the candidates who need re-matching if the order is
+// cancelled. Mirrors the backend's isApplicationWithdrawableForRematch.
+const CLOSED_APPLICATION_STATUSES = new Set(["rejected", "withdrawn", "interview_failed"]);
+
+function OrderLinkedCandidates(props: { orderId: string; cancelling: boolean }) {
+  const { copy, formatLeadStatus, formatApplicationStatus } = useI18n();
+  const applicationsQuery = useApplicationsQuery(
+    { offset: 0, limit: 100, orderId: props.orderId },
+    { enabled: Boolean(props.orderId) },
+  );
+  const all = applicationsQuery.data?.data ?? [];
+  const inFlight = all.filter((a: ApplicationRecord) => !CLOSED_APPLICATION_STATUSES.has(a.status));
+
+  if (applicationsQuery.isLoading || inFlight.length === 0) {
+    // Nothing at stake — when cancelling with no linked candidates, reassure briefly.
+    if (props.cancelling && !applicationsQuery.isLoading) {
+      return (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          {copy({ en: "No active candidates are linked to this order — safe to cancel.", vi: "Không có ứng viên nào đang gắn với đơn hàng này — có thể hủy an toàn." })}
+        </div>
+      );
+    }
+    return null;
+  }
+
+  const cancelling = props.cancelling;
+
+  return (
+    <div className={`rounded-2xl border p-4 ${cancelling ? "border-rose-200 bg-rose-50/70" : "border-amber-200 bg-amber-50/70"}`}>
+      <div className={`text-sm font-semibold ${cancelling ? "text-rose-900" : "text-amber-900"}`}>
+        {cancelling
+          ? copy({
+              en: `Cancelling affects ${inFlight.length} matched candidate${inFlight.length === 1 ? "" : "s"}`,
+              vi: `Việc hủy ảnh hưởng ${inFlight.length} ứng viên đã ghép`,
+            })
+          : copy({
+              en: `${inFlight.length} candidate${inFlight.length === 1 ? "" : "s"} matched to this order`,
+              vi: `${inFlight.length} ứng viên đang ghép với đơn hàng này`,
+            })}
+      </div>
+      <p className={`mt-1 text-xs leading-5 ${cancelling ? "text-rose-800" : "text-amber-800"}`}>
+        {cancelling
+          ? copy({
+              en: "Cancelling the order does not move these candidates automatically. Open each one and use “Withdraw & re-consult” on the Application tab to return them to consulting for a new order — their documents are kept.",
+              vi: "Hủy đơn hàng không tự chuyển các ứng viên này. Hãy mở từng ứng viên và dùng “Rút & tư vấn lại” ở tab Ứng tuyển để đưa họ về trạng thái tư vấn cho đơn mới — giấy tờ được giữ nguyên.",
+            })
+          : copy({
+              en: "If this order is cancelled, each candidate must be re-matched individually from their Application tab.",
+              vi: "Nếu đơn hàng bị hủy, mỗi ứng viên cần được ghép lại thủ công từ tab Ứng tuyển của họ.",
+            })}
+      </p>
+
+      <ul className={`mt-3 divide-y overflow-hidden rounded-xl border bg-white/70 ${cancelling ? "border-rose-200 divide-rose-100" : "border-amber-200 divide-amber-100"}`}>
+        {inFlight.map((application: ApplicationRecord) => {
+          const name = application.lead ? getLeadDisplayName(application.lead) : application.lead_id;
+          const code = application.candidate?.code ?? application.candidate?.id ?? null;
+          return (
+            <li key={application.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
+              <Link to={`/leads/${application.lead_id}`} className="font-semibold text-indigo-700 no-underline hover:underline">
+                {name}
+              </Link>
+              {code ? <span className="text-xs text-slate-500">{code}</span> : null}
+              <span className="ml-auto flex flex-wrap items-center gap-2">
+                {application.lead?.status ? <Badge tone="neutral">{formatLeadStatus(application.lead.status)}</Badge> : null}
+                <Badge tone={cancelling ? "danger" : "warning"}>{formatApplicationStatus(application.status)}</Badge>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 type OrderFormState = {
   name: string;
@@ -215,6 +293,10 @@ export function OrderDetailPage() {
           </div>
         }
       />
+
+      {!isNew && orderId ? (
+        <OrderLinkedCandidates orderId={orderId} cancelling={form.recruitmentStatus === "cancelled"} />
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Panel

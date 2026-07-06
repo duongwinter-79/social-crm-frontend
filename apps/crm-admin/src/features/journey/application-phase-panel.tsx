@@ -6,6 +6,7 @@ import {
   useOrdersQuery,
   usePermissions,
   useUpdateApplicationMutation,
+  useWithdrawApplicationForRematchMutation,
 } from "@social-crm/api";
 import type { ApplicationRecord, CandidateRef, FormStandardRegisterRow } from "@social-crm/api";
 import { useI18n } from "@/i18n";
@@ -133,8 +134,18 @@ function EditApplication(props: { application: ApplicationRecord }) {
   const { canManageRecruitment, isAdmin } = usePermissions();
   const updateApplication = useUpdateApplicationMutation();
   const deleteApplication = useDeleteApplicationMutation();
+  const withdrawForRematch = useWithdrawApplicationForRematchMutation();
   const [draft, setDraft] = useState<ApplicationDraft>(() => applicationToDraft(application));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [rematchOpen, setRematchOpen] = useState(false);
+  const [rematchReason, setRematchReason] = useState("");
+  const rematchReasonIme = useImeSafeInput(rematchReason, (e) => setRematchReason(e.target.value));
+
+  // An application can be withdrawn for re-match (order cancelled) from any
+  // in-flight stage, including the otherwise-terminal ready_to_depart — mirrors
+  // the backend's isApplicationWithdrawableForRematch. Already-closed outcomes
+  // have nothing left to withdraw.
+  const canWithdrawForRematch = !["interview_failed", "rejected", "withdrawn"].includes(application.status);
 
   const statusOptions = applicationStatusOptions(application.status);
   const safeStatus = statusOptions.includes(draft.status) ? draft.status : application.status;
@@ -233,6 +244,67 @@ function EditApplication(props: { application: ApplicationRecord }) {
           <span className="text-xs text-slate-500">{copy({ en: "Recruitment role required to change status.", vi: "Cần quyền tuyển dụng để đổi trạng thái." })}</span>
         ) : null}
       </div>
+
+      {canManageRecruitment && canWithdrawForRematch ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-xl">
+              <div className="text-sm font-semibold text-amber-900">
+                {copy({ en: "Order cancelled — re-match candidate", vi: "Đơn hàng bị hủy — ghép đơn khác" })}
+              </div>
+              <p className="mt-1 text-xs leading-5 text-amber-800">
+                {copy({
+                  en: "Use this when the order was cancelled but the candidate is still good — at any stage, from a fresh match up through a visa already issued. It withdraws this application and returns the lead to consulting so you can qualify and match a new order. Documents are kept.",
+                  vi: "Dùng khi đơn hàng bị hủy nhưng ứng viên vẫn đạt — ở bất kỳ giai đoạn nào, từ mới ghép đơn cho đến khi đã có visa. Thao tác này rút hồ sơ ứng tuyển và đưa ứng viên về trạng thái tư vấn để ghép đơn hàng mới. Giấy tờ được giữ nguyên.",
+                })}
+              </p>
+            </div>
+            {!rematchOpen ? (
+              <Button variant="secondary" onClick={() => { setRematchOpen(true); setRematchReason(""); }}>
+                {copy({ en: "Withdraw & re-consult", vi: "Rút & tư vấn lại" })}
+              </Button>
+            ) : null}
+          </div>
+
+          {rematchOpen ? (
+            <div className="mt-3 space-y-3 border-t border-amber-200 pt-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-amber-900">
+                  {copy({ en: "Cancellation reason", vi: "Lý do hủy" })}
+                </label>
+                <input
+                  type="text"
+                  value={rematchReasonIme.value}
+                  onChange={rematchReasonIme.onChange}
+                  onCompositionStart={rematchReasonIme.onCompositionStart}
+                  onCompositionEnd={rematchReasonIme.onCompositionEnd}
+                  placeholder={copy({ en: "e.g. employer cancelled the order", vi: "VD: nhà tuyển dụng hủy đơn hàng" })}
+                  className="w-full rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-amber-400 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="danger"
+                  disabled={withdrawForRematch.isPending || rematchReason.trim().length === 0}
+                  onClick={() =>
+                    withdrawForRematch.mutate(
+                      { id: application.id, reason: rematchReason.trim(), leadId: application.lead_id },
+                      { onSuccess: () => { setRematchOpen(false); setRematchReason(""); } },
+                    )
+                  }
+                >
+                  {withdrawForRematch.isPending
+                    ? copy({ en: "Withdrawing...", vi: "Đang rút..." })
+                    : copy({ en: "Confirm withdraw & re-consult", vi: "Xác nhận rút & tư vấn lại" })}
+                </Button>
+                <Button variant="secondary" onClick={() => setRematchOpen(false)} disabled={withdrawForRematch.isPending}>
+                  {copy({ en: "Cancel", vi: "Hủy" })}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <ConfirmationDialog
         open={confirmDelete}

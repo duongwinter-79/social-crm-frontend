@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Badge,
@@ -169,6 +169,36 @@ function findApplication(applications: ApplicationRecord[], applicationId?: stri
   return applications.find((application) => application.id === applicationId) ?? (fallback?.id === applicationId ? fallback : null);
 }
 
+// Closed applications no longer tie the candidate to an order — a
+// training-finance record should link the current, in-flight one. Applications
+// come back ordered createdAt DESC, so the first active match is the latest.
+const CLOSED_APPLICATION_STATUSES = new Set(["rejected", "withdrawn", "interview_failed"]);
+
+function pickActiveApplication(applications: ApplicationRecord[]): ApplicationRecord | null {
+  return applications.find((application) => !CLOSED_APPLICATION_STATUSES.has(application.status)) ?? null;
+}
+
+function MilestoneRow(props: { done: boolean; label: string; detail: string }) {
+  return (
+    <div className="flex items-center gap-2.5 text-sm">
+      <span
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-white ${
+          props.done ? "border-emerald-500 bg-emerald-500" : "border-slate-300 bg-white"
+        }`}
+        aria-hidden="true"
+      >
+        {props.done ? (
+          <svg viewBox="0 0 24 24" className="h-3 w-3">
+            <path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.4" />
+          </svg>
+        ) : null}
+      </span>
+      <span className={`font-medium ${props.done ? "text-slate-800" : "text-slate-500"}`}>{props.label}</span>
+      <span className="ml-auto text-xs tabular-nums text-slate-500">{props.detail}</span>
+    </div>
+  );
+}
+
 function departureGate(departureDate: string, application?: ApplicationRecord | null) {
   if (!departureDate) return true;
   return Boolean(application && application.status === "ready_to_depart");
@@ -216,7 +246,7 @@ function sameForm(a: MilestoneForm, b: MilestoneForm) {
 export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; embeddedLeadId?: string } = {}) {
   const params = useParams();
   const navigate = useNavigate();
-  const { copy, formatApplicationStatus } = useI18n();
+  const { copy, formatApplicationStatus, formatLeadStatus } = useI18n();
   const { canManageFinance, isAdmin } = usePermissions();
 
   // Embedded mode: the Journey workbench controls which record (or "new") is
@@ -248,6 +278,25 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
   );
   const applications = applicationsQuery.data?.data ?? [];
   const selectedApplication = findApplication(applications, form.applicationId, detailQuery.data?.application ?? null);
+
+  // New record: auto-link the lead's current active application so the linked
+  // application, order and workflow panel populate immediately (the record
+  // presupposes a matched candidate — the operator shouldn't have to re-pick it
+  // by hand). Tracks the lead we last auto-linked for so a manual clear sticks.
+  const autoLinkedLeadRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isNew || !form.leadId || applicationsQuery.isLoading) return;
+    if (autoLinkedLeadRef.current === form.leadId) return;
+    if (form.applicationId) {
+      autoLinkedLeadRef.current = form.leadId;
+      return;
+    }
+    const active = pickActiveApplication(applications);
+    if (!active) return;
+    autoLinkedLeadRef.current = form.leadId;
+    setForm((state) => ({ ...state, applicationId: active.id, orderId: active.order_id ?? state.orderId }));
+  }, [isNew, form.leadId, form.applicationId, applicationsQuery.data, applicationsQuery.isLoading]);
+
   const savedForm = useMemo(() => (detailQuery.data ? recordToForm(detailQuery.data) : emptyForm), [detailQuery.data]);
   const dirty = isNew || !sameForm(form, savedForm);
   const gateOk = departureGate(form.departureDate, selectedApplication);
@@ -263,6 +312,11 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
   const noApplicationsForLead = isNew && Boolean(form.leadId) && !applicationsQuery.isLoading && applications.length === 0;
   const canSave = canManageFinance && Boolean(form.leadId) && gateOk && dirty && !pending && !amountInvalid && !needsApplication;
   const selectedLeadName = detailQuery.data?.lead ? getLeadDisplayName(detailQuery.data.lead) : form.leadId;
+  // Lead pipeline status for the workflow panel — available for saved records
+  // and, via the linked application's lead relation, for new embedded records.
+  const leadStatus = detailQuery.data?.lead?.status ?? selectedApplication?.lead?.status ?? null;
+  const visaReached = Boolean(form.visaDate) || leadStatus === "visa_processing" || leadStatus === "departed";
+  const departedReached = Boolean(form.departureDate) || leadStatus === "departed";
 
   // Live preview of what the server will store + the outstanding balance.
   const derivedStatus =
@@ -522,9 +576,23 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
           {!gateOk ? (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
               {copy({
-                en: "Departure date requires a linked application marked Ready to depart.",
-                vi: "Ngày xuất cảnh cần ứng tuyển liên kết ở trạng thái Sẵn sàng xuất cảnh.",
+                en: "Departure date requires a linked application marked Ready to depart, and all required documents verified.",
+                vi: "Ngày xuất cảnh cần ứng tuyển liên kết ở trạng thái Sẵn sàng xuất cảnh và đã xác minh đủ giấy tờ bắt buộc.",
               })}
+            </div>
+          ) : null}
+
+          {form.visaDate || form.departureDate ? (
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-sm text-indigo-900">
+              {form.departureDate
+                ? copy({
+                    en: "Saving a departure date marks the candidate Departed and advances the lead to Departed.",
+                    vi: "Lưu ngày xuất cảnh sẽ đánh dấu ứng viên Đã xuất cảnh và chuyển lead sang Đã xuất cảnh.",
+                  })
+                : copy({
+                    en: "Saving a visa date advances the lead to Visa processing.",
+                    vi: "Lưu ngày visa sẽ chuyển lead sang Đang xử lý visa.",
+                  })}
             </div>
           ) : null}
 
@@ -551,14 +619,50 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
             subtitle={<UiText id="tf.linked.subtitle" />}
           >
             <div className="space-y-3">
-              <InfoCard label={copy({ en: "Lead", vi: "Lead" })} value={selectedLeadName || copy({ en: "Not selected", vi: "Chưa chọn" })} className="bg-slate-50" />
+              <InfoCard
+                label={copy({ en: "Lead", vi: "Lead" })}
+                value={selectedLeadName || copy({ en: "Not selected", vi: "Chưa chọn" })}
+                hint={leadStatus ? formatLeadStatus(leadStatus) : undefined}
+                className="bg-slate-50"
+              />
               <InfoCard
                 label={copy({ en: "Application", vi: "Ứng tuyển" })}
                 value={selectedApplication ? applicationLabel(selectedApplication, formatApplicationStatus) : copy({ en: "Not linked", vi: "Chưa liên kết" })}
                 className="bg-slate-50"
               />
               <InfoCard label={copy({ en: "Order", vi: "Đơn hàng" })} value={form.orderId || copy({ en: "Not set", vi: "Chưa đặt" })} className="bg-slate-50" />
-              <InfoCard label={copy({ en: "Departure gate", vi: "Điều kiện xuất cảnh" })} value={gateOk ? "OK" : copy({ en: "Blocked", vi: "Đang chặn" })} className="bg-slate-50" />
+
+              {/* Visa → departure milestones, mirroring the backend cascade:
+                  a saved visa date advances the lead to Visa processing, and a
+                  departure date to Departed. */}
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                  {copy({ en: "Exit milestones", vi: "Mốc xuất cảnh" })}
+                </div>
+                <div className="mt-2 space-y-2">
+                  <MilestoneRow
+                    done={visaReached}
+                    label={copy({ en: "Visa issued", vi: "Đã có visa" })}
+                    detail={form.visaDate || (visaReached ? copy({ en: "Recorded", vi: "Đã ghi nhận" }) : copy({ en: "Not yet", vi: "Chưa có" }))}
+                  />
+                  <MilestoneRow
+                    done={departedReached}
+                    label={copy({ en: "Departed", vi: "Đã xuất cảnh" })}
+                    detail={form.departureDate || (departedReached ? copy({ en: "Recorded", vi: "Đã ghi nhận" }) : copy({ en: "Not yet", vi: "Chưa có" }))}
+                  />
+                </div>
+              </div>
+
+              <InfoCard
+                label={copy({ en: "Departure gate", vi: "Điều kiện xuất cảnh" })}
+                value={gateOk ? copy({ en: "Clear", vi: "Đủ điều kiện" }) : copy({ en: "Blocked", vi: "Đang chặn" })}
+                hint={
+                  gateOk
+                    ? copy({ en: "Ready-to-depart application + verified documents.", vi: "Ứng tuyển sẵn sàng xuất cảnh + đủ giấy tờ." })
+                    : copy({ en: "Needs a ready-to-depart application and verified documents.", vi: "Cần ứng tuyển sẵn sàng xuất cảnh và đủ giấy tờ." })
+                }
+                className={gateOk ? "bg-emerald-50" : "bg-amber-50"}
+              />
             </div>
           </Panel>
 

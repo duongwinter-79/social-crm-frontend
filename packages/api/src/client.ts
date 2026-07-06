@@ -634,6 +634,11 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async withdrawApplicationForRematch(id: string, reason: string) {
+    const response = await this.http.post<ApiEnvelope<ApplicationRecord> | ApplicationRecord>(`/applications/${id}/withdraw-for-rematch`, { reason });
+    return unwrapEnvelope(response.data);
+  }
+
   async queryThread(threadId: string, prompt: string) {
     const response = await this.http.post<ApiEnvelope<AiQueryResult> | AiQueryResult>("/ai-extraction/query", {
       threadId,
