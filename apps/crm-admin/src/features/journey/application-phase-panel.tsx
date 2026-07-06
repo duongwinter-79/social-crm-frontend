@@ -254,8 +254,8 @@ function EditApplication(props: { application: ApplicationRecord }) {
               </div>
               <p className="mt-1 text-xs leading-5 text-amber-800">
                 {copy({
-                  en: "Use this when the order was cancelled but the candidate is still good — even after the visa was issued. It withdraws this application and returns the lead to consulting so you can qualify and match a new order. Documents are kept.",
-                  vi: "Dùng khi đơn hàng bị hủy nhưng ứng viên vẫn đạt — kể cả khi đã có visa. Thao tác này rút hồ sơ ứng tuyển và đưa ứng viên về trạng thái tư vấn để ghép đơn hàng mới. Giấy tờ được giữ nguyên.",
+                  en: "Use this when the order was cancelled but the candidate is still good — at any stage, from a fresh match up through a visa already issued. It withdraws this application and returns the lead to consulting so you can qualify and match a new order. Documents are kept.",
+                  vi: "Dùng khi đơn hàng bị hủy nhưng ứng viên vẫn đạt — ở bất kỳ giai đoạn nào, từ mới ghép đơn cho đến khi đã có visa. Thao tác này rút hồ sơ ứng tuyển và đưa ứng viên về trạng thái tư vấn để ghép đơn hàng mới. Giấy tờ được giữ nguyên.",
                 })}
               </p>
             </div>
