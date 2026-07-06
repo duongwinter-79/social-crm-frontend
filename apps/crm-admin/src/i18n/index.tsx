@@ -130,6 +130,7 @@ const enumLabels: Record<string, Copy> = {
   low: { en: "Low", vi: "Thấp" },
   // AI extraction source kinds
   deterministic: { en: "Template", vi: "Trích xuất quy tắc" },
+  import: { en: "Import", vi: "Nhập liệu" },
   // Apply-skip reason codes surfaced by /extract page after apply-suggestions
   low_confidence: { en: "Low confidence", vi: "Độ tin cậy thấp" },
   name_already_set: { en: "Name already set", vi: "Đã có tên" },

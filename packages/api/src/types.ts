@@ -459,7 +459,7 @@ export interface AiSuggestion {
   fieldName: string;
   value: unknown;
   confidence: "high" | "medium" | "low";
-  source: "ai_llm" | "deterministic" | "webhook";
+  source: "ai_llm" | "deterministic" | "webhook" | "import";
   sourceMessageIds: string[] | null;
   reason: string | null;
   extractedAt: string;
