@@ -17,6 +17,7 @@ export type Role =
 
 export type Permission =
   | "view_leads"
+  | "view_lead_pii"
   | "edit_leads"
   | "verify_documents"
   | "manage_finance"
@@ -26,9 +27,11 @@ export type Permission =
 
 const ROLE_PERMISSIONS: Record<Role, ReadonlyArray<Permission>> = {
   admin: ["admin_all"],
-  recruiter: ["view_leads", "edit_leads", "manage_recruitment", "transition_lead_status"],
+  // Recruiters call/qualify candidates, so they hold view_lead_pii (raw phone).
+  recruiter: ["view_leads", "view_lead_pii", "edit_leads", "manage_recruitment", "transition_lead_status"],
   // Document/finance staff verify docs / manage money — pipeline-stage moves
-  // are withheld from them (mirrors backend ROLE_PERMISSIONS).
+  // and raw candidate contact details are withheld (they see phone masked).
+  // Mirrors backend ROLE_PERMISSIONS.
   document_staff: ["view_leads", "edit_leads", "verify_documents"],
   finance_staff: ["view_leads", "edit_leads", "manage_finance"],
   user: ["view_leads"],
@@ -77,6 +80,7 @@ export function usePermissions() {
     user,
     isAdmin: hasRole(user, "admin"),
     canViewLeads: hasPermission(user, "view_leads"),
+    canViewLeadPii: hasPermission(user, "view_lead_pii"),
     canEditLeads: hasPermission(user, "edit_leads"),
     canVerifyDocuments: hasPermission(user, "verify_documents"),
     canManageFinance: hasPermission(user, "manage_finance"),

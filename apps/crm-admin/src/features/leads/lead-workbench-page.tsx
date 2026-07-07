@@ -133,7 +133,7 @@ export function LeadWorkbenchPage() {
   const dismissSuggestion = useDismissLeadAiSuggestionMutation(leadId);
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
-  const { canEditLeads, canTransitionLeadStatus, isAdmin } = usePermissions();
+  const { canEditLeads, canTransitionLeadStatus, canViewLeadPii, isAdmin } = usePermissions();
   // Page-level, not tab-scoped — see useFormExtractionWatcher for why the
   // poll/toast/refresh must survive the operator switching away from the
   // "extraction" tab.
@@ -629,7 +629,13 @@ export function LeadWorkbenchPage() {
             <FieldGroup columns={2}>
               <Input label={copy({ en: "Full name", vi: "Họ và tên" })} value={identityForm.fullName} onChange={(e) => setIdentityForm((s) => ({ ...s, fullName: e.target.value }))} />
               <Input label={copy({ en: "Display name (channel)", vi: "Tên hiển thị (kênh)" })} value={identityForm.displayName} onChange={(e) => setIdentityForm((s) => ({ ...s, displayName: e.target.value }))} />
-              <Input label={copy({ en: "Phone", vi: "Số điện thoại" })} value={identityForm.phone} onChange={(e) => setIdentityForm((s) => ({ ...s, phone: e.target.value }))} />
+              <Input
+                label={copy({ en: "Phone", vi: "Số điện thoại" })}
+                value={identityForm.phone}
+                onChange={(e) => setIdentityForm((s) => ({ ...s, phone: e.target.value }))}
+                disabled={!canViewLeadPii}
+                hint={!canViewLeadPii ? copy({ en: "Masked — requires PII access to view or edit", vi: "Đã ẩn — cần quyền xem dữ liệu cá nhân để xem/sửa" }) : undefined}
+              />
               <Input label={copy({ en: "Region", vi: "Khu vực" })} value={identityForm.region} onChange={(e) => setIdentityForm((s) => ({ ...s, region: e.target.value }))} />
             </FieldGroup>
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -643,7 +649,10 @@ export function LeadWorkbenchPage() {
                   onClick={() => updateLead.mutate({ id: leadId, patch: {
                     fullName: identityForm.fullName.trim() || null,
                     displayName: identityForm.displayName.trim() || null,
-                    phone: identityForm.phone.trim() || null,
+                    // Only send phone when the operator can actually see it — a
+                    // masked value must never be written back over the real one.
+                    // The backend also strips phone from non-PII callers' patches.
+                    ...(canViewLeadPii ? { phone: identityForm.phone.trim() || null } : {}),
                     region: identityForm.region.trim() || null,
                   } })}
                   disabled={updateLead.isPending}
