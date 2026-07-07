@@ -61,9 +61,11 @@ export function OrdersPage() {
         description={<UiText id="orders.catalog.desc" />}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
-              {isExporting ? copy({ en: "Exporting...", vi: "Đang xuất..." }) : copy({ en: "Export CSV", vi: "Xuất CSV" })}
-            </Button>
+            {isAdmin ? (
+              <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
+                {isExporting ? copy({ en: "Exporting...", vi: "Đang xuất..." }) : copy({ en: "Export CSV", vi: "Xuất CSV" })}
+              </Button>
+            ) : null}
             {isAdmin ? (
               <Link
                 to="/orders/new"
