@@ -133,7 +133,7 @@ export function LeadWorkbenchPage() {
   const dismissSuggestion = useDismissLeadAiSuggestionMutation(leadId);
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
-  const { canEditLeads, canTransitionLeadStatus, canViewLeadPii, isAdmin } = usePermissions();
+  const { canEditLeads, canManageDocuments, canTransitionLeadStatus, canViewLeadPii, isAdmin } = usePermissions();
   // Page-level, not tab-scoped — see useFormExtractionWatcher for why the
   // poll/toast/refresh must survive the operator switching away from the
   // "extraction" tab.
@@ -881,7 +881,7 @@ export function LeadWorkbenchPage() {
                   ) : null}
 
                   <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-                    {canEditLeads ? (
+                    {canManageDocuments ? (
                       <Button onClick={() => setFormModalOpen(true)}>
                         {form?.hasFile
                           ? <UiText id="journey.workbench.form.manage" />

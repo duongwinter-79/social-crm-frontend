@@ -108,7 +108,7 @@ export function LeadsPage() {
   // Create-from-form: the Journey "new" mode now lives here as a modal.
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const navigate = useNavigate();
-  const { canEditLeads, isAdmin } = usePermissions();
+  const { canManageDocuments, isAdmin } = usePermissions();
   const deferredSearch = useDeferredValue(search);
   const leadReturnState = createReturnState(location, copy({ en: "Leads", vi: "Danh sách ứng viên" }));
 
@@ -249,7 +249,7 @@ export function LeadsPage() {
               ))}
             </Select>
             <ToolbarActions className="justify-start xl:justify-end">
-              {canEditLeads ? (
+              {canManageDocuments ? (
                 <Button onClick={() => setCreateFormOpen(true)}>
                   {copy({ en: "Create from form", vi: "Tạo từ form" })}
                 </Button>

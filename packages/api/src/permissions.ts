@@ -19,6 +19,7 @@ export type Permission =
   | "view_leads"
   | "view_lead_pii"
   | "edit_leads"
+  | "manage_documents"
   | "verify_documents"
   | "manage_finance"
   | "manage_recruitment"
@@ -27,13 +28,13 @@ export type Permission =
 
 const ROLE_PERMISSIONS: Record<Role, ReadonlyArray<Permission>> = {
   admin: ["admin_all"],
-  // Recruiters call/qualify candidates, so they hold view_lead_pii (raw phone).
-  recruiter: ["view_leads", "view_lead_pii", "edit_leads", "manage_recruitment", "transition_lead_status"],
-  // Document/finance staff verify docs / manage money — pipeline-stage moves
-  // and raw candidate contact details are withheld (they see phone masked).
-  // Mirrors backend ROLE_PERMISSIONS.
-  document_staff: ["view_leads", "edit_leads", "verify_documents"],
-  finance_staff: ["view_leads", "edit_leads", "manage_finance"],
+  // Recruiters call/qualify candidates (view_lead_pii), edit lead fields, and
+  // run the document intake (manage_documents). Mirrors backend ROLE_PERMISSIONS.
+  recruiter: ["view_leads", "view_lead_pii", "edit_leads", "manage_documents", "manage_recruitment", "transition_lead_status"],
+  // Document staff own the paperwork workflow (manage_documents + verify_documents)
+  // but no longer hold edit_leads. Finance staff own money records only.
+  document_staff: ["view_leads", "manage_documents", "verify_documents"],
+  finance_staff: ["view_leads", "manage_finance"],
   user: ["view_leads"],
 };
 
@@ -82,6 +83,7 @@ export function usePermissions() {
     canViewLeads: hasPermission(user, "view_leads"),
     canViewLeadPii: hasPermission(user, "view_lead_pii"),
     canEditLeads: hasPermission(user, "edit_leads"),
+    canManageDocuments: hasPermission(user, "manage_documents"),
     canVerifyDocuments: hasPermission(user, "verify_documents"),
     canManageFinance: hasPermission(user, "manage_finance"),
     canManageRecruitment: hasPermission(user, "manage_recruitment"),

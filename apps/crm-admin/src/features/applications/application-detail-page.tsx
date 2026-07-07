@@ -288,7 +288,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   const [newLeadPhone, setNewLeadPhone] = useState(restoredSession?.newLeadPhone ?? "");
   const [newLeadAcquisitionSource, setNewLeadAcquisitionSource] = useState<LeadAcquisitionSource>(restoredSession?.newLeadAcquisitionSource ?? "zalo");
 
-  const { canEditLeads } = usePermissions();
+  const { canManageDocuments } = usePermissions();
 
   // Mutations / queries
   const unlinkFormStandard = useUnlinkFormStandardMutation();
@@ -408,7 +408,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleUnlink() {
-    if (!selectedLeadId || !canEditLeads) return;
+    if (!selectedLeadId || !canManageDocuments) return;
     setFileActionError("");
     unlinkFormStandard.mutate(selectedLeadId, {
       onSuccess: () => {
@@ -458,7 +458,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleStageUpload() {
-    if (!uploadFile || !canEditLeads) return;
+    if (!uploadFile || !canManageDocuments) return;
     setStageError("");
     setUploadProgress(0);
     stageMutation.mutate(
@@ -552,7 +552,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleVerify() {
-    if (!pending || !canEditLeads) return;
+    if (!pending || !canManageDocuments) return;
     setStageError("");
     verifyMutation.mutate(
       { pendingId: pending.pendingId, leadId: selectedLeadId || undefined },
@@ -588,7 +588,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleConfirmWithExistingLead(leadId: string) {
-    if (!pending || !verifyResult || !canEditLeads) return;
+    if (!pending || !verifyResult || !canManageDocuments) return;
     setStageError("");
     const dossierFields = buildDossierFields(verifyResult, choices, overrides);
     commitMutation.mutate(
@@ -612,7 +612,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   }
 
   function handleConfirmCreateNew() {
-    if (!pending || !verifyResult || !canEditLeads) return;
+    if (!pending || !verifyResult || !canManageDocuments) return;
     if (!newLeadFullName.trim() && !newLeadDisplayName.trim() && !newLeadPhone.trim()) {
       setStageError(copy({
         en: "Enter at least a name, display name, or phone before creating a lead.",

@@ -40,7 +40,7 @@ function CheckIcon() {
  */
 export function LeadDocumentsPanel(props: { leadId: string }) {
   const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
-  const { canEditLeads } = usePermissions();
+  const { canManageDocuments } = usePermissions();
   const docsQuery = useDocumentsQuery({ leadId: props.leadId, offset: 0, limit: 50 });
   const createDoc = useCreateDocumentMutation();
   const updateDoc = useUpdateDocumentMutation();
@@ -81,7 +81,7 @@ export function LeadDocumentsPanel(props: { leadId: string }) {
   }
 
   function handleSave(docType: string, doc: DocumentRecord | undefined) {
-    if (!canEditLeads) return;
+    if (!canManageDocuments) return;
     setEditorError("");
     const onError = (err: unknown) => {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -162,7 +162,7 @@ export function LeadDocumentsPanel(props: { leadId: string }) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!canEditLeads) return;
+                    if (!canManageDocuments) return;
                     if (doc) {
                       setUncheckError("");
                       setUncheckTarget(doc);
@@ -170,7 +170,7 @@ export function LeadDocumentsPanel(props: { leadId: string }) {
                       openEditor(docType);
                     }
                   }}
-                  disabled={!canEditLeads || deleteDoc.isPending}
+                  disabled={!canManageDocuments || deleteDoc.isPending}
                   aria-label={
                     done
                       ? copy({ en: `Unmark ${formatDocumentType(docType)}`, vi: `Bỏ đánh dấu ${formatDocumentType(docType)}` })
@@ -215,7 +215,7 @@ export function LeadDocumentsPanel(props: { leadId: string }) {
                   </div>
                 </div>
 
-                {doc && canEditLeads && !isEditing ? (
+                {doc && canManageDocuments && !isEditing ? (
                   <Button variant="ghost" size="sm" onClick={() => openEditor(docType, doc)}>
                     {copy({ en: "Edit dates", vi: "Sửa ngày" })}
                   </Button>
@@ -258,7 +258,7 @@ export function LeadDocumentsPanel(props: { leadId: string }) {
         })}
       </ul>
 
-      {!canEditLeads ? (
+      {!canManageDocuments ? (
         <p className="mt-3 text-xs italic text-slate-500">
           {copy({ en: "Read-only — requires edit_leads permission to update the checklist.", vi: "Chỉ xem — cần quyền edit_leads để cập nhật danh sách." })}
         </p>
