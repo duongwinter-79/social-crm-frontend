@@ -456,10 +456,10 @@ export const uiTextRegistry = [
     screen: "extract",
     slot: "subtitle",
     defaultText: {
-      en: "Run AI on the notes columns of a completed import batch. Suggestions are recorded as a preview — no field is written to the database until you tick it and click Apply selected.",
-      vi: "Chạy AI trên các cột ghi chú của một đợt nhập đã hoàn tất. Gợi ý được lưu để xem trước, chưa có trường nào ghi vào cơ sở dữ liệu cho đến khi bạn chọn và nhấn Áp dụng đã chọn."
+      en: "AI now scans the notes columns automatically once a batch finishes importing. Use this page to review suggestions, or re-run a batch manually (e.g. to retry after an AI provider failure). Suggestions are recorded as a preview — no field is written to the database until you tick it and click Apply selected.",
+      vi: "AI hiện tự động quét các cột ghi chú ngay khi một đợt nhập hoàn tất. Dùng trang này để xem gợi ý, hoặc chạy lại thủ công cho một đợt (ví dụ khi AI gặp lỗi cần thử lại). Gợi ý được lưu để xem trước, chưa có trường nào ghi vào cơ sở dữ liệu cho đến khi bạn chọn và nhấn Áp dụng đã chọn."
     },
-    maxLength: 300,
+    maxLength: 400,
     description: "Extract page description."
   },
   {

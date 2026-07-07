@@ -167,7 +167,7 @@ export function ExtractPage() {
           >
             {triggerExtract.isPending
               ? copy({ en: "Starting…", vi: "Đang bắt đầu…" })
-              : copy({ en: "Run extraction", vi: "Chạy trích xuất" })}
+              : copy({ en: "Re-run extraction", vi: "Chạy lại trích xuất" })}
           </Button>
         </div>
         {activeBatch ? (
