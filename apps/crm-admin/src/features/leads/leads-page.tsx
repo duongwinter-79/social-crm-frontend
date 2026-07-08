@@ -108,7 +108,7 @@ export function LeadsPage() {
   // Create-from-form: the Journey "new" mode now lives here as a modal.
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const navigate = useNavigate();
-  const { canManageDocuments, isAdmin } = usePermissions();
+  const { canManageDocuments, canExportData } = usePermissions();
   const deferredSearch = useDeferredValue(search);
   const leadReturnState = createReturnState(location, copy({ en: "Leads", vi: "Danh sách ứng viên" }));
 
@@ -254,7 +254,7 @@ export function LeadsPage() {
                   {copy({ en: "Create from form", vi: "Tạo từ form" })}
                 </Button>
               ) : null}
-              {isAdmin ? (
+              {canExportData ? (
                 <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
                   {isExporting
                     ? copy({ en: "Exporting...", vi: "Đang xuất..." })

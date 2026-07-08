@@ -7,7 +7,7 @@ import {
   useLeadsQuery,
   useOrderSuggestedCandidatesQuery,
   useOrdersQuery,
-  useSessionStore,
+  usePermissions,
   type Order,
   type OrderSuggestedCandidate,
 } from "@social-crm/api";
@@ -21,13 +21,12 @@ type LinkTarget = { leadId: string; orderId: string };
 
 export function OrdersPage() {
   const { copy, lang } = useI18n();
-  const user = useSessionStore((state) => state.user);
+  const { canExportData, canManageOrders } = usePermissions();
   const ordersQuery = useOrdersQuery();
   const leadsQuery = useLeadsQuery({ offset: 0, limit: 50 });
   const [page, setPage] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [linkTarget, setLinkTarget] = useState<LinkTarget | null>(null);
-  const isAdmin = user?.roles?.includes("admin") ?? false;
 
   const orders = ordersQuery.data ?? [];
   const visibleOrders = orders.slice(page * ORDER_PAGE_SIZE, (page + 1) * ORDER_PAGE_SIZE);
@@ -61,12 +60,12 @@ export function OrdersPage() {
         description={<UiText id="orders.catalog.desc" />}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            {isAdmin ? (
+            {canExportData ? (
               <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
                 {isExporting ? copy({ en: "Exporting...", vi: "Đang xuất..." }) : copy({ en: "Export CSV", vi: "Xuất CSV" })}
               </Button>
             ) : null}
-            {isAdmin ? (
+            {canManageOrders ? (
               <Link
                 to="/orders/new"
                 className="inline-flex items-center justify-center rounded-xl border border-indigo-600 bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white no-underline shadow-[0_10px_24px_rgba(79,70,229,0.22)] transition-colors hover:border-indigo-500 hover:bg-indigo-500"
@@ -74,7 +73,7 @@ export function OrdersPage() {
                 {copy({ en: "New order", vi: "Tạo đơn" })}
               </Link>
             ) : (
-              <Badge tone="neutral">{copy({ en: "Order edits are admin-only", vi: "Chỉ admin được sửa đơn" })}</Badge>
+              <Badge tone="neutral">{copy({ en: "Order edits need manage_orders", vi: "Sửa đơn cần quyền quản lý đơn hàng" })}</Badge>
             )}
           </div>
         }
@@ -123,7 +122,7 @@ export function OrdersPage() {
                   key={order.id}
                   order={order}
                   copy={copy}
-                  canEdit={isAdmin}
+                  canEdit={canManageOrders}
                   onOpenLink={(leadId, orderId) => setLinkTarget({ leadId, orderId })}
                 />
               ))}

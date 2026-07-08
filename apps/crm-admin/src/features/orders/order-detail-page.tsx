@@ -173,12 +173,12 @@ export function OrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { copy, formatDocumentType, formatDocumentStatus } = useI18n();
-  const { isAdmin } = usePermissions();
+  const { canManageOrders } = usePermissions();
   const isNew = orderId === "new";
 
   useEffect(() => {
-    if (isNew && !isAdmin) navigate("/orders", { replace: true });
-  }, [isNew, isAdmin, navigate]);
+    if (isNew && !canManageOrders) navigate("/orders", { replace: true });
+  }, [isNew, canManageOrders, navigate]);
   const orderQuery = useOrderDetailQuery(isNew ? undefined : orderId);
   const createOrder = useCreateOrderMutation();
   const updateOrder = useUpdateOrderMutation();
@@ -237,7 +237,7 @@ export function OrderDetailPage() {
 
   const savedForm = useMemo(() => (orderQuery.data ? orderToForm(orderQuery.data) : emptyOrderForm), [orderQuery.data]);
   const dirty = isNew || JSON.stringify(form) !== JSON.stringify(savedForm);
-  const canSubmit = isAdmin && form.name.trim().length > 0 && dirty;
+  const canSubmit = canManageOrders && form.name.trim().length > 0 && dirty;
   const pending = createOrder.isPending || updateOrder.isPending || commitIntake.isPending;
   const orderPayload = buildOrderPayload(form);
 
@@ -289,7 +289,7 @@ export function OrderDetailPage() {
             <Link to="/orders" className="inline-flex rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 no-underline hover:bg-slate-50">
               <UiText id="orders.detail.back" />
             </Link>
-            {!isAdmin ? <Badge tone="neutral">{copy({ en: "Read only", vi: "Chỉ xem" })}</Badge> : null}
+            {!canManageOrders ? <Badge tone="neutral">{copy({ en: "Read only", vi: "Chỉ xem" })}</Badge> : null}
           </div>
         }
       />
@@ -354,29 +354,29 @@ export function OrderDetailPage() {
           ) : null}
 
           <FieldGroup columns={3}>
-            <Input label={copy({ en: "Order name", vi: "Tên đơn" })} value={form.name} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} />
-            <Input label={copy({ en: "Region", vi: "Khu vực" })} value={form.region} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))} />
-            <Input label={copy({ en: "Industry", vi: "Ngành" })} value={form.industry} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, industry: e.target.value }))} />
-            <Select label={copy({ en: "Gender requirement", vi: "Yêu cầu giới tính" })} value={form.genderRequired} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, genderRequired: e.target.value as OrderFormState["genderRequired"] }))}>
+            <Input label={copy({ en: "Order name", vi: "Tên đơn" })} value={form.name} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} />
+            <Input label={copy({ en: "Region", vi: "Khu vực" })} value={form.region} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))} />
+            <Input label={copy({ en: "Industry", vi: "Ngành" })} value={form.industry} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, industry: e.target.value }))} />
+            <Select label={copy({ en: "Gender requirement", vi: "Yêu cầu giới tính" })} value={form.genderRequired} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, genderRequired: e.target.value as OrderFormState["genderRequired"] }))}>
               <option value="both">{copy({ en: "Both", vi: "Cả nam và nữ" })}</option>
               <option value="male">{copy({ en: "Male", vi: "Nam" })}</option>
               <option value="female">{copy({ en: "Female", vi: "Nữ" })}</option>
             </Select>
-            <Input label={copy({ en: "Minimum age", vi: "Tuổi tối thiểu" })} type="number" min={0} value={form.ageMin} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, ageMin: e.target.value }))} />
-            <Input label={copy({ en: "Maximum age", vi: "Tuổi tối đa" })} type="number" min={0} value={form.ageMax} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, ageMax: e.target.value }))} />
-            <Input label={copy({ en: "Minimum height (cm)", vi: "Chiều cao tối thiểu (cm)" })} type="number" min={0} value={form.heightMin} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, heightMin: e.target.value }))} />
-            <Select label={copy({ en: "Accepts returnees", vi: "Nhận lao động đi về" })} value={form.acceptsReturnees} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, acceptsReturnees: e.target.value as OrderFormState["acceptsReturnees"] }))}>
+            <Input label={copy({ en: "Minimum age", vi: "Tuổi tối thiểu" })} type="number" min={0} value={form.ageMin} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, ageMin: e.target.value }))} />
+            <Input label={copy({ en: "Maximum age", vi: "Tuổi tối đa" })} type="number" min={0} value={form.ageMax} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, ageMax: e.target.value }))} />
+            <Input label={copy({ en: "Minimum height (cm)", vi: "Chiều cao tối thiểu (cm)" })} type="number" min={0} value={form.heightMin} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, heightMin: e.target.value }))} />
+            <Select label={copy({ en: "Accepts returnees", vi: "Nhận lao động đi về" })} value={form.acceptsReturnees} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, acceptsReturnees: e.target.value as OrderFormState["acceptsReturnees"] }))}>
               <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
               <option value="true">{copy({ en: "Accepted", vi: "Nhận" })}</option>
               <option value="false">{copy({ en: "Not accepted", vi: "Không nhận" })}</option>
             </Select>
-            <Select label={copy({ en: "Requires experience", vi: "Yêu cầu kinh nghiệm" })} value={form.experienceRequired} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, experienceRequired: e.target.value as OrderFormState["experienceRequired"] }))}>
+            <Select label={copy({ en: "Requires experience", vi: "Yêu cầu kinh nghiệm" })} value={form.experienceRequired} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, experienceRequired: e.target.value as OrderFormState["experienceRequired"] }))}>
               <option value="true">{copy({ en: "Required", vi: "Bắt buộc" })}</option>
               <option value="false">{copy({ en: "Not required", vi: "Không bắt buộc" })}</option>
               <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
             </Select>
-            <Input label={copy({ en: "Salary range", vi: "Mức lương" })} value={form.salaryRange} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, salaryRange: e.target.value }))} />
-            <Select label={copy({ en: "Recruitment status", vi: "Trạng thái tuyển dụng" })} value={form.recruitmentStatus} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, recruitmentStatus: e.target.value as OrderFormState["recruitmentStatus"] }))}>
+            <Input label={copy({ en: "Salary range", vi: "Mức lương" })} value={form.salaryRange} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, salaryRange: e.target.value }))} />
+            <Select label={copy({ en: "Recruitment status", vi: "Trạng thái tuyển dụng" })} value={form.recruitmentStatus} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, recruitmentStatus: e.target.value as OrderFormState["recruitmentStatus"] }))}>
               <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
               <option value="recruiting">{copy({ en: "Recruiting", vi: "Đang tuyển" })}</option>
               <option value="recruitment_complete">{copy({ en: "Recruitment complete", vi: "Đã tuyển xong" })}</option>
@@ -385,62 +385,62 @@ export function OrderDetailPage() {
           </FieldGroup>
 
           <FieldGroup className="mt-4" columns={2}>
-            <Input label={copy({ en: "Description", vi: "Mô tả" })} value={form.description} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} />
-            <Input label={copy({ en: "Requirement notes", vi: "Ghi chú yêu cầu" })} value={form.requirements} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, requirements: e.target.value }))} />
+            <Input label={copy({ en: "Description", vi: "Mô tả" })} value={form.description} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} />
+            <Input label={copy({ en: "Requirement notes", vi: "Ghi chú yêu cầu" })} value={form.requirements} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, requirements: e.target.value }))} />
           </FieldGroup>
 
           <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {copy({ en: "Order intake", vi: "Tiếp nhận đơn hàng" })}
           </h3>
           <FieldGroup className="mt-2" columns={3}>
-            <Input label={copy({ en: "Agent / broker", vi: "Môi giới" })} value={form.agentName} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, agentName: e.target.value }))} />
-            <Input label={copy({ en: "Date received", vi: "Ngày nhận đơn" })} type="date" value={form.dateReceived} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, dateReceived: e.target.value }))} />
-            <Input label={copy({ en: "Quantity", vi: "Số lượng" })} type="number" min={0} value={form.quantity} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, quantity: e.target.value }))} />
+            <Input label={copy({ en: "Agent / broker", vi: "Môi giới" })} value={form.agentName} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, agentName: e.target.value }))} />
+            <Input label={copy({ en: "Date received", vi: "Ngày nhận đơn" })} type="date" value={form.dateReceived} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, dateReceived: e.target.value }))} />
+            <Input label={copy({ en: "Quantity", vi: "Số lượng" })} type="number" min={0} value={form.quantity} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, quantity: e.target.value }))} />
           </FieldGroup>
 
           <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {copy({ en: "Employer / factory", vi: "Chủ sử dụng / Nhà máy" })}
           </h3>
           <FieldGroup className="mt-2" columns={3}>
-            <Input label={copy({ en: "Factory address", vi: "Địa chỉ nhà máy" })} value={form.factoryAddress} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, factoryAddress: e.target.value }))} />
-            <Input label={copy({ en: "Factory name (local)", vi: "Tên nhà máy (bản địa)" })} value={form.factoryNameLocal} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, factoryNameLocal: e.target.value }))} />
-            <Input label={copy({ en: "Reference website", vi: "Website tham khảo" })} value={form.referenceWebsite} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, referenceWebsite: e.target.value }))} />
-            <Select label={copy({ en: "Has Vietnamese workers already", vi: "Đã có lao động Việt Nam" })} value={form.existingVnWorkers} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, existingVnWorkers: e.target.value as OrderFormState["existingVnWorkers"] }))}>
+            <Input label={copy({ en: "Factory address", vi: "Địa chỉ nhà máy" })} value={form.factoryAddress} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, factoryAddress: e.target.value }))} />
+            <Input label={copy({ en: "Factory name (local)", vi: "Tên nhà máy (bản địa)" })} value={form.factoryNameLocal} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, factoryNameLocal: e.target.value }))} />
+            <Input label={copy({ en: "Reference website", vi: "Website tham khảo" })} value={form.referenceWebsite} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, referenceWebsite: e.target.value }))} />
+            <Select label={copy({ en: "Has Vietnamese workers already", vi: "Đã có lao động Việt Nam" })} value={form.existingVnWorkers} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, existingVnWorkers: e.target.value as OrderFormState["existingVnWorkers"] }))}>
               <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
               <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
               <option value="false">{copy({ en: "No", vi: "Không" })}</option>
             </Select>
-            <Input label={copy({ en: "Work shift pattern", vi: "Chế độ ca làm việc" })} value={form.workShiftPattern} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, workShiftPattern: e.target.value }))} />
+            <Input label={copy({ en: "Work shift pattern", vi: "Chế độ ca làm việc" })} value={form.workShiftPattern} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, workShiftPattern: e.target.value }))} />
           </FieldGroup>
 
           <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {copy({ en: "Benefits", vi: "Chế độ phúc lợi" })}
           </h3>
           <FieldGroup className="mt-2" columns={2}>
-            <Input label={copy({ en: "Housing / meals", vi: "Ăn ở" })} value={form.housingMealsInfo} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, housingMealsInfo: e.target.value }))} />
-            <Input label={copy({ en: "Overtime", vi: "Tăng ca" })} value={form.overtimeInfo} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, overtimeInfo: e.target.value }))} />
+            <Input label={copy({ en: "Housing / meals", vi: "Ăn ở" })} value={form.housingMealsInfo} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, housingMealsInfo: e.target.value }))} />
+            <Input label={copy({ en: "Overtime", vi: "Tăng ca" })} value={form.overtimeInfo} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, overtimeInfo: e.target.value }))} />
           </FieldGroup>
 
           <h3 className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {copy({ en: "Candidate criteria & process", vi: "Điều kiện tuyển & quy trình" })}
           </h3>
           <FieldGroup className="mt-2" columns={3}>
-            <Input label={copy({ en: "Minimum weight (kg)", vi: "Cân nặng tối thiểu (kg)" })} type="number" min={0} value={form.weightMin} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, weightMin: e.target.value }))} />
-            <Input label={copy({ en: "Education level", vi: "Trình độ" })} value={form.educationLevel} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, educationLevel: e.target.value }))} />
-            <Select label={copy({ en: "Marital status requirement", vi: "Yêu cầu hôn nhân" })} value={form.maritalStatusRequired} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, maritalStatusRequired: e.target.value as OrderFormState["maritalStatusRequired"] }))}>
+            <Input label={copy({ en: "Minimum weight (kg)", vi: "Cân nặng tối thiểu (kg)" })} type="number" min={0} value={form.weightMin} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, weightMin: e.target.value }))} />
+            <Input label={copy({ en: "Education level", vi: "Trình độ" })} value={form.educationLevel} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, educationLevel: e.target.value }))} />
+            <Select label={copy({ en: "Marital status requirement", vi: "Yêu cầu hôn nhân" })} value={form.maritalStatusRequired} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, maritalStatusRequired: e.target.value as OrderFormState["maritalStatusRequired"] }))}>
               <option value="">{copy({ en: "Not set", vi: "Chưa đặt" })}</option>
               <option value="any">{copy({ en: "Any", vi: "Không yêu cầu" })}</option>
               <option value="single">{copy({ en: "Single", vi: "Độc thân" })}</option>
               <option value="married">{copy({ en: "Married", vi: "Đã kết hôn" })}</option>
               <option value="married_with_children">{copy({ en: "Married with children", vi: "Đã kết hôn và có con" })}</option>
             </Select>
-            <Input label={copy({ en: "Selection method", vi: "Hình thức tuyển chọn" })} value={form.selectionMethod} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, selectionMethod: e.target.value }))} />
-            <Input label={copy({ en: "Expected departure", vi: "Dự kiến xuất cảnh" })} value={form.expectedDeparture} disabled={!isAdmin} onChange={(e) => setForm((s) => ({ ...s, expectedDeparture: e.target.value }))} />
+            <Input label={copy({ en: "Selection method", vi: "Hình thức tuyển chọn" })} value={form.selectionMethod} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, selectionMethod: e.target.value }))} />
+            <Input label={copy({ en: "Expected departure", vi: "Dự kiến xuất cảnh" })} value={form.expectedDeparture} disabled={!canManageOrders} onChange={(e) => setForm((s) => ({ ...s, expectedDeparture: e.target.value }))} />
             <Input
               label={copy({ en: "Excluded candidate regions", vi: "Khu vực ứng viên không nhận" })}
               hint={copy({ en: "Comma-separated, e.g. Miền Trung, Nghệ An", vi: "Cách nhau bằng dấu phẩy, VD: Miền Trung, Nghệ An" })}
               value={form.excludedCandidateRegions}
-              disabled={!isAdmin}
+              disabled={!canManageOrders}
               onChange={(e) => setForm((s) => ({ ...s, excludedCandidateRegions: e.target.value }))}
             />
           </FieldGroup>
@@ -478,7 +478,7 @@ export function OrderDetailPage() {
         </div>
       </div>
 
-      {!isNew && orderId ? <OrderDocumentsPanel orderId={orderId} isAdmin={isAdmin} copy={copy} formatDocumentType={formatDocumentType} formatDocumentStatus={formatDocumentStatus} /> : null}
+      {!isNew && orderId ? <OrderDocumentsPanel orderId={orderId} canManageOrders={canManageOrders} copy={copy} formatDocumentType={formatDocumentType} formatDocumentStatus={formatDocumentStatus} /> : null}
     </div>
   );
 }
@@ -502,7 +502,7 @@ const ORDER_DOCS_PAGE_SIZE = 20;
 
 function OrderDocumentsPanel(props: {
   orderId: string;
-  isAdmin: boolean;
+  canManageOrders: boolean;
   copy: (value: { en: string; vi: string }) => string;
   formatDocumentType: (value: string) => string;
   formatDocumentStatus: (value: string) => string;
@@ -524,7 +524,7 @@ function OrderDocumentsPanel(props: {
   const total = docsQuery.data?.total ?? 0;
 
   function handleUpload() {
-    if (!props.isAdmin || !file) return;
+    if (!props.canManageOrders || !file) return;
     setUploadError("");
     uploadDoc.mutate(
       { orderId: props.orderId, file, docType: addDocType, issueDate: addIssueDate || undefined, expiryDate: addExpiryDate || undefined },
@@ -590,7 +590,7 @@ function OrderDocumentsPanel(props: {
                     {openingId === doc.id ? copy({ en: "Opening...", vi: "Đang mở..." }) : copy({ en: "Open file", vi: "Mở file" })}
                   </button>
                 ) : null}
-                {props.isAdmin ? (
+                {props.canManageOrders ? (
                   <button
                     type="button"
                     className="font-semibold text-red-600 underline decoration-red-300 underline-offset-4 hover:text-red-700"
@@ -623,7 +623,7 @@ function OrderDocumentsPanel(props: {
         </div>
       ) : null}
 
-      {props.isAdmin ? (
+      {props.canManageOrders ? (
         <>
           <FieldGroup columns={4}>
             <Select label={copy({ en: "Document type", vi: "Loại tài liệu" })} value={addDocType} onChange={(e) => setAddDocType(e.target.value)}>

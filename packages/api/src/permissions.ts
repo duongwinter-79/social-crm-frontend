@@ -10,6 +10,7 @@ import { useSessionStore } from "./session";
 
 export type Role =
   | "admin"
+  | "ops_manager"
   | "recruiter"
   | "document_staff"
   | "finance_staff"
@@ -24,10 +25,17 @@ export type Permission =
   | "manage_finance"
   | "manage_recruitment"
   | "transition_lead_status"
+  | "export_data"
+  | "manage_orders"
+  | "manage_region_groups"
+  | "view_audit"
   | "admin_all";
 
 const ROLE_PERMISSIONS: Record<Role, ReadonlyArray<Permission>> = {
   admin: ["admin_all"],
+  // Partial admin — operational subset, no user/integration/system config and no
+  // destructive lead actions. Mirrors backend ROLE_PERMISSIONS (ops_manager).
+  ops_manager: ["view_leads", "view_lead_pii", "export_data", "manage_orders", "manage_region_groups", "view_audit"],
   // Recruiters call/qualify candidates (view_lead_pii), edit lead fields, and
   // run the document intake (manage_documents). Mirrors backend ROLE_PERMISSIONS.
   recruiter: ["view_leads", "view_lead_pii", "edit_leads", "manage_documents", "manage_recruitment", "transition_lead_status"],
@@ -88,5 +96,9 @@ export function usePermissions() {
     canManageFinance: hasPermission(user, "manage_finance"),
     canManageRecruitment: hasPermission(user, "manage_recruitment"),
     canTransitionLeadStatus: hasPermission(user, "transition_lead_status"),
+    canExportData: hasPermission(user, "export_data"),
+    canManageOrders: hasPermission(user, "manage_orders"),
+    canManageRegionGroups: hasPermission(user, "manage_region_groups"),
+    canViewAudit: hasPermission(user, "view_audit"),
   };
 }

@@ -33,7 +33,7 @@ import {
 } from "@social-crm/api";
 import { useI18n } from "../../i18n";
 
-const ROLE_OPTIONS = ["", "admin", "recruiter", "document_staff", "finance_staff", "user"] as const;
+const ROLE_OPTIONS = ["", "admin", "ops_manager", "recruiter", "document_staff", "finance_staff", "user"] as const;
 const PAGE_SIZE = 25;
 
 function toneForRole(role: string) {
@@ -313,6 +313,7 @@ export function AdminPage() {
                   <option value="recruiter">{formatEnum("recruiter")}</option>
                   <option value="document_staff">{formatEnum("document_staff")}</option>
                   <option value="finance_staff">{formatEnum("finance_staff")}</option>
+                  <option value="ops_manager">{formatEnum("ops_manager")}</option>
                   <option value="admin">{formatEnum("admin")}</option>
                   <option value="user">{formatEnum("user")}</option>
                 </Select>
@@ -364,6 +365,7 @@ export function AdminPage() {
                 <option value="recruiter">{formatEnum("recruiter")}</option>
                 <option value="document_staff">{formatEnum("document_staff")}</option>
                 <option value="finance_staff">{formatEnum("finance_staff")}</option>
+                <option value="ops_manager">{formatEnum("ops_manager")}</option>
                 <option value="admin">{formatEnum("admin")}</option>
                 <option value="user">{formatEnum("user")}</option>
               </Select>

@@ -444,7 +444,7 @@ export function AppRouter() {
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
         <Route path="/ui-text-overrides" element={<RequireAdmin><LazyRoute><UiTextOverridesPage /></LazyRoute></RequireAdmin>} />
-        <Route path="/region-groups" element={<RequireAdmin><LazyRoute><RegionGroupsPage /></LazyRoute></RequireAdmin>} />
+        <Route path="/region-groups" element={<RequirePermission permission="manage_region_groups"><LazyRoute><RegionGroupsPage /></LazyRoute></RequirePermission>} />
       </Route>
     </Routes>
   );
