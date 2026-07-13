@@ -1087,6 +1087,20 @@ export class SocialCrmApiClient {
     return unwrapEnvelope(response.data);
   }
 
+  async revokeAllUserSessions(userId: string) {
+    const response = await this.http.delete<
+      ApiEnvelope<{ success: boolean; userId: string; revokedCount: number }> | { success: boolean; userId: string; revokedCount: number }
+    >(`/admin/users/${userId}/sessions`);
+    return unwrapEnvelope(response.data);
+  }
+
+  async deactivateUser(userId: string) {
+    const response = await this.http.post<
+      ApiEnvelope<{ success: boolean; userId: string; isActive: boolean; revokedCount: number }> | { success: boolean; userId: string; isActive: boolean; revokedCount: number }
+    >(`/admin/users/${userId}/deactivate`, {});
+    return unwrapEnvelope(response.data);
+  }
+
   // CNV integration is no longer surfaced in the UI. The methods below remain
   // so the API client surface stays stable for any future re-enablement, but
   // no admin screen consumes them today. Do not add new UI callers.
