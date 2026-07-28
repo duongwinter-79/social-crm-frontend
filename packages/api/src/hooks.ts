@@ -1196,6 +1196,36 @@ export function useRevokeAdminSessionMutation() {
   });
 }
 
+export function useDeactivateUserMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => apiClient.deactivateUser(userId),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.setQueryData(["users", result.userId], (prev: any) =>
+        prev ? { ...prev, isActive: false } : prev
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "system-status"] });
+    },
+    meta: { successMessage: { en: "User deactivated and signed out", vi: "Đã vô hiệu hóa và đăng xuất người dùng" } }
+  });
+}
+
+export function useRevokeAllUserSessionsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => apiClient.revokeAllUserSessions(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "system-status"] });
+    },
+    meta: { successMessage: { en: "All sessions revoked", vi: "Đã thu hồi tất cả phiên đăng nhập" } }
+  });
+}
+
 // CNV integration is no longer surfaced in the UI. The hooks below remain so
 // the API client surface stays stable for any future re-enablement, but no
 // admin screen consumes them today. Do not add new UI callers.

@@ -108,7 +108,7 @@ export function LeadsPage() {
   // Create-from-form: the Journey "new" mode now lives here as a modal.
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const navigate = useNavigate();
-  const { canEditLeads } = usePermissions();
+  const { canManageDocuments, canExportData } = usePermissions();
   const deferredSearch = useDeferredValue(search);
   const leadReturnState = createReturnState(location, copy({ en: "Leads", vi: "Danh sách ứng viên" }));
 
@@ -249,16 +249,18 @@ export function LeadsPage() {
               ))}
             </Select>
             <ToolbarActions className="justify-start xl:justify-end">
-              {canEditLeads ? (
+              {canManageDocuments ? (
                 <Button onClick={() => setCreateFormOpen(true)}>
                   {copy({ en: "Create from form", vi: "Tạo từ form" })}
                 </Button>
               ) : null}
-              <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
-                {isExporting
-                  ? copy({ en: "Exporting...", vi: "Đang xuất..." })
-                  : copy({ en: "Export CSV", vi: "Xuất CSV" })}
-              </Button>
+              {canExportData ? (
+                <Button variant="secondary" onClick={exportCsv} disabled={isExporting}>
+                  {isExporting
+                    ? copy({ en: "Exporting...", vi: "Đang xuất..." })
+                    : copy({ en: "Export CSV", vi: "Xuất CSV" })}
+                </Button>
+              ) : null}
               <Button
                 variant="secondary"
                 onClick={() => {

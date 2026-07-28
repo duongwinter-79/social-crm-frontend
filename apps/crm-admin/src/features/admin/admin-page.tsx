@@ -22,6 +22,7 @@ import {
   useAdminSystemStatusQuery,
   useAiExtractionWorkerStatusQuery,
   useCreateUserMutation,
+  useDeactivateUserMutation,
   useHealthQuery,
   useRevokeAdminSessionMutation,
   useTriggerAiExtractionWorkerMutation,
@@ -29,11 +30,13 @@ import {
   useTriggerZaloEnrichmentWorkerMutation,
   useUpdateUserMutation,
   useUserDetailQuery,
-  useUsersQuery
+  useUsersQuery,
+  useSessionStore
 } from "@social-crm/api";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { useI18n } from "../../i18n";
 
-const ROLE_OPTIONS = ["", "admin", "recruiter", "document_staff", "finance_staff", "user"] as const;
+const ROLE_OPTIONS = ["", "admin", "ops_manager", "recruiter", "document_staff", "finance_staff", "user"] as const;
 const PAGE_SIZE = 25;
 
 function toneForRole(role: string) {
@@ -99,6 +102,9 @@ export function AdminPage() {
   const revokeSession = useRevokeAdminSessionMutation();
   const createUser = useCreateUserMutation();
   const updateUser = useUpdateUserMutation();
+  const deactivateUser = useDeactivateUserMutation();
+  const currentUser = useSessionStore((s) => s.user);
+  const [confirmDeactivateOpen, setConfirmDeactivateOpen] = useState(false);
   const rows = usersQuery.data?.data ?? [];
   const selectedIdResolved = selectedId || rows[0]?.id || "";
   const detailQuery = useUserDetailQuery(selectedIdResolved);
@@ -313,6 +319,7 @@ export function AdminPage() {
                   <option value="recruiter">{formatEnum("recruiter")}</option>
                   <option value="document_staff">{formatEnum("document_staff")}</option>
                   <option value="finance_staff">{formatEnum("finance_staff")}</option>
+                  <option value="ops_manager">{formatEnum("ops_manager")}</option>
                   <option value="admin">{formatEnum("admin")}</option>
                   <option value="user">{formatEnum("user")}</option>
                 </Select>
@@ -337,6 +344,55 @@ export function AdminPage() {
               >
                 {updateUser.isPending ? copy({ en: "Saving user...", vi: "Đang lưu người dùng..." }) : copy({ en: "Save user update", vi: "Lưu cập nhật người dùng" })}
               </Button>
+
+              {selected.isActive && selected.id !== currentUser?.userId ? (
+                <div className="border-t border-slate-200 pt-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {copy({ en: "Offboarding", vi: "Nghỉ việc" })}
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {copy({
+                      en: "Deactivate the account and revoke every active session. Blocks new logins and signs the user out of all devices — use when someone leaves or an account is compromised.",
+                      vi: "Vô hiệu hóa tài khoản và thu hồi mọi phiên đăng nhập. Chặn đăng nhập mới và đăng xuất khỏi tất cả thiết bị — dùng khi nhân sự nghỉ việc hoặc tài khoản bị xâm phạm."
+                    })}
+                  </p>
+                  <Button
+                    className="mt-3"
+                    variant="danger"
+                    onClick={() => setConfirmDeactivateOpen(true)}
+                    disabled={deactivateUser.isPending}
+                  >
+                    {copy({ en: "Deactivate & sign out", vi: "Vô hiệu hóa & đăng xuất" })}
+                  </Button>
+                </div>
+              ) : null}
+
+              <ConfirmationDialog
+                open={confirmDeactivateOpen}
+                title={copy({ en: "Deactivate this user?", vi: "Vô hiệu hóa người dùng này?" })}
+                description={copy({
+                  en: "The account will be set to inactive and all of its active sessions revoked. The user is signed out everywhere and cannot log in again until reactivated.",
+                  vi: "Tài khoản sẽ chuyển sang ngừng hoạt động và mọi phiên đăng nhập bị thu hồi. Người dùng bị đăng xuất trên mọi thiết bị và không thể đăng nhập lại cho đến khi được kích hoạt lại."
+                })}
+                details={[
+                  { label: copy({ en: "Username", vi: "Tên đăng nhập" }), value: selected.username },
+                  { label: copy({ en: "Role", vi: "Vai trò" }), value: formatEnum(selected.role) }
+                ]}
+                warning={copy({
+                  en: "Reactivating later does not restore old sessions — the user must log in again.",
+                  vi: "Kích hoạt lại sau này sẽ không khôi phục phiên cũ — người dùng phải đăng nhập lại."
+                })}
+                confirmLabel={copy({ en: "Deactivate & sign out", vi: "Vô hiệu hóa & đăng xuất" })}
+                cancelLabel={copy({ en: "Cancel", vi: "Hủy" })}
+                pendingLabel={copy({ en: "Deactivating...", vi: "Đang vô hiệu hóa..." })}
+                isPending={deactivateUser.isPending}
+                onCancel={() => setConfirmDeactivateOpen(false)}
+                onConfirm={() =>
+                  deactivateUser.mutate(selected.id, {
+                    onSuccess: () => setConfirmDeactivateOpen(false)
+                  })
+                }
+              />
             </div>
           ) : (
             <EmptyState
@@ -364,6 +420,7 @@ export function AdminPage() {
                 <option value="recruiter">{formatEnum("recruiter")}</option>
                 <option value="document_staff">{formatEnum("document_staff")}</option>
                 <option value="finance_staff">{formatEnum("finance_staff")}</option>
+                <option value="ops_manager">{formatEnum("ops_manager")}</option>
                 <option value="admin">{formatEnum("admin")}</option>
                 <option value="user">{formatEnum("user")}</option>
               </Select>
