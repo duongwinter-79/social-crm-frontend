@@ -133,7 +133,6 @@ export function DashboardPage() {
   const expiredDocuments = count(documentStatus, "expired");
   const missingCoreDocuments = workflowValue(workflowSummary, "leadsMissingCoreDocuments");
   const documentIssues = rejectedDocuments + expiredDocuments + missingCoreDocuments;
-  const activeTraining = workflowValue(workflowSummary, "activeTraining");
   const visaInFlight = workflowValue(workflowSummary, "visaInFlight");
   const departuresScheduled = workflowValue(workflowSummary, "departuresScheduled");
   const departurePending = Math.max(visaInFlight - departuresScheduled, 0);
