@@ -55,7 +55,7 @@ describe("derivePhases", () => {
     );
     expect(active[3].state).toBe("active");
     const visaDone = derivePhases(
-      row({ candidateId: "C1", applicationStatus: "ready_to_depart", trainingFinance: { depositStatus: "paid", trainingProgress: "done", visaDate: "2026-06-01" } }),
+      row({ candidateId: "C1", applicationStatus: "ready_to_depart", trainingFinance: { depositStatus: "paid", visaDate: "2026-06-01" } }),
     );
     expect(visaDone[3].state).toBe("complete");
     expect(visaDone[4].state).toBe("active"); // awaiting departure

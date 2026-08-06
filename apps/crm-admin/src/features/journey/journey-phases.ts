@@ -196,9 +196,8 @@ function trainingPhase(row: PipelineRow, applicationDone: boolean): JourneyPhase
   };
 
   const hasDeposit = Boolean(tf?.depositStatus || tf?.amountPaid);
-  const hasTraining = Boolean(tf?.trainingProgress);
   const hasVisa = Boolean(tf?.visaDate);
-  const steps = [hasDeposit, hasTraining, hasVisa].filter(Boolean).length;
+  const steps = [hasDeposit, hasVisa].filter(Boolean).length;
 
   if (steps === 0) {
     return {
@@ -212,19 +211,15 @@ function trainingPhase(row: PipelineRow, applicationDone: boolean): JourneyPhase
 
   const detailEn = hasVisa
     ? `Visa · ${tf?.visaDate}`
-    : hasTraining
-      ? String(tf?.trainingProgress)
-      : depositDetail(tf, DEPOSIT_LABELS_EN, "Deposit tracked");
+    : depositDetail(tf, DEPOSIT_LABELS_EN, "Deposit tracked");
   const detailVi = hasVisa
     ? `Visa · ${tf?.visaDate}`
-    : hasTraining
-      ? String(tf?.trainingProgress)
-      : depositDetail(tf, DEPOSIT_LABELS_VI, "Đã theo dõi cọc");
+    : depositDetail(tf, DEPOSIT_LABELS_VI, "Đã theo dõi cọc");
 
   return {
     ...base,
     state: hasVisa ? "complete" : "active",
-    progress: steps / 3,
+    progress: steps / 2,
     detailEn,
     detailVi,
   };
