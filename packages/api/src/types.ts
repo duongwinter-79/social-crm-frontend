@@ -851,8 +851,6 @@ export interface TrainingFinanceRecord {
   amountPaid?: number | null;
   amountDue?: number | null;
   currency?: TrainingFinanceCurrency | null;
-  trainingStartDate?: string | null;
-  trainingProgress?: string | null;
   visaStatus?: VisaStatus | null;
   visaDate?: string | null;
   departureDate?: string | null;
@@ -892,7 +890,6 @@ export interface PipelineRow {
     amountPaid?: number | null;
     amountDue?: number | null;
     currency?: TrainingFinanceCurrency | null;
-    trainingProgress?: string | null;
     visaDate?: string | null;
     departureDate?: string | null;
   } | null;

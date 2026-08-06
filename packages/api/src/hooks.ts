@@ -887,7 +887,7 @@ export function useVerifyDocumentMutation() {
 export function useCreateTrainingFinanceMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatusMode?: DepositStatusMode; depositStatus?: string; depositRefunded?: boolean; amountPaid?: number; amountDue?: number; currency?: TrainingFinanceCurrency; trainingStartDate?: string; trainingProgress?: string; visaStatus?: string; visaDate?: string; departureDate?: string }) =>
+    mutationFn: (payload: { leadId: string; orderId?: string; applicationId?: string; orderType?: string; depositStatusMode?: DepositStatusMode; depositStatus?: string; depositRefunded?: boolean; amountPaid?: number; amountDue?: number; currency?: TrainingFinanceCurrency; visaStatus?: string; visaDate?: string; departureDate?: string }) =>
       apiClient.createTrainingFinance(payload),
     onSuccess: (record) => {
       queryClient.invalidateQueries({ queryKey: ["training-finance"] });

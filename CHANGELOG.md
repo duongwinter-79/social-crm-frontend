@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-06
+
+### Training & Finance — remove training-progress tracking (customer "Xung đột rule" NOTE: "Bỏ phần theo dõi tiến độ đào tạo")
+
+- the **Training start** (Bắt đầu đào tạo) and **Training progress** (Tiến độ đào tạo) inputs are removed from the Training & Finance editor (`training-finance-detail-page.tsx`), along with their form-state plumbing (type, empty form, record load, create payload, update patch)
+- the journey phase rail (`journey-phases.ts` `trainingPhase()`) no longer reads `trainingProgress` — the "Đào tạo & tài chính" segment now derives from the deposit and visa signals only (fill fraction is `steps / 2`); the Orders order-first matching modal rail (`journey-workbench-page.tsx`) drops the `trainingProgress` projection
+- shared `@social-crm/api` contract trimmed to match the backend: `trainingStartDate`/`trainingProgress` removed from `TrainingFinanceRecord`, the `PipelineRow.trainingFinance` shape, and the create-training-finance payload types (`client.ts`, `hooks.ts`)
+- the money model (currency selector, amount paid/due, deposit status, remaining-balance) is untouched
+- verified: `tsc --noEmit` clean (crm-admin); vitest 23/23 pass (incl. `journey-phases.test.ts` 8/8)
+
 ## 2026-06-11
 
 ### Leads inbox — name/phone search + unidentified-Zalo filter (customer "Gộp mục" review)

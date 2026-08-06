@@ -42,8 +42,6 @@ type MilestoneForm = {
   amountDue: string;
   depositRefunded: boolean;
   currency: TrainingFinanceCurrency;
-  trainingStartDate: string;
-  trainingProgress: string;
   visaStatus: string;
   visaDate: string;
   departureDate: string;
@@ -90,8 +88,6 @@ const emptyForm: MilestoneForm = {
   amountDue: "",
   depositRefunded: false,
   currency: "VND",
-  trainingStartDate: "",
-  trainingProgress: "",
   visaStatus: "",
   visaDate: "",
   departureDate: "",
@@ -162,8 +158,6 @@ function recordToForm(record: TrainingFinanceRecord): MilestoneForm {
     amountDue: record.amountDue != null ? formatMoney(record.amountDue, currency) : "",
     depositRefunded: record.depositRefunded ?? false,
     currency,
-    trainingStartDate: record.trainingStartDate ?? "",
-    trainingProgress: record.trainingProgress ?? "",
     visaStatus: record.visaStatus ?? "",
     visaDate: record.visaDate ?? "",
     departureDate: record.departureDate ?? "",
@@ -192,8 +186,6 @@ function buildPayload(form: MilestoneForm) {
     amountDue: parseMoney(form.amountDue, form.currency),
     depositRefunded: form.depositRefunded,
     currency: form.currency,
-    trainingStartDate: form.trainingStartDate || undefined,
-    trainingProgress: form.trainingProgress || undefined,
     visaStatus: form.visaStatus || undefined,
     visaDate: form.visaDate || undefined,
     departureDate: form.departureDate || undefined,
@@ -211,8 +203,6 @@ function buildPatch(form: MilestoneForm) {
     amountDue: parseMoney(form.amountDue, form.currency) ?? null,
     depositRefunded: form.depositRefunded,
     currency: form.currency,
-    trainingStartDate: form.trainingStartDate || null,
-    trainingProgress: form.trainingProgress || null,
     visaStatus: form.visaStatus || null,
     visaDate: form.visaDate || null,
     departureDate: form.departureDate || null,
@@ -492,17 +482,6 @@ export function TrainingFinanceDetailPage(props: { embeddedRecordId?: string; em
                 />
               </>
             )}
-            <Input label={copy({ en: "Training start", vi: "Bắt đầu đào tạo" })} type="date" value={form.trainingStartDate} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, trainingStartDate: e.target.value }))} />
-            <Input
-              label={copy({ en: "Training progress", vi: "Tiến độ đào tạo" })}
-              hint={copy({
-                en: "Short note on the training stage — e.g. course/module, week or % complete, pass/fail.",
-                vi: "Ghi chú ngắn về tiến độ đào tạo — ví dụ: khóa/học phần, tuần hoặc % hoàn thành, kết quả đạt/không đạt.",
-              })}
-              value={form.trainingProgress}
-              disabled={!canManageFinance}
-              onChange={(e) => setForm((s) => ({ ...s, trainingProgress: e.target.value }))}
-            />
             <Select label={copy({ en: "Visa status", vi: "Trạng thái visa" })} value={form.visaStatus} disabled={!canManageFinance} onChange={(e) => setForm((s) => ({ ...s, visaStatus: e.target.value }))}>
               <option value="">{copy({ en: "— Not set —", vi: "— Chưa đặt —" })}</option>
               {VISA_STATUS_OPTIONS.map((option) => (

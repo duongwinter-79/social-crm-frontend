@@ -234,7 +234,6 @@ export function JourneyWorkbench(props: {
             amountPaid: tf.amountPaid,
             amountDue: tf.amountDue,
             currency: tf.currency,
-            trainingProgress: tf.trainingProgress,
             visaDate: tf.visaDate,
             departureDate: tf.departureDate,
           }
