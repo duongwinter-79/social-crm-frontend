@@ -12,11 +12,12 @@ import { useI18n } from "../../i18n";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 
 // Kept in sync manually with LEAD_DOCUMENT_TYPES / REQUIRED_DOCUMENT_TYPES in
-// the backend's document-rules.ts. work_permit can be tracked here but is not
-// required — it's obtained after departure, so it never blocks the
-// VISA_PROCESSING -> DEPARTED gate.
-const LEAD_DOC_TYPES = ["passport", "criminal_record", "criminal_record_2", "health_check", "diploma", "work_permit"] as const;
-const LEAD_DOC_REQUIRED = new Set<string>(["passport", "criminal_record", "criminal_record_2", "health_check", "diploma"]);
+// the backend's document-rules.ts. Trimmed 2026-08-18 (customer request) to
+// the three kept types — Hộ chiếu, Lý lịch tư pháp số 2, Khám sức khỏe.
+// criminal_record (#1), diploma and work_permit are no longer tracked here;
+// their enum values and existing documents remain valid in the backend.
+const LEAD_DOC_TYPES = ["passport", "criminal_record_2", "health_check"] as const;
+const LEAD_DOC_REQUIRED = new Set<string>(["passport", "criminal_record_2", "health_check"]);
 
 function isDocExpired(doc: DocumentRecord | undefined): boolean {
   if (!doc?.expiryDate) return false;
