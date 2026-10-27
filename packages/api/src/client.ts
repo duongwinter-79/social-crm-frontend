@@ -124,6 +124,15 @@ interface EncryptedCredentialPayload {
   encryptedPassword: string;
 }
 
+const REFRESH_LOCK_NAME = "social-crm-token-refresh";
+
+/** Runs `work` while holding a lock shared by every tab of this origin (Web Locks API); runs it directly where unsupported. */
+function withCrossTabLock<T>(name: string, work: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== "undefined" ? (navigator as Navigator & { locks?: LockManager }).locks : undefined;
+  if (!locks?.request) return work();
+  return locks.request(name, work) as Promise<T>;
+}
+
 function arrayBufferToBase64(value: ArrayBuffer) {
   const bytes = new Uint8Array(value);
   let binary = "";
@@ -191,6 +200,13 @@ export class SocialCrmApiClient {
     if (!original || original._retry || error.response?.status !== 401) {
       return Promise.reject(error);
     }
+    // A 401 from the auth endpoints themselves must not trigger a refresh:
+    // for /auth/refresh that would await its own pending promise and hang the
+    // tab instead of signing out.
+    const url = original.url ?? "";
+    if (url.includes("/auth/refresh") || url.includes("/auth/logout") || url.includes("/auth/login")) {
+      return Promise.reject(error);
+    }
 
     const accessToken = useSessionStore.getState().accessToken;
     if (!accessToken) {
@@ -214,28 +230,41 @@ export class SocialCrmApiClient {
   /**
    * Single-flight refresh. The httpOnly cookie carries the refresh token
    * automatically — we POST an empty body. Returns the fresh access token.
+   *
+   * Every tab shares one refresh cookie and the server rotates it on each
+   * refresh, so two tabs refreshing at once would race: the second one sends
+   * an already-rotated token and gets a 401. A cross-tab lock serialises
+   * refreshes, so each one uses the newest cookie, and a tab that waited skips
+   * its refresh when another tab already produced a fresh token.
    */
   private runRefresh(): Promise<string> {
     if (!this.refreshPromise) {
       const startedInEpoch = useSessionStore.getState().sessionEpoch;
-      this.refreshPromise = this.http
-        .post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>("/auth/refresh", {})
-        .then(async (response) => {
-          const next = unwrapEnvelope(response.data).access_token;
-          if (useSessionStore.getState().sessionEpoch !== startedInEpoch) {
-            // Signed out (idle, manual, other tab) while this refresh was in
-            // flight. Drop the token and revoke the session it rotated into,
-            // in case the server answered it before processing the logout.
-            await this.revokeServerSession();
-            throw new Error("Session ended while refreshing");
-          }
-          useSessionStore.getState().setSession(next);
-          notifyLoginAcrossTabs(next);
-          return next;
-        })
-        .finally(() => {
-          this.refreshPromise = null;
-        });
+      const tokenAtStart = useSessionStore.getState().accessToken;
+      const refreshOnce = async (): Promise<string> => {
+        const state = useSessionStore.getState();
+        if (state.sessionEpoch !== startedInEpoch) {
+          throw new Error("Session ended while waiting to refresh");
+        }
+        if (state.accessToken && state.accessToken !== tokenAtStart && !isAccessTokenStale(30, state.accessToken)) {
+          return state.accessToken; // another tab refreshed while we waited for the lock
+        }
+        const response = await this.http.post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>("/auth/refresh", {});
+        const next = unwrapEnvelope(response.data).access_token;
+        if (useSessionStore.getState().sessionEpoch !== startedInEpoch) {
+          // Signed out (idle, manual, other tab) while this refresh was in
+          // flight. Drop the token and revoke the session it rotated into,
+          // in case the server answered it before processing the logout.
+          await this.revokeServerSession();
+          throw new Error("Session ended while refreshing");
+        }
+        useSessionStore.getState().setSession(next);
+        notifyLoginAcrossTabs(next);
+        return next;
+      };
+      this.refreshPromise = withCrossTabLock(REFRESH_LOCK_NAME, refreshOnce).finally(() => {
+        this.refreshPromise = null;
+      });
     }
     return this.refreshPromise;
   }

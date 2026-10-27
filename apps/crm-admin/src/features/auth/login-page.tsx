@@ -22,7 +22,8 @@ export function LoginPage() {
   // If we landed here because the previous session ended, show a small banner
   // explaining why. Consume the reason once so it doesn't repeat on re-login.
   useEffect(() => {
-    const reason = consumeLogoutReason() ?? takeRememberedLogoutReason();
+    const remembered = takeRememberedLogoutReason();
+    const reason = consumeLogoutReason() ?? remembered;
     if (!reason || reason === "manual") return;
     if (reason === "expired") {
       setSessionNotice(copy({ en: "Your session expired. Please sign in again.", vi: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." }));

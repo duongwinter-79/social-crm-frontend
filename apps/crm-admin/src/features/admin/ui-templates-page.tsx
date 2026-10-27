@@ -254,7 +254,7 @@ export function UiTemplatesPage() {
   // Script running in the live preview. Edits to colours and CSS follow the
   // draft automatically; JS only changes on an explicit run, so half-typed
   // code (e.g. an unfinished loop) never executes.
-  const [previewJs, setPreviewJs] = useState<string | null>(null);
+  const [previewJs, setPreviewJs] = useState<string | null>(() => templateContext.preview?.customJs ?? null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 

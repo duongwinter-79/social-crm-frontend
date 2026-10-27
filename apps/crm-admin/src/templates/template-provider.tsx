@@ -83,7 +83,7 @@ export function TemplateProvider(props: PropsWithChildren) {
 
   const [active, setActive] = useState<UiTemplateRuntime | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [preview, setPreviewState] = useState<TemplatePreview | null>(readStoredPreview);
+  const [storedPreview, setPreviewState] = useState<TemplatePreview | null>(readStoredPreview);
   const [safeMode, setSafeModeState] = useState(() => resolveSafeMode(window.location.search));
   const [scriptErrors, setScriptErrors] = useState<string[]>([]);
 
@@ -120,6 +120,22 @@ export function TemplateProvider(props: PropsWithChildren) {
     }
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
+
+  // A stored preview only ever applies to the admin who started it. A session
+  // can end while no page is open (browser closed, laptop asleep), so the next
+  // person signing in on this tab must not inherit an admin's draft CSS/JS.
+  const currentUserId = user?.userId ?? null;
+  const currentUserIsAdmin = Boolean(user?.roles?.includes("admin"));
+  const previewBelongsToUser = Boolean(
+    storedPreview && currentUserId && currentUserIsAdmin && storedPreview.ownerUserId === currentUserId
+  );
+  const preview = previewBelongsToUser ? storedPreview : null;
+  useEffect(() => {
+    if (storedPreview && currentUserId && !previewBelongsToUser) {
+      setPreviewState(null);
+      writeStoredPreview(null);
+    }
+  }, [currentUserId, previewBelongsToUser, storedPreview]);
 
   useEffect(() => {
     setSafeModeState(resolveSafeMode(location.search));
@@ -228,11 +244,14 @@ export function TemplateProvider(props: PropsWithChildren) {
   useEffect(() => {
     if (!scriptHasRun.current || (isAuthenticated && !isLoginPage)) return;
     scriptHasRun.current = false;
-    rememberLogoutReason(useSessionStore.getState().logoutReason);
-    void apiClient
-      .logout()
-      .catch(() => undefined)
-      .finally(() => window.location.replace("/login"));
+    const reason = useSessionStore.getState().logoutReason;
+    rememberLogoutReason(reason);
+    // Manual sign-out already revoked the session and "remote"/"expired" mean
+    // it is gone or another tab handled it. Idle sign-out's own revoke may still
+    // be in flight, so await one here before the reload can cancel it. No
+    // broadcast: other tabs are not signed out by this tab's reload.
+    const revoke = reason === "idle" ? apiClient.revokeServerSession() : Promise.resolve();
+    void revoke.finally(() => window.location.replace("/login"));
   }, [isAuthenticated, isLoginPage]);
 
   const value = useMemo<TemplateContextValue>(() => {
@@ -243,8 +262,9 @@ export function TemplateProvider(props: PropsWithChildren) {
       preview,
       isPreviewing,
       setPreview: (next) => {
-        writeStoredPreview(next);
-        setPreviewState(next);
+        const owned = { ...next, ownerUserId: currentUserId };
+        writeStoredPreview(owned);
+        setPreviewState(owned);
       },
       clearPreview: () => {
         writeStoredPreview(null);
@@ -264,7 +284,7 @@ export function TemplateProvider(props: PropsWithChildren) {
       isLoading,
       reload
     };
-  }, [active, effective, isLoading, isPreviewing, preview, reload, safeMode, scriptErrors]);
+  }, [active, currentUserId, effective, isLoading, isPreviewing, preview, reload, safeMode, scriptErrors]);
 
   return <TemplateContext.Provider value={value}>{props.children}</TemplateContext.Provider>;
 }

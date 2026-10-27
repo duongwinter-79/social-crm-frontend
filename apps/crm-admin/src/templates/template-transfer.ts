@@ -65,7 +65,11 @@ export function parseTemplateFile(text: string): UiTemplatePayload {
 }
 
 /** A draft shown only in this browser session before it is saved or activated. */
-export type TemplatePreview = UiTemplateRuntime & { customJs: string | null };
+export type TemplatePreview = UiTemplateRuntime & {
+  customJs: string | null;
+  /** Admin who started the preview; it never applies to anyone else signed in on this tab. */
+  ownerUserId?: string | null;
+};
 
 const PREVIEW_STORAGE_KEY = "crm-admin-ui-template-preview";
 const SAFE_MODE_STORAGE_KEY = "crm-admin-ui-template-safe-mode";
