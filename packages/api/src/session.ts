@@ -15,6 +15,47 @@ import type { AuthUser } from "./types";
 const LEGACY_ACCESS_KEY = "social-crm.access-token";
 const LEGACY_REFRESH_KEY = "social-crm.refresh-token";
 const SESSION_CHANNEL_NAME = "social-crm-session";
+/**
+ * Last real user activity (epoch ms), shared by every tab of this browser so
+ * the idle timeout reflects the operator, not one tab: a background tab must
+ * not sign out someone working in another tab. Not a secret. Cleared on sign-out.
+ */
+const LAST_ACTIVITY_KEY = "social-crm.last-activity";
+/** Throttle for writing shared activity (activity events fire on every mouse move). */
+const SHARED_ACTIVITY_WRITE_MS = 15_000;
+let lastSharedActivityWrite = 0;
+
+function readSharedActivity(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = Number(window.localStorage.getItem(LAST_ACTIVITY_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSharedActivity(at: number | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (at === null) window.localStorage.removeItem(LAST_ACTIVITY_KEY);
+    else window.localStorage.setItem(LAST_ACTIVITY_KEY, String(at));
+  } catch {
+    // Storage blocked: the idle timeout falls back to this tab's own activity.
+  }
+  lastSharedActivityWrite = at ?? 0;
+}
+
+/**
+ * True when this browser had a signed-in session whose last activity is older
+ * than the idle timeout — e.g. the laptop slept or the browser was closed while
+ * signed in. The refresh cookie may still be valid, so the session must be
+ * revoked rather than restored.
+ */
+export function isIdleTimeoutExceeded(now = Date.now()): boolean {
+  const lastActivity = readSharedActivity();
+  return lastActivity !== null && now - lastActivity > IDLE_TIMEOUT_MINUTES * 60_000;
+}
 
 /** Decoded JWT payload subset we rely on. */
 export interface DecodedAccessToken {
@@ -97,6 +138,12 @@ interface SessionState {
   lastActivityAt: number;
   /** Reason for the most recent logout, surfaced on the login screen. */
   logoutReason: "idle" | "expired" | "manual" | "remote" | null;
+  /**
+   * Incremented whenever the session ends. A token refresh that started
+   * before a sign-out compares epochs and is discarded, so a late response
+   * cannot silently sign the user back in.
+   */
+  sessionEpoch: number;
   setSession: (accessToken: string | null) => void;
   clearSession: (reason?: SessionState["logoutReason"]) => void;
   registerActivity: () => void;
@@ -108,26 +155,35 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   accessToken: null,
   lastActivityAt: Date.now(),
   logoutReason: null,
+  sessionEpoch: 0,
   setSession: (accessToken) => {
     if (!accessToken) {
       set({ accessToken: null, user: null });
       return;
     }
+    // Token rotation (refreshes triggered by background polling) is not user
+    // activity; only a fresh sign-in resets the idle clock.
+    const isFreshSession = !get().accessToken;
+    const now = Date.now();
     set({
       accessToken,
       user: decodeJwtUser(accessToken),
-      lastActivityAt: Date.now(),
+      lastActivityAt: isFreshSession ? now : get().lastActivityAt,
       logoutReason: null
     });
+    if (isFreshSession) writeSharedActivity(now);
   },
   clearSession: (reason = "manual") => {
-    set({ accessToken: null, user: null, logoutReason: reason });
+    set({ accessToken: null, user: null, logoutReason: reason, sessionEpoch: get().sessionEpoch + 1 });
+    writeSharedActivity(null);
     if (reason === "manual" || reason === "idle") {
       broadcast({ type: "logout" });
     }
   },
   registerActivity: () => {
-    set({ lastActivityAt: Date.now() });
+    const now = Date.now();
+    set({ lastActivityAt: now });
+    if (now - lastSharedActivityWrite >= SHARED_ACTIVITY_WRITE_MS) writeSharedActivity(now);
   },
   consumeLogoutReason: () => {
     const reason = get().logoutReason;
@@ -141,10 +197,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
  * by the session lifecycle; not part of the public API.
  */
 function adoptTokenFromBroadcast(accessToken: string) {
+  const state = useSessionStore.getState();
   useSessionStore.setState({
     accessToken,
     user: decodeJwtUser(accessToken),
-    lastActivityAt: Date.now(),
+    // Another tab refreshing its token is not activity in this one.
+    lastActivityAt: state.accessToken ? state.lastActivityAt : Date.now(),
     logoutReason: null
   });
 }
@@ -164,7 +222,15 @@ export const IDLE_TIMEOUT_MINUTES = 30;
  * Set up cross-tab sync (via BroadcastChannel) and idle timeout. Call once at
  * app boot. Returns a teardown function for hot-reload safety.
  */
-export function startSessionLifecycle(): () => void {
+export type SessionLifecycleOptions = {
+  /**
+   * Called after an idle sign-out clears the local session. Must revoke the
+   * server-side refresh session; otherwise a page reload silently restores it.
+   */
+  onIdleTimeout?: () => void;
+};
+
+export function startSessionLifecycle(options: SessionLifecycleOptions = {}): () => void {
   if (typeof window === "undefined") return () => undefined;
 
   // One-time legacy cleanup. Older builds wrote tokens to localStorage; clear
@@ -179,7 +245,7 @@ export function startSessionLifecycle(): () => void {
     if (data.type === "logout") {
       const state = store.getState();
       if (state.accessToken) {
-        store.setState({ accessToken: null, user: null, logoutReason: "remote" });
+        store.setState({ accessToken: null, user: null, logoutReason: "remote", sessionEpoch: state.sessionEpoch + 1 });
       }
     } else if (data.type === "login" && data.access_token) {
       adoptTokenFromBroadcast(data.access_token);
@@ -198,8 +264,11 @@ export function startSessionLifecycle(): () => void {
   function checkIdle() {
     const state = store.getState();
     if (!state.accessToken) return;
-    if (Date.now() - state.lastActivityAt > idleLimitMs) {
+    // Activity in any tab of this browser keeps the session alive.
+    const lastActivity = Math.max(state.lastActivityAt, readSharedActivity() ?? 0);
+    if (Date.now() - lastActivity > idleLimitMs) {
       state.clearSession("idle");
+      options.onIdleTimeout?.();
     }
   }
 
@@ -208,6 +277,8 @@ export function startSessionLifecycle(): () => void {
   window.addEventListener("mousemove", onActivity, { passive: true });
   window.addEventListener("keydown", onActivity, { passive: true });
   window.addEventListener("click", onActivity, { passive: true });
+  window.addEventListener("pointerdown", onActivity, { passive: true });
+  window.addEventListener("wheel", onActivity, { passive: true });
 
   const idleTimer = window.setInterval(checkIdle, idleIntervalMs);
 
@@ -216,6 +287,8 @@ export function startSessionLifecycle(): () => void {
     window.removeEventListener("mousemove", onActivity);
     window.removeEventListener("keydown", onActivity);
     window.removeEventListener("click", onActivity);
+    window.removeEventListener("pointerdown", onActivity);
+    window.removeEventListener("wheel", onActivity);
     window.clearInterval(idleTimer);
   };
 }

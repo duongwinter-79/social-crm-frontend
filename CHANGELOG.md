@@ -2,6 +2,17 @@
 
 ## 2026-10-27
 
+### Session — idle sign-out now really ends the session
+
+- **gap:** the 30-minute idle timeout only cleared the in-memory access token. The refresh cookie stayed valid, so pressing F5 on the login page silently signed the user back in
+- idle sign-out now also revokes the server-side refresh session (`POST /auth/logout`, cookie-authenticated); `apiClient.revokeServerSession()` is wired in via `startSessionLifecycle({ onIdleTimeout })`
+- a browser left signed in past the timeout (laptop asleep, browser closed) is caught on the next page load: `bootstrapSession()` revokes the session instead of restoring it and shows "Signed out after inactivity"
+- activity is shared across tabs (`localStorage` key `social-crm.last-activity`, written at most every 15 s, cleared on sign-out). Previously a background tab signed out the operator working in another tab after 30 minutes
+- token refreshes no longer count as activity: background polling used to reset the idle clock on every refresh, so screens that poll (dashboard, documents, extraction status) never timed out. Only a fresh sign-in or real input (mouse, keyboard, click, touch, scroll) resets it
+- a token refresh that completes after a sign-out is discarded (session epoch) and its rotated session revoked, so an in-flight refresh can no longer sign the user back in; the sign-out reason is kept instead of being overwritten with "expired"
+- `/auth/logout` no longer triggers a pointless token refresh first
+- verified: vitest 43/43 (5 new idle tests); Playwright against a real backend with a fake clock: idle sign-out + revoked session + F5 stays signed out; stale session on load not restored; active session still restored on F5; idle background tab does not sign out an active tab; both sign out once both are idle (repeated 3×)
+
 ### Runtime UI templates (customer request: Elementor-style templates they can switch and edit with JS, without changing functionality)
 
 - new **Admin → UI templates** editor (`/ui-templates`, full admins only): create, import/export (`.crm-template.json`), duplicate, live-preview in your own browser, activate for everyone, switch back to the default look, delete. A template holds colour tokens (accent / neutral / success / warning / danger), font, brand name, tagline and logo, plus custom CSS and custom JS

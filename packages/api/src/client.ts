@@ -2,6 +2,7 @@ import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig 
 import {
   decodeJwtUser,
   isAccessTokenStale,
+  isIdleTimeoutExceeded,
   notifyLoginAcrossTabs,
   useSessionStore
 } from "./session";
@@ -165,7 +166,8 @@ export class SocialCrmApiClient {
     const isAuthEndpoint =
       url.includes("/auth/login") ||
       url.includes("/auth/login-key") ||
-      url.includes("/auth/refresh");
+      url.includes("/auth/refresh") ||
+      url.includes("/auth/logout");
 
     const accessToken = useSessionStore.getState().accessToken;
     if (!accessToken) return config;
@@ -203,7 +205,8 @@ export class SocialCrmApiClient {
       original.headers.Authorization = `Bearer ${nextAccess}`;
       return this.http.request(original);
     } catch (refreshError) {
-      useSessionStore.getState().clearSession("expired");
+      // Keep the original reason (e.g. idle) if the session already ended.
+      if (useSessionStore.getState().accessToken) useSessionStore.getState().clearSession("expired");
       return Promise.reject(refreshError);
     }
   }
@@ -214,10 +217,18 @@ export class SocialCrmApiClient {
    */
   private runRefresh(): Promise<string> {
     if (!this.refreshPromise) {
+      const startedInEpoch = useSessionStore.getState().sessionEpoch;
       this.refreshPromise = this.http
         .post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>("/auth/refresh", {})
-        .then((response) => {
+        .then(async (response) => {
           const next = unwrapEnvelope(response.data).access_token;
+          if (useSessionStore.getState().sessionEpoch !== startedInEpoch) {
+            // Signed out (idle, manual, other tab) while this refresh was in
+            // flight. Drop the token and revoke the session it rotated into,
+            // in case the server answered it before processing the logout.
+            await this.revokeServerSession();
+            throw new Error("Session ended while refreshing");
+          }
           useSessionStore.getState().setSession(next);
           notifyLoginAcrossTabs(next);
           return next;
@@ -235,6 +246,13 @@ export class SocialCrmApiClient {
    * Returns true if a session was restored, false if the user must log in.
    */
   async bootstrapSession(): Promise<boolean> {
+    // The browser was left signed in past the idle timeout (closed, slept or
+    // frozen before the idle check could run). Revoke instead of restoring.
+    if (isIdleTimeoutExceeded()) {
+      await this.revokeServerSession();
+      useSessionStore.getState().clearSession("idle");
+      return false;
+    }
     try {
       await this.runRefresh();
       return true;
@@ -290,10 +308,19 @@ export class SocialCrmApiClient {
    */
   async logout() {
     try {
-      await this.http.post("/auth/logout", {}).catch(() => undefined);
+      await this.revokeServerSession();
     } finally {
       useSessionStore.getState().clearSession("manual");
     }
+  }
+
+  /**
+   * Revokes the server-side refresh session (cookie-authenticated, no access
+   * token needed). Used after an idle sign-out has already cleared the local
+   * session, so a page reload cannot silently restore it. Best-effort.
+   */
+  async revokeServerSession(): Promise<void> {
+    await this.http.post("/auth/logout", {}).catch(() => undefined);
   }
 
   async getDashboardStats() {
