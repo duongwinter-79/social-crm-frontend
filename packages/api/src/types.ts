@@ -158,12 +158,12 @@ export interface UiTemplateTokens {
   logoUrl?: string;
 }
 
-/** Active template as served to the app; `customJs` is absent on the public (login-page) variant. */
+/** Active template as served to the app; `customCss` and `customJs` are absent on the public (login-page) variant. */
 export interface UiTemplateRuntime {
   id: string;
   name: string;
   tokens: UiTemplateTokens;
-  customCss: string | null;
+  customCss?: string | null;
   customJs?: string | null;
   updatedAt?: string;
 }

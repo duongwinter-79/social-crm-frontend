@@ -386,6 +386,13 @@ function ProtectedLayout() {
   );
 }
 
+// A signed-in user never sits on the login page (including a tab that adopts
+// another tab's sign-in), so nothing session-scoped runs where passwords are typed.
+function LoginRoute() {
+  const accessToken = useSessionStore((state) => state.accessToken);
+  return accessToken ? <Navigate to="/dashboard" replace /> : <LoginPage />;
+}
+
 function RequireAuth() {
   const accessToken = useSessionStore((state) => state.accessToken);
   return accessToken ? <ProtectedLayout /> : <Navigate to="/login" replace />;
@@ -454,7 +461,7 @@ export function AppRouter() {
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={<LoginRoute />} />
       <Route element={<RequireAuth />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<RequirePermission permission="view_leads"><LazyRoute><DashboardPage /></LazyRoute></RequirePermission>} />

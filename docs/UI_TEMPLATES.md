@@ -10,8 +10,8 @@ Open **Admin → UI templates** (`/ui-templates`, full admins only).
 |---|---|---|
 | Colours | One colour per family (accent, neutral, success, warning, danger). A full 50–950 shade scale is generated from it. | Every screen, including the login page |
 | Font | A CSS font stack. Load web fonts with `@import` in Custom CSS. | Every screen |
-| Brand | Brand name, tagline and logo (https URL, `/path`, or an uploaded image up to 220 KB). | Sidebar and login page |
-| Custom CSS | Loaded after the app's own styles. | Every screen, including the login page; skipped in safe mode |
+| Brand | Brand name, tagline and logo (https URL, `/path`, or an uploaded image up to 200 KB). | Sidebar and login page |
+| Custom CSS | Loaded after the app's own styles. | Signed-in screens only, **never on the login page**; skipped in safe mode |
 | Custom JS | Runs once per page load with the `crm` API below. | Signed-in sessions only, **never on the login page**; skipped in safe mode |
 
 At most one template is active. With none active the app uses its built-in look, which is pixel-identical to the pre-template app.
@@ -19,11 +19,11 @@ At most one template is active. With none active the app uses its built-in look,
 ## Workflow
 
 1. **New template** (or **Import JSON**, or **Duplicate** an existing one).
-2. Edit colours, brand, CSS and JS. **Live preview in my browser** applies the draft to your session only and follows your edits as you type. A banner shows while previewing.
+2. Edit colours, brand, CSS and JS. **Live preview in my browser** applies the draft to your session only. Colours, brand and CSS follow your edits as you type; the script only re-runs when you click **Run updated script in preview**, so half-typed code never executes. The preview survives a page reload and ends when you sign out. A banner shows while previewing.
 3. **Save**, then **Activate for everyone**. Other users get it on their next page load.
 4. **Use default** switches everyone back. **Export JSON** produces a `.crm-template.json` file you can import into another environment.
 
-Saving a template that is already active updates the live look immediately. Every create, update, activate, deactivate and delete is written to the admin audit log with the previous and next content.
+Saving a template that is already active updates the live look for everyone on their next page load. Every create, update, activate, deactivate and delete is written to the admin audit log: creates and deletes record the full template, updates record each changed field with its previous and next value, and activations record which template replaced which. Uploaded logos are recorded by size and hash rather than copied.
 
 ## Safe mode
 
@@ -66,7 +66,7 @@ crm.template                                   // { id, name, preview }
 crm.log(...)                                   // console.info with a [crm template] prefix
 ```
 
-Everything registered through the API is undone when the template stops. Errors thrown by the script or its callbacks are caught: the CRM keeps working, admins see an error banner, and the editor's Custom JS tab lists them.
+Everything registered through the API is undone when the template stops. The script starts once per page load (token refreshes do not restart it). Errors thrown by the script or its callbacks are caught: the CRM keeps working, admins see an error banner, and the editor's Custom JS tab lists them.
 
 Example: a welcome banner on every page, re-added after navigation.
 
@@ -91,18 +91,21 @@ Guidelines:
 Custom JS is admin-authored code with full access to the page, the same trust level as Elementor's custom code. It can call the CRM API as the signed-in user. Mitigations:
 
 - only full admins can create, edit or activate templates (`@Roles(Admin)`; not delegated to `ops_manager`)
-- the login page never runs template JS (`GET /api/ui-templates/active/public` omits it), so a template cannot capture passwords
+- nothing a template author writes reaches the page where passwords are typed: the login page gets only validated tokens (colours, font, brand, logo). `GET /api/ui-templates/active/public` omits both custom JS and custom CSS (a CSS attribute selector on the password field could leak what is typed), and a signed-in user opening `/login` is redirected to the dashboard
+- after a template script has run, signing out (manually, idle, expired, or from another tab) revokes the refresh session and fully reloads to `/login`, so anything the script left behind outside the `crm` API (listeners, timers, patched globals) cannot observe the next login
 - tokens are validated server-side (hex colours, plain font stacks, https/relative/data-image logo URLs) so they cannot inject CSS
 - every change is audited with full previous/next content
 - safe mode recovers from a broken template without a deploy
 
 ## Backend
 
-- `GET /api/ui-templates/active/public`: active tokens and CSS, no JS (unauthenticated)
+- `GET /api/ui-templates/active/public`: active tokens only, no CSS or JS (unauthenticated)
 - `GET /api/ui-templates/active`: active template including JS (any signed-in user)
 - `GET|POST /api/admin/ui-templates`, `GET|PATCH|DELETE /api/admin/ui-templates/:id`, `POST /api/admin/ui-templates/:id/activate`, `POST /api/admin/ui-templates/deactivate` (admin)
 
-Stored in `crm.ui_templates` (migration `CreateUiTemplates1778400000000`). A partial unique index keeps at most one row active.
+Stored in `crm.ui_templates` (migration `CreateUiTemplates1778400000000`). A partial unique index keeps at most one row active, and activate / deactivate / delete run in a transaction under a Postgres advisory lock so concurrent admin actions cannot leave zero or two templates active.
+
+Known limitation: two admins editing the same template at the same time overwrite each other (last save wins); there is no version check yet.
 
 ## Code map
 

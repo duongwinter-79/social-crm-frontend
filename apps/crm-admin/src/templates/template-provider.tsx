@@ -14,7 +14,14 @@ import { useI18n } from "@/i18n";
 import { pageIdForPath } from "./template-pages";
 import { startTemplateScript } from "./template-runtime";
 import { tokensToCssVariables } from "./template-tokens";
-import { readStoredPreview, resolveSafeMode, writeSafeMode, writeStoredPreview, type TemplatePreview } from "./template-transfer";
+import {
+  readStoredPreview,
+  rememberLogoutReason,
+  resolveSafeMode,
+  writeSafeMode,
+  writeStoredPreview,
+  type TemplatePreview
+} from "./template-transfer";
 
 const TOKENS_STYLE_ID = "crm-template-tokens";
 const CSS_STYLE_ID = "crm-template-css";
@@ -80,17 +87,21 @@ export function TemplateProvider(props: PropsWithChildren) {
   const [safeMode, setSafeModeState] = useState(() => resolveSafeMode(window.location.search));
   const [scriptErrors, setScriptErrors] = useState<string[]>([]);
 
+  // Ignore responses from superseded requests (e.g. the public fetch started
+  // before sign-in resolving after the authenticated one).
+  const latestRequest = useRef(0);
   const reload = useCallback(async () => {
+    const request = ++latestRequest.current;
     setIsLoading(true);
     try {
       const template = isAuthenticated ? await apiClient.getActiveUiTemplate() : await apiClient.getPublicUiTemplate();
-      setActive(template);
+      if (request === latestRequest.current) setActive(template);
     } catch {
       // A missing/unreachable template endpoint must never block the CRM:
       // fall back to the built-in look.
-      setActive(null);
+      if (request === latestRequest.current) setActive(null);
     } finally {
-      setIsLoading(false);
+      if (request === latestRequest.current) setIsLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -98,13 +109,17 @@ export function TemplateProvider(props: PropsWithChildren) {
     void reload();
   }, [reload]);
 
-  // Preview is an admin-only, signed-in affordance.
+  // Preview is an admin-only, signed-in affordance: drop it on sign-out. Only a
+  // real signed-in → signed-out change counts; on page load the token is null
+  // until the session bootstrap finishes, and the stored preview must survive that.
+  const wasAuthenticated = useRef(isAuthenticated);
   useEffect(() => {
-    if (!isAuthenticated && preview) {
+    if (wasAuthenticated.current && !isAuthenticated) {
       setPreviewState(null);
       writeStoredPreview(null);
     }
-  }, [isAuthenticated, preview]);
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   useEffect(() => {
     setSafeModeState(resolveSafeMode(location.search));
@@ -112,6 +127,8 @@ export function TemplateProvider(props: PropsWithChildren) {
 
   const effective: UiTemplateRuntime | null = preview ?? active;
   const pageId = pageIdForPath(location.pathname);
+  // Nothing admin-authored beyond validated tokens may run where passwords are typed.
+  const isLoginPage = pageId === "login";
 
   // Tokens: always applied (validated values, cannot break the page).
   useEffect(() => {
@@ -122,10 +139,12 @@ export function TemplateProvider(props: PropsWithChildren) {
     upsertStyle(TOKENS_STYLE_ID, declarations ? `:root {\n${declarations}\n}` : null);
   }, [effective?.tokens]);
 
-  // Custom CSS: skipped in safe mode.
+  // Custom CSS: skipped in safe mode and on the login page (attribute selectors
+  // on the password input could leak what is typed).
+  const customCss = !safeMode && !isLoginPage ? effective?.customCss ?? null : null;
   useEffect(() => {
-    upsertStyle(CSS_STYLE_ID, !safeMode && effective?.customCss ? effective.customCss : null);
-  }, [effective?.customCss, safeMode]);
+    upsertStyle(CSS_STYLE_ID, customCss);
+  }, [customCss]);
 
   // Lazy routes inject their own CSS later; keep template styles last in
   // <head> so they win ties against it.
@@ -162,19 +181,25 @@ export function TemplateProvider(props: PropsWithChildren) {
     for (const listener of Array.from(routeListeners.current)) listener();
   }, [location.pathname]);
 
+  // Keyed on primitives: every token refresh builds a new `user` object, and
+  // restarting the script on each refresh would re-run its side effects.
+  const scriptUsername = user?.username ?? null;
+  const scriptRoles = (user?.roles ?? []).join(",");
   const scriptUser = useMemo(
-    () => (user ? { username: user.username ?? null, roles: [...(user.roles ?? [])] } : null),
-    [user]
+    () => (isAuthenticated ? { username: scriptUsername, roles: scriptRoles ? scriptRoles.split(",") : [] } : null),
+    [isAuthenticated, scriptRoles, scriptUsername]
   );
 
-  // Custom JS: signed-in sessions only (never on the login page), skipped in safe mode.
-  const scriptCode = isAuthenticated && !safeMode ? effective?.customJs ?? null : null;
+  // Custom JS: signed-in sessions only, never on the login page, skipped in safe mode.
+  const scriptCode = isAuthenticated && !safeMode && !isLoginPage ? effective?.customJs ?? null : null;
+  const scriptHasRun = useRef(false);
   const scriptTemplateId = effective?.id ?? null;
   const scriptTemplateName = effective?.name ?? "";
   const isPreviewing = Boolean(preview);
   useEffect(() => {
     setScriptErrors([]);
     if (!scriptCode?.trim()) return;
+    scriptHasRun.current = true;
     return startTemplateScript(
       scriptCode,
       {
@@ -195,6 +220,20 @@ export function TemplateProvider(props: PropsWithChildren) {
       { document, MutationObserver, console }
     );
   }, [isPreviewing, scriptCode, scriptTemplateId, scriptTemplateName, scriptUser]);
+
+  // A script can leave listeners, timers or patched globals that the crm API
+  // cannot undo. Once one has run, signing out (manual, idle, expired, other
+  // tab) must not keep that page alive for the next person's login: revoke the
+  // refresh cookie so the reload cannot restore the session, then load /login fresh.
+  useEffect(() => {
+    if (!scriptHasRun.current || (isAuthenticated && !isLoginPage)) return;
+    scriptHasRun.current = false;
+    rememberLogoutReason(useSessionStore.getState().logoutReason);
+    void apiClient
+      .logout()
+      .catch(() => undefined)
+      .finally(() => window.location.replace("/login"));
+  }, [isAuthenticated, isLoginPage]);
 
   const value = useMemo<TemplateContextValue>(() => {
     const tokens = effective?.tokens ?? {};

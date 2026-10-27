@@ -11,6 +11,13 @@
 - **safety**: template JS never runs on the login page (it loads the public, JS-free variant); `?crm-safe-mode=1` disables custom CSS/JS for the browser session so a broken template can always be fixed; sidebar and login page show the template's brand
 - `@social-crm/api`: `UiTemplate*` types, `getActiveUiTemplate` / `getPublicUiTemplate` / admin CRUD client methods and React Query hooks
 - docs: `docs/UI_TEMPLATES.md` (contract, API, safe mode, security model)
+- **independent review fixes** (before merge):
+  - the login page now gets validated tokens only: no custom CSS (an attribute selector on the controlled password input could leak typed characters) and no JS, even when a session exists; a signed-in user opening `/login` is redirected to `/dashboard`, which also covers a `/login` tab adopting another tab's sign-in
+  - once a template script has run, any sign-out (manual, idle, expired, other tab) revokes the refresh session and hard-reloads `/login`, so listeners/timers/patched globals left outside the `crm` API cannot observe the next login; the sign-out reason survives the reload
+  - the script no longer restarts on every access-token refresh (it was keyed on the per-refresh `user` object)
+  - an admin's preview now survives a page reload (it was cleared while the session was still bootstrapping)
+  - live preview follows colour/CSS edits as you type but only re-runs JS on an explicit "Run updated script in preview", so half-typed code (e.g. an unfinished loop) never executes
+  - stale template fetches are ignored; a second Save right after creating a template works before the list refetches; the logo upload limit is 200 KB so it always fits the server's data-URI cap; removed a dead query invalidation
 - verified: `tsc --noEmit` clean; vitest 38/38 (15 new: colour-scale generation, token → variable mapping, page ids, template file import, runtime lifecycle / cleanup / error isolation); production build; Playwright end-to-end against a real backend + Postgres (25/25 checks: editor preview, activation, other-user rollout incl. JS, login page without JS, safe mode, broken-script isolation, revert to default)
 
 ## 2026-08-06

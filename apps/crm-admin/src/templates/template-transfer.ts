@@ -124,3 +124,18 @@ export function resolveSafeMode(search: string): boolean {
 export function writeSafeMode(on: boolean) {
   writeSession(SAFE_MODE_STORAGE_KEY, on ? "1" : null);
 }
+
+const LOGOUT_REASON_STORAGE_KEY = "crm-admin-logout-reason";
+const LOGOUT_REASONS = ["idle", "expired", "manual", "remote"] as const;
+export type RememberedLogoutReason = (typeof LOGOUT_REASONS)[number];
+
+/** Carries the sign-out reason across the full reload that follows a template script. */
+export function rememberLogoutReason(reason: string | null) {
+  writeSession(LOGOUT_REASON_STORAGE_KEY, reason);
+}
+
+export function takeRememberedLogoutReason(): RememberedLogoutReason | null {
+  const value = readSession(LOGOUT_REASON_STORAGE_KEY);
+  writeSession(LOGOUT_REASON_STORAGE_KEY, null);
+  return (LOGOUT_REASONS as readonly string[]).includes(value ?? "") ? (value as RememberedLogoutReason) : null;
+}

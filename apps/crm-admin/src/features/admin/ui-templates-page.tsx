@@ -33,7 +33,8 @@ type Tab = "design" | "css" | "js" | "reference";
 type Confirm = { kind: "activate" | "delete" | "deactivate" } | null;
 
 const NEW_ID = "new";
-const MAX_LOGO_BYTES = 220 * 1024;
+// 200 KB base64-encodes to ~273k characters, inside the server's 300k data-URI cap.
+const MAX_LOGO_BYTES = 200 * 1024;
 const LIVE_PREVIEW_DELAY_MS = 400;
 
 const EMPTY_DRAFT: Draft = { name: "", description: "", tokens: {}, customCss: "", customJs: "" };
@@ -248,10 +249,19 @@ export function UiTemplatesPage() {
   const [tab, setTab] = useState<Tab>("design");
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Bridges the gap between a create/update response and the list refetch.
+  const [lastSaved, setLastSaved] = useState<AdminUiTemplate | null>(null);
+  // Script running in the live preview. Edits to colours and CSS follow the
+  // draft automatically; JS only changes on an explicit run, so half-typed
+  // code (e.g. an unfinished loop) never executes.
+  const [previewJs, setPreviewJs] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  const selected = selectedId && selectedId !== NEW_ID ? templates.find((template) => template.id === selectedId) ?? null : null;
+  const selected =
+    selectedId && selectedId !== NEW_ID
+      ? templates.find((template) => template.id === selectedId) ?? (lastSaved?.id === selectedId ? lastSaved : null)
+      : null;
   const isNew = selectedId === NEW_ID;
   const isDirty = JSON.stringify(draft) !== JSON.stringify(baseline);
   const previewKey = isNew ? NEW_ID : selected?.id ?? null;
@@ -267,22 +277,26 @@ export function UiTemplatesPage() {
     setBaseline(toDraft(initial));
   }, [activeTemplate, selectedId, templates]);
 
-  // Live preview: while this draft is being previewed, follow edits.
+  const showPreview = (key: string, js: string | null) => {
+    setPreviewJs(js);
+    templateContext.setPreview({
+      id: key,
+      name: draft.name || copy({ en: "Unsaved template", vi: "Mẫu chưa lưu" }),
+      tokens: draft.tokens,
+      customCss: draft.customCss || null,
+      customJs: js,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  // Live preview: while this draft is being previewed, follow edits to
+  // everything except the script (see previewJs).
   useEffect(() => {
     if (!isPreviewingThis || !previewKey) return;
-    const timer = window.setTimeout(() => {
-      templateContext.setPreview({
-        id: previewKey,
-        name: draft.name || copy({ en: "Unsaved template", vi: "Mẫu chưa lưu" }),
-        tokens: draft.tokens,
-        customCss: draft.customCss || null,
-        customJs: draft.customJs || null,
-        updatedAt: new Date().toISOString()
-      });
-    }, LIVE_PREVIEW_DELAY_MS);
+    const timer = window.setTimeout(() => showPreview(previewKey, previewJs), LIVE_PREVIEW_DELAY_MS);
     return () => window.clearTimeout(timer);
     // Only follow draft edits: the provider's setPreview changes identity on every preview update.
-  }, [draft, isPreviewingThis, previewKey]);
+  }, [draft, isPreviewingThis, previewKey, previewJs]);
 
   const confirmDiscard = () =>
     !isDirty || window.confirm(copy({ en: "Discard unsaved changes to this template?", vi: "Bỏ các thay đổi chưa lưu của mẫu này?" }));
@@ -322,6 +336,7 @@ export function UiTemplatesPage() {
       return; // The request-error toast already explains what failed.
     }
     if (!saved) return;
+    setLastSaved(saved);
     setSelectedId(saved.id);
     setDraft(toDraft(saved));
     setBaseline(toDraft(saved));
@@ -331,16 +346,9 @@ export function UiTemplatesPage() {
   };
 
   const startPreview = () => {
-    if (!previewKey) return;
-    templateContext.setPreview({
-      id: previewKey,
-      name: draft.name || copy({ en: "Unsaved template", vi: "Mẫu chưa lưu" }),
-      tokens: draft.tokens,
-      customCss: draft.customCss || null,
-      customJs: draft.customJs || null,
-      updatedAt: new Date().toISOString()
-    });
+    if (previewKey) showPreview(previewKey, draft.customJs || null);
   };
+  const previewScriptIsStale = isPreviewingThis && (draft.customJs || null) !== previewJs;
 
   const runConfirmed = async () => {
     if (!confirm) return;
@@ -400,7 +408,7 @@ export function UiTemplatesPage() {
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      setNotice(copy({ en: "Logo must be 220 KB or smaller. Use a hosted https:// URL for larger images.", vi: "Logo tối đa 220 KB. Dùng đường dẫn https:// cho ảnh lớn hơn." }));
+      setNotice(copy({ en: "Logo must be 200 KB or smaller. Use a hosted https:// URL for larger images.", vi: "Logo tối đa 200 KB. Dùng đường dẫn https:// cho ảnh lớn hơn." }));
       return;
     }
     const reader = new FileReader();
@@ -584,7 +592,7 @@ export function UiTemplatesPage() {
                   />
                   <Field
                     label={copy({ en: "Logo", vi: "Logo" })}
-                    hint={copy({ en: "https:// URL, a /path on this site, or upload an image up to 220 KB.", vi: "Đường dẫn https://, /đường-dẫn trên trang này, hoặc tải ảnh tối đa 220 KB." })}
+                    hint={copy({ en: "https:// URL, a /path on this site, or upload an image up to 200 KB.", vi: "Đường dẫn https://, /đường-dẫn trên trang này, hoặc tải ảnh tối đa 200 KB." })}
                   >
                     <div className="flex items-center gap-2">
                       {draft.tokens.logoUrl ? (
@@ -626,8 +634,8 @@ export function UiTemplatesPage() {
               <div className="space-y-3">
                 <div className="text-sm text-slate-500">
                   {copy({
-                    en: "Loaded after the app's own styles. Target [data-crm-…] hooks (see Reference). Skipped in safe mode.",
-                    vi: "Được nạp sau CSS của ứng dụng. Dùng các móc [data-crm-…] (xem Tài liệu). Bị bỏ qua ở chế độ an toàn."
+                    en: "Loaded after the app's own styles. Target [data-crm-…] hooks (see Reference). Skipped in safe mode and on the login page.",
+                    vi: "Được nạp sau CSS của ứng dụng. Dùng các móc [data-crm-…] (xem Tài liệu). Bị bỏ qua ở chế độ an toàn và trang đăng nhập."
                   })}
                 </div>
                 <CodeArea
@@ -653,6 +661,19 @@ export function UiTemplatesPage() {
                   placeholder={STARTER_JS}
                   onChange={(value) => setDraft((current) => ({ ...current, customJs: value }))}
                 />
+                {previewScriptIsStale && previewKey ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <span>
+                      {copy({
+                        en: "The preview is still running the previous script. Colours and CSS update as you type; scripts only run when you choose.",
+                        vi: "Bản xem thử vẫn chạy script trước. Màu và CSS cập nhật khi bạn gõ; script chỉ chạy khi bạn bấm."
+                      })}
+                    </span>
+                    <Button size="sm" variant="secondary" onClick={() => showPreview(previewKey, draft.customJs || null)}>
+                      {copy({ en: "Run updated script in preview", vi: "Chạy script mới trong bản xem thử" })}
+                    </Button>
+                  </div>
+                ) : null}
                 {errorsForThis.length > 0 ? (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
                     <div className="font-semibold">{copy({ en: "Script errors", vi: "Lỗi script" })}</div>

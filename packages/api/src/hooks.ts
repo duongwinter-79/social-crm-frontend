@@ -528,7 +528,6 @@ export function useAdminUiTemplatesQuery() {
 
 function invalidateUiTemplateQueries(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ["admin", "ui-templates"] });
-  queryClient.invalidateQueries({ queryKey: ["ui-templates", "active"] });
   queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
 }
 
