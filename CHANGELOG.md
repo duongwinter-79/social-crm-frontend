@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-10-27
+
+### Runtime UI templates (customer request: Elementor-style templates they can switch and edit with JS, without changing functionality)
+
+- new **Admin → UI templates** editor (`/ui-templates`, full admins only): create, import/export (`.crm-template.json`), duplicate, live-preview in your own browser, activate for everyone, switch back to the default look, delete. A template holds colour tokens (accent / neutral / success / warning / danger), font, brand name, tagline and logo, plus custom CSS and custom JS
+- **themeable palettes**: `tailwind.config.js` now routes `slate`, `indigo`, `blue`, `emerald`, `green`, `amber`, `yellow`, `rose` and `red` through `--crm-<palette>-<shade>` CSS variables whose defaults are Tailwind's own values, and literal colours in hand-written CSS / arbitrary classes that matched a palette shade were switched to the same variables. Every existing screen becomes themeable without touching its classes. With no template active, screenshots of login, dashboard, leads, lead workbench, dossier, orders, order detail, conversations and UI-text pages match the previous build to within 1/255 per channel (colour rounding only). The admin page differs only by its new "UI templates" card
+- **template runtime** (`apps/crm-admin/src/templates/`): `TemplateProvider` applies tokens + CSS, runs custom JS for signed-in users with a small `crm` API (`onRouteChange`, `observe`, `addStyle`, `setToken`, `onCleanup`, `page/route/lang`, `user`, `template`) that auto-cleans on switch/preview, and isolates script errors (logged, shown to admins in a banner and the editor; the CRM keeps working)
+- **stable hooks** for templates: `body[data-crm-page|data-crm-template|data-crm-safe-mode]`, `[data-crm-shell]` on the app frame, and `[data-crm-component|variant|tone]` on the shared `@social-crm/ui` primitives
+- **safety**: template JS never runs on the login page (it loads the public, JS-free variant); `?crm-safe-mode=1` disables custom CSS/JS for the browser session so a broken template can always be fixed; sidebar and login page show the template's brand
+- `@social-crm/api`: `UiTemplate*` types, `getActiveUiTemplate` / `getPublicUiTemplate` / admin CRUD client methods and React Query hooks
+- docs: `docs/UI_TEMPLATES.md` (contract, API, safe mode, security model)
+- verified: `tsc --noEmit` clean; vitest 38/38 (15 new: colour-scale generation, token → variable mapping, page ids, template file import, runtime lifecycle / cleanup / error isolation); production build; Playwright end-to-end against a real backend + Postgres (25/25 checks: editor preview, activation, other-user rollout incl. JS, login page without JS, safe mode, broken-script isolation, revert to default)
+
 ## 2026-08-06
 
 ### Training & Finance — remove training-progress tracking (customer "Xung đột rule" NOTE: "Bỏ phần theo dõi tiến độ đào tạo")

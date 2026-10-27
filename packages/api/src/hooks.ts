@@ -519,6 +519,65 @@ export function useResetUiTextOverrideMutation() {
   });
 }
 
+export function useAdminUiTemplatesQuery() {
+  return useQuery({
+    queryKey: ["admin", "ui-templates"],
+    queryFn: () => apiClient.listAdminUiTemplates()
+  });
+}
+
+function invalidateUiTemplateQueries(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ["admin", "ui-templates"] });
+  queryClient.invalidateQueries({ queryKey: ["ui-templates", "active"] });
+  queryClient.invalidateQueries({ queryKey: ["admin", "audit-logs"] });
+}
+
+export function useCreateUiTemplateMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof apiClient.createAdminUiTemplate>[0]) => apiClient.createAdminUiTemplate(payload),
+    onSuccess: () => invalidateUiTemplateQueries(queryClient),
+    meta: { successMessage: { en: "Template created", vi: "Đã tạo mẫu giao diện" } }
+  });
+}
+
+export function useUpdateUiTemplateMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Parameters<typeof apiClient.updateAdminUiTemplate>[1] }) =>
+      apiClient.updateAdminUiTemplate(id, patch),
+    onSuccess: () => invalidateUiTemplateQueries(queryClient),
+    meta: { successMessage: { en: "Template saved", vi: "Đã lưu mẫu giao diện" } }
+  });
+}
+
+export function useActivateUiTemplateMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.activateAdminUiTemplate(id),
+    onSuccess: () => invalidateUiTemplateQueries(queryClient),
+    meta: { successMessage: { en: "Template is now live for all users", vi: "Mẫu giao diện đã áp dụng cho tất cả người dùng" } }
+  });
+}
+
+export function useDeactivateUiTemplatesMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiClient.deactivateAdminUiTemplates(),
+    onSuccess: () => invalidateUiTemplateQueries(queryClient),
+    meta: { successMessage: { en: "Switched back to the default look", vi: "Đã chuyển về giao diện mặc định" } }
+  });
+}
+
+export function useDeleteUiTemplateMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiClient.deleteAdminUiTemplate(id),
+    onSuccess: () => invalidateUiTemplateQueries(queryClient),
+    meta: { successMessage: { en: "Template deleted", vi: "Đã xóa mẫu giao diện" } }
+  });
+}
+
 export function useAdminAuditLogsQuery(params: { limit: number; action?: string; targetType?: string }) {
   return useQuery({
     queryKey: ["admin", "audit-logs", params],

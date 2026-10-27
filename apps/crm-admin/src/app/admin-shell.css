@@ -5,8 +5,8 @@
   gap: 24px;
   padding: 24px 18px 18px;
   background:
-    radial-gradient(circle at top, rgba(99, 102, 241, 0.18), transparent 28%),
-    linear-gradient(180deg, #0f172a 0%, #020617 100%);
+    radial-gradient(circle at top, rgb(var(--crm-indigo-500) / 0.18), transparent 28%),
+    linear-gradient(180deg, rgb(var(--crm-slate-900)) 0%, rgb(var(--crm-slate-950)) 100%);
 }
 
 /*
@@ -53,9 +53,9 @@
   justify-content: center;
   overflow: hidden;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgb(var(--crm-slate-400) / 0.22);
   background: #ffffff;
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.3);
+  box-shadow: 0 18px 34px rgb(var(--crm-slate-900) / 0.3);
 }
 
 .admin-shell-brand-mark img {
@@ -70,21 +70,21 @@
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #818cf8;
+  color: rgb(var(--crm-indigo-400));
 }
 
 .admin-shell-brand-title {
   margin-top: 2px;
   font-size: 17px;
   font-weight: 700;
-  color: #f8fafc;
+  color: rgb(var(--crm-slate-50));
 }
 
 .admin-shell-brand-text {
   margin: 2px 0 0;
   font-size: 12px;
   line-height: 1.45;
-  color: #94a3b8;
+  color: rgb(var(--crm-slate-400));
 }
 
 .admin-shell-system {
@@ -93,8 +93,8 @@
   justify-content: space-between;
   gap: 12px;
   border-radius: 18px;
-  border: 1px solid rgba(51, 65, 85, 0.95);
-  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgb(var(--crm-slate-700) / 0.95);
+  background: rgb(var(--crm-slate-900) / 0.76);
   padding: 12px 14px;
 }
 
@@ -102,7 +102,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: #64748b;
+  color: rgb(var(--crm-slate-500));
 }
 
 .admin-shell-system-value {
@@ -112,15 +112,15 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: rgb(var(--crm-slate-200));
 }
 
 .admin-shell-system-dot {
   height: 8px;
   width: 8px;
   border-radius: 999px;
-  background: #10b981;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  background: rgb(var(--crm-emerald-500));
+  box-shadow: 0 0 12px rgb(var(--crm-emerald-500) / 0.6);
 }
 
 .admin-shell-navsection {
@@ -134,7 +134,7 @@
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #475569;
+  color: rgb(var(--crm-slate-600));
 }
 
 .admin-shell-navrow {
@@ -151,7 +151,7 @@
   border-radius: 16px;
   border: 1px solid transparent;
   padding: 12px 14px;
-  color: #94a3b8;
+  color: rgb(var(--crm-slate-400));
   /* Explicit transparent base so <button> elements (Settings, Help, Sign out)
      don't show the browser-default white background. */
   background: transparent;
@@ -166,14 +166,14 @@
 }
 
 .admin-shell-navitem:hover {
-  border-color: rgba(51, 65, 85, 0.9);
-  background: rgba(15, 23, 42, 0.92);
-  color: #e2e8f0;
+  border-color: rgb(var(--crm-slate-700) / 0.9);
+  background: rgb(var(--crm-slate-900) / 0.92);
+  color: rgb(var(--crm-slate-200));
 }
 
 .admin-shell-navitem.is-active {
-  border-color: rgba(79, 70, 229, 0.4);
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(30, 41, 59, 0.92));
+  border-color: rgb(var(--crm-indigo-600) / 0.4);
+  background: linear-gradient(135deg, rgb(var(--crm-slate-800) / 0.98), rgb(var(--crm-slate-800) / 0.92));
   color: #fff;
 }
 
@@ -183,7 +183,7 @@
   inset: 10px auto 10px 0;
   width: 3px;
   border-radius: 999px;
-  background: #6366f1;
+  background: rgb(var(--crm-indigo-500));
 }
 
 .admin-shell-navicon {
@@ -194,8 +194,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #a5b4fc;
+  background: rgb(var(--crm-indigo-500) / 0.12);
+  color: rgb(var(--crm-indigo-300));
 }
 
 .admin-shell-navicon svg {
@@ -229,7 +229,7 @@
   gap: 12px;
   width: 100%;
   box-sizing: border-box;
-  border-top: 1px solid rgba(51, 65, 85, 0.95);
+  border-top: 1px solid rgb(var(--crm-slate-700) / 0.95);
   padding: 14px 2px 0;
 }
 
@@ -250,7 +250,7 @@
 }
 
 .admin-shell-footer-profile-wrap {
-  border-top: 1px solid rgba(51, 65, 85, 0.95);
+  border-top: 1px solid rgb(var(--crm-slate-700) / 0.95);
   padding-top: 6px;
 }
 
@@ -265,8 +265,8 @@
   width: 42px;
   flex: 0 0 42px;
   border-radius: 999px;
-  border: 1px solid rgba(129, 140, 248, 0.45);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(79, 70, 229, 0.08));
+  border: 1px solid rgb(var(--crm-indigo-400) / 0.45);
+  background: linear-gradient(135deg, rgb(var(--crm-indigo-500) / 0.3), rgb(var(--crm-indigo-600) / 0.08));
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -293,9 +293,9 @@
   box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
-  border: 1px solid rgba(244, 63, 94, 0.32);
-  background: rgba(244, 63, 94, 0.08);
-  color: #fda4af;
+  border: 1px solid rgb(var(--crm-rose-500) / 0.32);
+  background: rgb(var(--crm-rose-500) / 0.08);
+  color: rgb(var(--crm-rose-300));
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -307,13 +307,13 @@
 }
 
 .admin-shell-signout:hover {
-  background: rgba(244, 63, 94, 0.16);
-  border-color: rgba(244, 63, 94, 0.5);
-  color: #fecaca;
+  background: rgb(var(--crm-rose-500) / 0.16);
+  border-color: rgb(var(--crm-rose-500) / 0.5);
+  color: rgb(var(--crm-red-200));
 }
 
 .admin-shell-signout:focus-visible {
-  outline: 2px solid rgba(244, 63, 94, 0.6);
+  outline: 2px solid rgb(var(--crm-rose-500) / 0.6);
   outline-offset: 2px;
 }
 
@@ -346,7 +346,7 @@
   font-size: clamp(24px, 3vw, 30px);
   font-weight: 700;
   letter-spacing: -0.03em;
-  color: #0f172a;
+  color: rgb(var(--crm-slate-900));
 }
 
 .admin-shell-header-meta {
@@ -355,7 +355,7 @@
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: #64748b;
+  color: rgb(var(--crm-slate-500));
 }
 
 .admin-shell-lang-toggle {
@@ -364,7 +364,7 @@
   gap: 4px;
   border-radius: 999px;
   border: 1px solid #dbe4f0;
-  background: #f8fafc;
+  background: rgb(var(--crm-slate-50));
   padding: 4px;
 }
 
@@ -372,7 +372,7 @@
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #64748b;
+  color: rgb(var(--crm-slate-500));
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 700;
@@ -382,7 +382,7 @@
 }
 
 .admin-shell-lang-button.is-active {
-  background: #0f172a;
+  background: rgb(var(--crm-slate-900));
   color: #fff;
 }
 
@@ -391,14 +391,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid rgb(var(--crm-slate-200));
   padding-top: 14px;
   font-size: 13px;
-  color: #64748b;
+  color: rgb(var(--crm-slate-500));
 }
 
 .admin-shell-header-strip strong {
-  color: #334155;
+  color: rgb(var(--crm-slate-700));
 }
 
 @media (max-width: 1024px) {

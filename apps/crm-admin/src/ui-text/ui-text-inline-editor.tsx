@@ -159,7 +159,7 @@ export function UiTextInlineEditor() {
       ref={popoverRef}
       role="dialog"
       aria-label="Edit UI text"
-      className="fixed z-[1000] w-[360px] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.18)]"
+      className="fixed z-[1000] w-[360px] rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_40px_rgb(var(--crm-slate-900)/0.18)]"
       style={{ top: position.top, left: position.left }}
     >
       <div className="mb-3 flex items-start justify-between gap-2">

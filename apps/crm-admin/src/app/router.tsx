@@ -8,6 +8,7 @@ import { useUiText } from "@/ui-text/ui-text-provider";
 import { UiText } from "@/ui-text/ui-text";
 import { UiTextInlineEditor } from "@/ui-text/ui-text-inline-editor";
 import { UiTextReviewDrafts } from "@/ui-text/ui-text-review-drafts";
+import { useTemplate } from "@/templates/template-provider";
 import "./admin-shell.css";
 
 const DashboardPage = lazy(() => import("@/features/dashboard/dashboard-page").then((m) => ({ default: m.DashboardPage })));
@@ -19,6 +20,7 @@ const OrdersPage = lazy(() => import("@/features/orders/orders-page").then((m) =
 const OrderDetailPage = lazy(() => import("@/features/orders/order-detail-page").then((m) => ({ default: m.OrderDetailPage })));
 const TrainingFinanceDetailPage = lazy(() => import("@/features/training-finance/training-finance-detail-page").then((m) => ({ default: m.TrainingFinanceDetailPage })));
 const AdminPage = lazy(() => import("@/features/admin/admin-page").then((m) => ({ default: m.AdminPage })));
+const UiTemplatesPage = lazy(() => import("@/features/admin/ui-templates-page").then((m) => ({ default: m.UiTemplatesPage })));
 const UiTextOverridesPage = lazy(() => import("@/features/admin/ui-text-overrides-page").then((m) => ({ default: m.UiTextOverridesPage })));
 const RegionGroupsPage = lazy(() => import("@/features/admin/region-groups-page").then((m) => ({ default: m.RegionGroupsPage })));
 const AuditPage = lazy(() => import("@/features/admin/audit-page").then((m) => ({ default: m.AuditPage })));
@@ -122,6 +124,7 @@ function titleForPath(pathname: string, copy: (value: { en: string; vi: string }
   if (pathname.match(/^\/leads\/[^/]+\/dossier$/)) return copy({ en: "Candidate dossier", vi: "Hồ sơ ứng viên" });
   if (pathname.startsWith("/leads/")) return copy({ en: "Lead workbench", vi: "Bàn xử lý ứng viên tiềm năng" });
   if (pathname === "/ui-text-overrides") return copy({ en: "UI text overrides", vi: "Tùy chỉnh chữ hiển thị" });
+  if (pathname === "/ui-templates") return copy({ en: "UI templates", vi: "Mẫu giao diện" });
   if (pathname === "/region-groups") return copy({ en: "Region groups", vi: "Nhóm khu vực" });
   if (pathname === "/audit") return copy({ en: "Audit & sessions", vi: "Nhật ký & phiên" });
   if (pathname === "/applications/detail") return copy({ en: "Application file detail", vi: "Chi tiết hồ sơ ứng tuyển" });
@@ -137,6 +140,7 @@ function ProtectedLayout() {
   const health = useHealthQuery();
   const { lang, setLang, copy } = useI18n();
   const { previewOverrides, isPreviewing, clearPreview, isEditMode, setEditMode } = useUiText();
+  const template = useTemplate();
   const isAdmin = Boolean(user?.roles?.includes("admin"));
   const [reviewOpen, setReviewOpen] = useState(false);
   const pageTitle = titleForPath(location.pathname, copy);
@@ -172,14 +176,14 @@ function ProtectedLayout() {
     <ShellFrame
       sidebar={
         <div className="admin-shell-sidebar">
-          <div className="admin-shell-brand">
+          <div className="admin-shell-brand" data-crm-shell="brand">
             <div className="admin-shell-brand-mark" aria-hidden="true">
-              <img src="/sao-mai-logo.png" alt="" />
+              <img src={template.brand.logoUrl ?? "/sao-mai-logo.png"} alt="" />
             </div>
             <div className="admin-shell-brand-copy">
-              <div className="admin-shell-brand-kicker">Sao Mai HR</div>
-              <div className="admin-shell-brand-title">Sao Mai HR CRM</div>
-              <p className="admin-shell-brand-text">{copy({ en: "Recruitment workspace", vi: "Hệ thống tuyển dụng" })}</p>
+              {template.brand.name ? null : <div className="admin-shell-brand-kicker">Sao Mai HR</div>}
+              <div className="admin-shell-brand-title">{template.brand.name ?? "Sao Mai HR CRM"}</div>
+              <p className="admin-shell-brand-text">{template.brand.tagline ?? copy({ en: "Recruitment workspace", vi: "Hệ thống tuyển dụng" })}</p>
             </div>
           </div>
 
@@ -200,7 +204,7 @@ function ProtectedLayout() {
 
           <div className="admin-shell-navsection">
             <div className="admin-shell-navlabel">{copy({ en: "Core workspace", vi: "Khu vực chính" })}</div>
-            <nav className="admin-shell-navrow">
+            <nav className="admin-shell-navrow" data-crm-shell="nav">
               {primaryItems.map((item) => (
                 <SidebarNavItem
                   key={item.to}
@@ -336,6 +340,41 @@ function ProtectedLayout() {
                 </span>
               </div>
             ) : null}
+            {isAdmin && template.isPreviewing ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <span>
+                  {copy({ en: "Template preview:", vi: "Đang xem thử mẫu:" })} <strong>{template.preview?.name}</strong>{" "}
+                  {copy({ en: "is visible only in this browser session.", vi: "chỉ hiển thị trong phiên trình duyệt này." })}
+                </span>
+                <span className="flex items-center gap-3">
+                  <Link to="/ui-templates" className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100">
+                    {copy({ en: "Open editor", vi: "Mở trình chỉnh sửa" })}
+                  </Link>
+                  <button type="button" className="font-semibold text-amber-900 underline decoration-amber-400 underline-offset-4" onClick={template.clearPreview}>
+                    {copy({ en: "Exit preview", vi: "Thoát xem thử" })}
+                  </button>
+                </span>
+              </div>
+            ) : null}
+            {template.safeMode ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                <span>{copy({ en: "Safe mode: template custom CSS and JS are switched off in this browser session.", vi: "Chế độ an toàn: CSS và JS tùy chỉnh của mẫu đang tắt trong phiên trình duyệt này." })}</span>
+                <button type="button" className="font-semibold text-sky-900 underline decoration-sky-400 underline-offset-4" onClick={() => template.setSafeMode(false)}>
+                  {copy({ en: "Turn off safe mode", vi: "Tắt chế độ an toàn" })}
+                </button>
+              </div>
+            ) : null}
+            {isAdmin && !template.safeMode && template.scriptErrors.length > 0 ? (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                <span>
+                  {copy({ en: "The active template's JavaScript reported", vi: "JavaScript của mẫu đang dùng báo" })} <strong>{template.scriptErrors.length}</strong>{" "}
+                  {copy({ en: "error(s). Users can keep working; details are in the editor and the browser console.", vi: "lỗi. Người dùng vẫn làm việc bình thường; chi tiết có trong trình chỉnh sửa và console trình duyệt." })}
+                </span>
+                <Link to="/ui-templates" className="font-semibold text-rose-800 underline decoration-rose-300 underline-offset-4">
+                  {copy({ en: "Open editor", vi: "Mở trình chỉnh sửa" })}
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
       }
@@ -371,7 +410,7 @@ function RedirectToLeadWorkbench() {
 function RouteFallback() {
   const { copy } = useI18n();
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white px-6 py-10 text-center shadow-[0_18px_34px_rgba(15,23,42,0.05)]">
+    <div className="rounded-[24px] border border-slate-200 bg-white px-6 py-10 text-center shadow-[0_18px_34px_rgb(var(--crm-slate-900)/0.05)]">
       <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">{copy({ en: "Loading module", vi: "Đang tải mô-đun" })}</div>
       <div className="mt-3 text-lg font-semibold text-slate-900">{copy({ en: "Preparing workspace", vi: "Đang chuẩn bị khu vực làm việc" })}</div>
       <div className="mt-2 text-sm text-slate-500">
@@ -451,6 +490,7 @@ export function AppRouter() {
         <Route path="/extract" element={<RequireAdmin><LazyRoute><ExtractPage /></LazyRoute></RequireAdmin>} />
         <Route path="/admin" element={<RequireAdmin><LazyRoute><AdminPage /></LazyRoute></RequireAdmin>} />
         <Route path="/ui-text-overrides" element={<RequireAdmin><LazyRoute><UiTextOverridesPage /></LazyRoute></RequireAdmin>} />
+        <Route path="/ui-templates" element={<RequireAdmin><LazyRoute><UiTemplatesPage /></LazyRoute></RequireAdmin>} />
         <Route path="/region-groups" element={<RequirePermission permission="manage_region_groups"><LazyRoute><RegionGroupsPage /></LazyRoute></RequirePermission>} />
         <Route path="/audit" element={<RequirePermission permission="view_audit"><LazyRoute><AuditPage /></LazyRoute></RequirePermission>} />
       </Route>

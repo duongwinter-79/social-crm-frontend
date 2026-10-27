@@ -20,6 +20,8 @@ import type {
   CnvResourceListResponse,
   AdminSessionListResponse,
   AdminSystemStatus,
+  AdminUiTemplate,
+  AdminUiTemplateListResponse,
   AdminUiTextOverride,
   AdminUiTextOverrideListResponse,
   AdminUserListResponse,
@@ -67,6 +69,8 @@ import type {
   TrainingFinanceRecord,
   TrainingFinanceCurrency,
   DepositStatusMode,
+  UiTemplatePayload,
+  UiTemplateRuntime,
   UiTextRuntimeOverride,
   UpdateUiTextOverridePayload
 } from "./types";
@@ -1070,6 +1074,50 @@ export class SocialCrmApiClient {
 
   async resetAdminUiTextOverride(key: string): Promise<void> {
     await this.http.delete(`/admin/ui-text/${encodeURIComponent(key)}`);
+  }
+
+  async getActiveUiTemplate(): Promise<UiTemplateRuntime | null> {
+    const response = await this.http.get<ApiEnvelope<UiTemplateRuntime | null> | UiTemplateRuntime | null>("/ui-templates/active");
+    return unwrapEnvelope(response.data) ?? null;
+  }
+
+  /** Login-page variant: tokens and CSS only, never custom JS. */
+  async getPublicUiTemplate(): Promise<UiTemplateRuntime | null> {
+    const response = await this.http.get<ApiEnvelope<UiTemplateRuntime | null> | UiTemplateRuntime | null>("/ui-templates/active/public");
+    return unwrapEnvelope(response.data) ?? null;
+  }
+
+  async listAdminUiTemplates(): Promise<AdminUiTemplateListResponse> {
+    const response = await this.http.get<ApiEnvelope<AdminUiTemplateListResponse> | AdminUiTemplateListResponse>("/admin/ui-templates");
+    return unwrapEnvelope(response.data);
+  }
+
+  async createAdminUiTemplate(payload: UiTemplatePayload): Promise<AdminUiTemplate> {
+    const response = await this.http.post<ApiEnvelope<AdminUiTemplate> | AdminUiTemplate>("/admin/ui-templates", payload);
+    return unwrapEnvelope(response.data);
+  }
+
+  async updateAdminUiTemplate(id: string, payload: Partial<UiTemplatePayload>): Promise<AdminUiTemplate> {
+    const response = await this.http.patch<ApiEnvelope<AdminUiTemplate> | AdminUiTemplate>(
+      `/admin/ui-templates/${encodeURIComponent(id)}`,
+      payload
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async activateAdminUiTemplate(id: string): Promise<AdminUiTemplate> {
+    const response = await this.http.post<ApiEnvelope<AdminUiTemplate> | AdminUiTemplate>(
+      `/admin/ui-templates/${encodeURIComponent(id)}/activate`
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  async deactivateAdminUiTemplates(): Promise<void> {
+    await this.http.post("/admin/ui-templates/deactivate");
+  }
+
+  async deleteAdminUiTemplate(id: string): Promise<void> {
+    await this.http.delete(`/admin/ui-templates/${encodeURIComponent(id)}`);
   }
 
   async listAdminAuditLogs(params: { limit: number; action?: string; targetType?: string }) {

@@ -398,7 +398,7 @@ export function ImportPage() {
             <DataTable>
               <div className="max-h-[calc(100vh-32rem)] min-h-[280px] overflow-auto">
                 <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_0_rgba(226,232,240,1)]">
+                  <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_0_rgb(var(--crm-slate-200)/1)]">
                     <tr>
                       <th className="px-4 py-3">{copy({ en: "Row", vi: "Dòng" })}</th>
                       <th className="py-3 pr-3">{copy({ en: "Status", vi: "Trạng thái" })}</th>
@@ -619,7 +619,7 @@ function Strip(props: {
           ? "border-rose-200 bg-rose-50"
           : "border-slate-200 bg-white";
   return (
-    <div className={`rounded-[22px] border px-4 py-4 shadow-[0_14px_26px_rgba(15,23,42,0.04)] ${accent}`}>
+    <div className={`rounded-[22px] border px-4 py-4 shadow-[0_14px_26px_rgb(var(--crm-slate-900)/0.04)] ${accent}`}>
       <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{props.label}</div>
       <div className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-900">{props.value}</div>
     </div>

@@ -148,6 +148,53 @@ export interface UpdateUiTextOverridePayload {
   isActive?: boolean;
 }
 
+export type UiTemplateColorKey = "accent" | "neutral" | "success" | "warning" | "danger";
+
+export interface UiTemplateTokens {
+  colors?: Partial<Record<UiTemplateColorKey, string>>;
+  fontFamily?: string;
+  brandName?: string;
+  brandTagline?: string;
+  logoUrl?: string;
+}
+
+/** Active template as served to the app; `customJs` is absent on the public (login-page) variant. */
+export interface UiTemplateRuntime {
+  id: string;
+  name: string;
+  tokens: UiTemplateTokens;
+  customCss: string | null;
+  customJs?: string | null;
+  updatedAt?: string;
+}
+
+export interface AdminUiTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  tokens: UiTemplateTokens;
+  customCss: string | null;
+  customJs: string | null;
+  isActive: boolean;
+  updatedByUserId?: string | null;
+  updatedByUsername?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AdminUiTemplateListResponse {
+  data: AdminUiTemplate[];
+  total: number;
+}
+
+export interface UiTemplatePayload {
+  name: string;
+  description?: string | null;
+  tokens?: UiTemplateTokens;
+  customCss?: string | null;
+  customJs?: string | null;
+}
+
 export interface CnvConnectionStatus {
   connected: boolean;
   accountId?: string | null;

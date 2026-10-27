@@ -68,7 +68,7 @@ export function OrdersPage() {
             {canManageOrders ? (
               <Link
                 to="/orders/new"
-                className="inline-flex items-center justify-center rounded-xl border border-indigo-600 bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white no-underline shadow-[0_10px_24px_rgba(79,70,229,0.22)] transition-colors hover:border-indigo-500 hover:bg-indigo-500"
+                className="inline-flex items-center justify-center rounded-xl border border-indigo-600 bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white no-underline shadow-[0_10px_24px_rgb(var(--crm-indigo-600)/0.22)] transition-colors hover:border-indigo-500 hover:bg-indigo-500"
               >
                 {copy({ en: "New order", vi: "Tạo đơn" })}
               </Link>
