@@ -437,7 +437,7 @@ function LazyRoute(props: { children: ReactNode }) {
 export function AppRouter() {
   // Cross-tab logout sync, idle timeout, visibility-aware session check.
   // An idle sign-out also revokes the refresh session, so F5 cannot restore it.
-  useEffect(() => startSessionLifecycle({ onIdleTimeout: () => void apiClient.revokeServerSession() }), []);
+  useEffect(() => startSessionLifecycle({ onIdleTimeout: () => apiClient.revokeServerSession() }), []);
 
   // On first load there is no in-memory access token. Try the httpOnly refresh
   // cookie once; show a tiny loading state until we know if a session exists.

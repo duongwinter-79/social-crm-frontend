@@ -125,12 +125,39 @@ interface EncryptedCredentialPayload {
 }
 
 const REFRESH_LOCK_NAME = "social-crm-token-refresh";
+/** Auth calls run while holding the cross-tab lock, so they must not hang on a dead connection. */
+const AUTH_REQUEST_TIMEOUT_MS = 15_000;
+/** Longest a tab waits for another tab's refresh before refreshing on its own. */
+const LOCK_WAIT_TIMEOUT_MS = 20_000;
 
-/** Runs `work` while holding a lock shared by every tab of this origin (Web Locks API); runs it directly where unsupported. */
+/**
+ * Runs `work` while holding a lock shared by every tab of this origin (Web
+ * Locks API). If the lock is not granted within LOCK_WAIT_TIMEOUT_MS (another
+ * tab frozen mid-refresh), or Web Locks are unsupported, runs `work` without it.
+ * Not reentrant: `work` must never request the same lock.
+ */
 function withCrossTabLock<T>(name: string, work: () => Promise<T>): Promise<T> {
   const locks = typeof navigator !== "undefined" ? (navigator as Navigator & { locks?: LockManager }).locks : undefined;
   if (!locks?.request) return work();
-  return locks.request(name, work) as Promise<T>;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LOCK_WAIT_TIMEOUT_MS);
+  let granted = false;
+  return (
+    locks.request(name, { signal: controller.signal }, () => {
+      granted = true;
+      clearTimeout(timer);
+      return work();
+    }) as Promise<T>
+  ).catch((error: unknown) => {
+    clearTimeout(timer);
+    if (!granted && controller.signal.aborted) return work();
+    throw error;
+  });
+}
+
+function bearerToken(config: InternalAxiosRequestConfig): string | null {
+  const header = config.headers?.Authorization;
+  return typeof header === "string" && header.startsWith("Bearer ") ? header.slice("Bearer ".length) : null;
 }
 
 function arrayBufferToBase64(value: ArrayBuffer) {
@@ -148,6 +175,8 @@ export class SocialCrmApiClient {
   private readonly http: AxiosInstance;
   /** In-flight refresh request shared across concurrent callers (single-flight). */
   private refreshPromise: Promise<string> | null = null;
+  /** Session epoch the in-flight refresh belongs to. */
+  private refreshEpoch = -1;
 
   constructor() {
     this.http = axios.create({
@@ -208,7 +237,7 @@ export class SocialCrmApiClient {
       return Promise.reject(error);
     }
 
-    const accessToken = useSessionStore.getState().accessToken;
+    const { accessToken, sessionEpoch } = useSessionStore.getState();
     if (!accessToken) {
       // Already cleared — propagate the error so the caller sees the 401.
       return Promise.reject(error);
@@ -216,13 +245,29 @@ export class SocialCrmApiClient {
 
     original._retry = true;
 
+    // Another tab refreshed while this request was in flight (each refresh
+    // revokes the previous session, so the token it was sent with is now
+    // rejected). If this tab already adopted a newer token for the same user,
+    // retry with it instead of rotating the session yet again.
+    const sentWith = bearerToken(original);
+    if (sentWith && sentWith !== accessToken && !isAccessTokenStale(30, accessToken)) {
+      const sentUser = decodeJwtUser(sentWith)?.userId;
+      if (sentUser && sentUser === decodeJwtUser(accessToken)?.userId) {
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return this.http.request(original);
+      }
+    }
+
     try {
-      const nextAccess = await this.runRefresh();
+      const nextAccess = await this.runRefresh(sentWith ?? accessToken);
       original.headers.Authorization = `Bearer ${nextAccess}`;
       return this.http.request(original);
     } catch (refreshError) {
-      // Keep the original reason (e.g. idle) if the session already ended.
-      if (useSessionStore.getState().accessToken) useSessionStore.getState().clearSession("expired");
+      // Only end the session this request belonged to: keep the reason if it
+      // already ended (e.g. idle), and never sign out a newer session that
+      // started while this refresh was waiting.
+      const state = useSessionStore.getState();
+      if (state.accessToken && state.sessionEpoch === sessionEpoch) state.clearSession("expired");
       return Promise.reject(refreshError);
     }
   }
@@ -237,36 +282,45 @@ export class SocialCrmApiClient {
    * refreshes, so each one uses the newest cookie, and a tab that waited skips
    * its refresh when another tab already produced a fresh token.
    */
-  private runRefresh(): Promise<string> {
-    if (!this.refreshPromise) {
-      const startedInEpoch = useSessionStore.getState().sessionEpoch;
-      const tokenAtStart = useSessionStore.getState().accessToken;
-      const refreshOnce = async (): Promise<string> => {
-        const state = useSessionStore.getState();
-        if (state.sessionEpoch !== startedInEpoch) {
-          throw new Error("Session ended while waiting to refresh");
-        }
-        if (state.accessToken && state.accessToken !== tokenAtStart && !isAccessTokenStale(30, state.accessToken)) {
-          return state.accessToken; // another tab refreshed while we waited for the lock
-        }
-        const response = await this.http.post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>("/auth/refresh", {});
-        const next = unwrapEnvelope(response.data).access_token;
-        if (useSessionStore.getState().sessionEpoch !== startedInEpoch) {
-          // Signed out (idle, manual, other tab) while this refresh was in
-          // flight. Drop the token and revoke the session it rotated into,
-          // in case the server answered it before processing the logout.
-          await this.revokeServerSession();
-          throw new Error("Session ended while refreshing");
-        }
-        useSessionStore.getState().setSession(next);
-        notifyLoginAcrossTabs(next);
-        return next;
-      };
-      this.refreshPromise = withCrossTabLock(REFRESH_LOCK_NAME, refreshOnce).finally(() => {
-        this.refreshPromise = null;
-      });
-    }
-    return this.refreshPromise;
+  private runRefresh(baselineToken: string | null = useSessionStore.getState().accessToken): Promise<string> {
+    const startedInEpoch = useSessionStore.getState().sessionEpoch;
+    // A refresh from an earlier session (signed out and in again while it
+    // waited for the lock) must not be handed to callers in the new session.
+    if (this.refreshPromise && this.refreshEpoch === startedInEpoch) return this.refreshPromise;
+
+    const refreshOnce = async (): Promise<string> => {
+      const state = useSessionStore.getState();
+      if (state.sessionEpoch !== startedInEpoch) {
+        throw new Error("Session ended while waiting to refresh");
+      }
+      if (state.accessToken && state.accessToken !== baselineToken && !isAccessTokenStale(30, state.accessToken)) {
+        return state.accessToken; // another tab refreshed while we waited for the lock
+      }
+      const response = await this.http.post<ApiEnvelope<AccessTokenResponse> | AccessTokenResponse>(
+        "/auth/refresh",
+        {},
+        { timeout: AUTH_REQUEST_TIMEOUT_MS }
+      );
+      const next = unwrapEnvelope(response.data).access_token;
+      if (useSessionStore.getState().sessionEpoch !== startedInEpoch) {
+        // Signed out (idle, manual, other tab) while this refresh was in
+        // flight. Drop the token and revoke the session it rotated into,
+        // in case the server answered it before processing the logout.
+        // Already holding the lock, so use the unlocked call.
+        await this.postLogout();
+        throw new Error("Session ended while refreshing");
+      }
+      useSessionStore.getState().setSession(next);
+      notifyLoginAcrossTabs(next);
+      return next;
+    };
+
+    const promise = withCrossTabLock(REFRESH_LOCK_NAME, refreshOnce).finally(() => {
+      if (this.refreshPromise === promise) this.refreshPromise = null;
+    });
+    this.refreshPromise = promise;
+    this.refreshEpoch = startedInEpoch;
+    return promise;
   }
 
   /**
@@ -349,7 +403,15 @@ export class SocialCrmApiClient {
    * session, so a page reload cannot silently restore it. Best-effort.
    */
   async revokeServerSession(): Promise<void> {
-    await this.http.post("/auth/logout", {}).catch(() => undefined);
+    // Under the refresh lock so it revokes the newest session: a concurrent
+    // refresh in another tab would otherwise rotate the session out from
+    // under it and leave the new one alive.
+    await withCrossTabLock(REFRESH_LOCK_NAME, () => this.postLogout());
+  }
+
+  /** POST /auth/logout without the lock — only for callers already holding it. */
+  private async postLogout(): Promise<void> {
+    await this.http.post("/auth/logout", {}, { timeout: AUTH_REQUEST_TIMEOUT_MS }).catch(() => undefined);
   }
 
   async getDashboardStats() {

@@ -224,10 +224,13 @@ export const IDLE_TIMEOUT_MINUTES = 30;
  */
 export type SessionLifecycleOptions = {
   /**
-   * Called after an idle sign-out clears the local session. Must revoke the
-   * server-side refresh session; otherwise a page reload silently restores it.
+   * Called on an idle timeout, before the local session is cleared and other
+   * tabs are told. Must revoke the server-side refresh session; otherwise a
+   * page reload silently restores it. Sign-out waits for the returned promise
+   * (bounded by the client's request timeout) so no tab can reload and restore
+   * the session before the revoke lands.
    */
-  onIdleTimeout?: () => void;
+  onIdleTimeout?: () => void | Promise<unknown>;
 };
 
 export function startSessionLifecycle(options: SessionLifecycleOptions = {}): () => void {
@@ -261,14 +264,25 @@ export function startSessionLifecycle(options: SessionLifecycleOptions = {}): ()
   const idleIntervalMs = 30_000;
   const idleLimitMs = IDLE_TIMEOUT_MINUTES * 60_000;
 
+  let idleSignOutInProgress = false;
   function checkIdle() {
     const state = store.getState();
-    if (!state.accessToken) return;
+    if (!state.accessToken || idleSignOutInProgress) return;
     // Activity in any tab of this browser keeps the session alive.
     const lastActivity = Math.max(state.lastActivityAt, readSharedActivity() ?? 0);
     if (Date.now() - lastActivity > idleLimitMs) {
-      state.clearSession("idle");
-      options.onIdleTimeout?.();
+      idleSignOutInProgress = true;
+      const epoch = state.sessionEpoch;
+      void Promise.resolve()
+        .then(() => options.onIdleTimeout?.())
+        .catch(() => undefined)
+        .finally(() => {
+          idleSignOutInProgress = false;
+          // Skip if the session already ended or changed meanwhile.
+          if (store.getState().sessionEpoch === epoch && store.getState().accessToken) {
+            store.getState().clearSession("idle");
+          }
+        });
     }
   }
 

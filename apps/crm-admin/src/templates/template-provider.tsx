@@ -209,6 +209,19 @@ export function TemplateProvider(props: PropsWithChildren) {
   // Custom JS: signed-in sessions only, never on the login page, skipped in safe mode.
   const scriptCode = isAuthenticated && !safeMode && !isLoginPage ? effective?.customJs ?? null : null;
   const scriptHasRun = useRef(false);
+  const scriptRanForUserId = useRef<string | null>(null);
+  const scriptUserIdRef = useRef(currentUserId);
+  scriptUserIdRef.current = currentUserId;
+
+  // This tab can switch users without signing out (it adopts another tab's
+  // sign-in). Whatever the previous user's script left outside the crm API
+  // must not live on in the new user's session: reload so it starts clean.
+  useEffect(() => {
+    if (scriptHasRun.current && currentUserId && scriptRanForUserId.current && currentUserId !== scriptRanForUserId.current) {
+      scriptHasRun.current = false;
+      window.location.reload();
+    }
+  }, [currentUserId]);
   const scriptTemplateId = effective?.id ?? null;
   const scriptTemplateName = effective?.name ?? "";
   const isPreviewing = Boolean(preview);
@@ -216,6 +229,7 @@ export function TemplateProvider(props: PropsWithChildren) {
     setScriptErrors([]);
     if (!scriptCode?.trim()) return;
     scriptHasRun.current = true;
+    scriptRanForUserId.current = scriptUserIdRef.current;
     return startTemplateScript(
       scriptCode,
       {
@@ -239,19 +253,15 @@ export function TemplateProvider(props: PropsWithChildren) {
 
   // A script can leave listeners, timers or patched globals that the crm API
   // cannot undo. Once one has run, signing out (manual, idle, expired, other
-  // tab) must not keep that page alive for the next person's login: revoke the
-  // refresh cookie so the reload cannot restore the session, then load /login fresh.
+  // tab) must not keep that page alive for the next person's login, so load
+  // /login fresh. Every sign-out path has already revoked the server session
+  // before clearing it here (idle and manual revoke first, "remote" comes from
+  // a tab that did), so the reload cannot restore it.
   useEffect(() => {
     if (!scriptHasRun.current || (isAuthenticated && !isLoginPage)) return;
     scriptHasRun.current = false;
-    const reason = useSessionStore.getState().logoutReason;
-    rememberLogoutReason(reason);
-    // Manual sign-out already revoked the session and "remote"/"expired" mean
-    // it is gone or another tab handled it. Idle sign-out's own revoke may still
-    // be in flight, so await one here before the reload can cancel it. No
-    // broadcast: other tabs are not signed out by this tab's reload.
-    const revoke = reason === "idle" ? apiClient.revokeServerSession() : Promise.resolve();
-    void revoke.finally(() => window.location.replace("/login"));
+    rememberLogoutReason(useSessionStore.getState().logoutReason);
+    window.location.replace("/login");
   }, [isAuthenticated, isLoginPage]);
 
   const value = useMemo<TemplateContextValue>(() => {

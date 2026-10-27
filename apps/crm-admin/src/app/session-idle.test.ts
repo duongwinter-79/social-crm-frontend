@@ -61,10 +61,30 @@ describe("idle sign-out", () => {
     const stop = session.startSessionLifecycle({ onIdleTimeout });
     store.getState().setSession(makeToken("linh"));
 
-    vi.advanceTimersByTime(31 * MINUTE);
+    await vi.advanceTimersByTimeAsync(31 * MINUTE);
     expect(store.getState().accessToken).toBeNull();
     expect(store.getState().logoutReason).toBe("idle");
     expect(onIdleTimeout).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it("revokes the server session before signing out, so no tab can reload first", async () => {
+    const { session } = await loadSession();
+    const store = session.useSessionStore;
+    let finishRevoke: () => void = () => undefined;
+    const onIdleTimeout = vi.fn(() => new Promise<void>((resolve) => (finishRevoke = resolve)));
+    const stop = session.startSessionLifecycle({ onIdleTimeout });
+    store.getState().setSession(makeToken("linh"));
+
+    await vi.advanceTimersByTimeAsync(31 * MINUTE);
+    expect(onIdleTimeout).toHaveBeenCalledTimes(1);
+    expect(store.getState().accessToken).not.toBeNull(); // still waiting on the revoke
+    await vi.advanceTimersByTimeAsync(MINUTE);
+    expect(onIdleTimeout).toHaveBeenCalledTimes(1); // no second sign-out attempt meanwhile
+    finishRevoke();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.getState().accessToken).toBeNull();
+    expect(store.getState().logoutReason).toBe("idle");
     stop();
   });
 
@@ -77,7 +97,7 @@ describe("idle sign-out", () => {
 
     // This tab sees no activity; another tab keeps writing the shared clock.
     for (let minute = 1; minute <= 40; minute++) {
-      vi.advanceTimersByTime(MINUTE);
+      await vi.advanceTimersByTimeAsync(MINUTE);
       storage.set("social-crm.last-activity", String(Date.now()));
     }
     expect(store.getState().accessToken).not.toBeNull();
