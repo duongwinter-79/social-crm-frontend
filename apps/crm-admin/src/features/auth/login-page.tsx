@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { apiClient, useSessionStore } from "@social-crm/api";
 import { useImeSafeInput } from "@social-crm/ui";
 import { useI18n } from "@/i18n";
+import { useTemplate } from "@/templates/template-provider";
+import { takeRememberedLogoutReason } from "@/templates/template-transfer";
 import "./login-page.css";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { lang, setLang, copy } = useI18n();
+  const { brand } = useTemplate();
   const consumeLogoutReason = useSessionStore((state) => state.consumeLogoutReason);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +22,8 @@ export function LoginPage() {
   // If we landed here because the previous session ended, show a small banner
   // explaining why. Consume the reason once so it doesn't repeat on re-login.
   useEffect(() => {
-    const reason = consumeLogoutReason();
+    const remembered = takeRememberedLogoutReason();
+    const reason = consumeLogoutReason() ?? remembered;
     if (!reason || reason === "manual") return;
     if (reason === "expired") {
       setSessionNotice(copy({ en: "Your session expired. Please sign in again.", vi: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." }));
@@ -52,9 +56,11 @@ export function LoginPage() {
       <div className="login-shell">
         <section className="login-brand-panel">
           <div className="login-brand-top">
-            <div className="login-brand-mark">SC</div>
+            <div className="login-brand-mark" data-crm-shell="brand">
+              {brand.logoUrl ? <img src={brand.logoUrl} alt="" className="login-brand-logo" /> : "SC"}
+            </div>
             <div>
-              <div className="login-brand-kicker">Social CRM</div>
+              <div className="login-brand-kicker">{brand.name ?? "Social CRM"}</div>
               <div className="login-brand-title">{copy({ en: "Admin Console", vi: "Bảng điều khiển quản trị" })}</div>
               <div className="login-brand-subtitle">{copy({ en: "Internal recruitment operations", vi: "Vận hành tuyển dụng nội bộ" })}</div>
             </div>

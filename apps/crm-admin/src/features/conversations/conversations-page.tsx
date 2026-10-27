@@ -137,7 +137,7 @@ function ThreadCard(props: {
       onClick={props.onSelect}
       className={`w-full rounded-[22px] border px-4 py-4 text-left transition ${
         props.selected
-          ? "border-indigo-300 bg-indigo-50 shadow-[0_14px_28px_rgba(79,70,229,0.12)]"
+          ? "border-indigo-300 bg-indigo-50 shadow-[0_14px_28px_rgb(var(--crm-indigo-600)/0.12)]"
           : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
@@ -286,7 +286,7 @@ function ConversationDetailPanel(props: {
     : undefined;
 
   return (
-    <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-[0_18px_34px_rgba(15,23,42,0.05)]">
+    <section className="rounded-[24px] border border-slate-200/90 bg-white p-5 shadow-[0_18px_34px_rgb(var(--crm-slate-900)/0.05)]">
       <header className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <button
           type="button"

@@ -6,6 +6,7 @@ import { AppRouter } from "./app/router";
 import { RequestNotificationsProvider, emitRequestNotification, getRequestErrorMessage } from "./app/request-notifications";
 import { I18nProvider } from "./i18n";
 import { UiTextProvider } from "./ui-text/ui-text-provider";
+import { TemplateProvider } from "./templates/template-provider";
 import "./ui-text/ui-text.css";
 import "./styles/index.css";
 
@@ -73,7 +74,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <I18nProvider>
           <UiTextProvider>
             <BrowserRouter>
-              <AppRouter />
+              <TemplateProvider>
+                <AppRouter />
+              </TemplateProvider>
             </BrowserRouter>
           </UiTextProvider>
         </I18nProvider>

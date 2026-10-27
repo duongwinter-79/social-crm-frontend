@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-10-27
+
+### Session — idle sign-out now really ends the session
+
+- **gap:** the 30-minute idle timeout only cleared the in-memory access token. The refresh cookie stayed valid, so pressing F5 on the login page silently signed the user back in
+- idle sign-out now also revokes the server-side refresh session (`POST /auth/logout`, cookie-authenticated); `apiClient.revokeServerSession()` is wired in via `startSessionLifecycle({ onIdleTimeout })`
+- a browser left signed in past the timeout (laptop asleep, browser closed) is caught on the next page load: `bootstrapSession()` revokes the session instead of restoring it and shows "Signed out after inactivity"
+- activity is shared across tabs (`localStorage` key `social-crm.last-activity`, written at most every 15 s, cleared on sign-out). Previously a background tab signed out the operator working in another tab after 30 minutes
+- token refreshes no longer count as activity: background polling used to reset the idle clock on every refresh, so screens that poll (dashboard, documents, extraction status) never timed out. Only a fresh sign-in or real input (mouse, keyboard, click, touch, scroll) resets it
+- a token refresh that completes after a sign-out is discarded (session epoch) and its rotated session revoked, so an in-flight refresh can no longer sign the user back in; the sign-out reason is kept instead of being overwritten with "expired"
+- `/auth/logout` no longer triggers a pointless token refresh first
+- **refresh hang fixed (pre-existing):** a 401 from `/auth/refresh` made the client await its own pending refresh forever, so a tab whose session was revoked or expired hung on every request instead of signing out. Auth endpoints' own 401s are no longer retried
+- **multi-tab refresh race fixed:** all tabs share one refresh cookie and the server rotates it on every refresh (access tokens last 3 minutes), so two tabs refreshing together made one of them send an already-rotated cookie. Refreshes are now serialised across tabs with the Web Locks API; a tab that waited reuses the token another tab just obtained instead of refreshing with a stale cookie
+- **refresh hardening:** auth requests time out after 15 s and a tab waits at most 20 s for another tab's refresh before proceeding alone, so one frozen tab cannot stall the rest; a refresh is tied to the session it started in and can never sign out a newer session; a 401 on a request sent with an older token is retried with the token this tab already adopted (same user only) instead of rotating the session again; `/auth/logout` takes the same cross-tab lock so it always revokes the newest session
+- **idle sign-out revokes first:** the server session is revoked before the local session is cleared and other tabs are told, so no tab can reload and restore it in between; a tab that ran a template script reloads if it switches to a different user via another tab's sign-in
+- **template previews belong to their admin:** a stored preview applies only to the admin who started it and is discarded when anyone else signs in on that tab (a session can end while no page is open, e.g. browser closed)
+- reopening the template editor keeps the script that is running in the preview; the remembered sign-out reason is always consumed so it cannot resurface on a later visit; after a template script has run, only an idle sign-out re-revokes the session before the reload and no logout is broadcast to other tabs
+- verified: vitest 50/50 (6 idle tests, 6 auth-recovery tests: refresh hang, cross-tab lock skip, frozen lock holder, newer session protected, adopted-token retry, refresh-then-retry); Playwright against a real backend with a fake clock: idle sign-out + revoked session + F5 stays signed out; stale session on load not restored; active session still restored on F5; idle background tab does not sign out an active tab; both sign out once both are idle (repeated 3×)
+
+### Runtime UI templates (customer request: Elementor-style templates they can switch and edit with JS, without changing functionality)
+
+- new **Admin → UI templates** editor (`/ui-templates`, full admins only): create, import/export (`.crm-template.json`), duplicate, live-preview in your own browser, activate for everyone, switch back to the default look, delete. A template holds colour tokens (accent / neutral / success / warning / danger), font, brand name, tagline and logo, plus custom CSS and custom JS
+- **themeable palettes**: `tailwind.config.js` now routes `slate`, `indigo`, `blue`, `emerald`, `green`, `amber`, `yellow`, `rose` and `red` through `--crm-<palette>-<shade>` CSS variables whose defaults are Tailwind's own values, and literal colours in hand-written CSS / arbitrary classes that matched a palette shade were switched to the same variables. Every existing screen becomes themeable without touching its classes. With no template active, screenshots of login, dashboard, leads, lead workbench, dossier, orders, order detail, conversations and UI-text pages match the previous build to within 1/255 per channel (colour rounding only). The admin page differs only by its new "UI templates" card
+- **template runtime** (`apps/crm-admin/src/templates/`): `TemplateProvider` applies tokens + CSS, runs custom JS for signed-in users with a small `crm` API (`onRouteChange`, `observe`, `addStyle`, `setToken`, `onCleanup`, `page/route/lang`, `user`, `template`) that auto-cleans on switch/preview, and isolates script errors (logged, shown to admins in a banner and the editor; the CRM keeps working)
+- **stable hooks** for templates: `body[data-crm-page|data-crm-template|data-crm-safe-mode]`, `[data-crm-shell]` on the app frame, and `[data-crm-component|variant|tone]` on the shared `@social-crm/ui` primitives
+- **safety**: template JS never runs on the login page (it loads the public, JS-free variant); `?crm-safe-mode=1` disables custom CSS/JS for the browser session so a broken template can always be fixed; sidebar and login page show the template's brand
+- `@social-crm/api`: `UiTemplate*` types, `getActiveUiTemplate` / `getPublicUiTemplate` / admin CRUD client methods and React Query hooks
+- docs: `docs/UI_TEMPLATES.md` (contract, API, safe mode, security model)
+- **independent review fixes** (before merge):
+  - the login page now gets validated tokens only: no custom CSS (an attribute selector on the controlled password input could leak typed characters) and no JS, even when a session exists; a signed-in user opening `/login` is redirected to `/dashboard`, which also covers a `/login` tab adopting another tab's sign-in
+  - once a template script has run, any sign-out (manual, idle, expired, other tab) revokes the refresh session and hard-reloads `/login`, so listeners/timers/patched globals left outside the `crm` API cannot observe the next login; the sign-out reason survives the reload
+  - the script no longer restarts on every access-token refresh (it was keyed on the per-refresh `user` object)
+  - an admin's preview now survives a page reload (it was cleared while the session was still bootstrapping)
+  - live preview follows colour/CSS edits as you type but only re-runs JS on an explicit "Run updated script in preview", so half-typed code (e.g. an unfinished loop) never executes
+  - stale template fetches are ignored; a second Save right after creating a template works before the list refetches; the logo upload limit is 200 KB so it always fits the server's data-URI cap; removed a dead query invalidation
+- verified: `tsc --noEmit` clean; vitest 38/38 (15 new: colour-scale generation, token → variable mapping, page ids, template file import, runtime lifecycle / cleanup / error isolation); production build; Playwright end-to-end against a real backend + Postgres (25/25 checks: editor preview, activation, other-user rollout incl. JS, login page without JS, safe mode, broken-script isolation, revert to default)
+
 ## 2026-08-06
 
 ### Training & Finance — remove training-progress tracking (customer "Xung đột rule" NOTE: "Bỏ phần theo dõi tiến độ đào tạo")

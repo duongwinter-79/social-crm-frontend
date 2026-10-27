@@ -165,7 +165,7 @@ function GateStat(props: { label: string; value: string | number; tone?: "neutra
           : "border-slate-200 bg-white";
 
   return (
-    <div className={`rounded-[22px] border px-4 py-4 shadow-[0_14px_26px_rgba(15,23,42,0.04)] ${accentClass}`}>
+    <div className={`rounded-[22px] border px-4 py-4 shadow-[0_14px_26px_rgb(var(--crm-slate-900)/0.04)] ${accentClass}`}>
       <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{props.label}</div>
       <div className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-900">{props.value}</div>
     </div>

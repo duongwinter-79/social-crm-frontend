@@ -63,6 +63,12 @@ Reuse rules applied in this repo:
 - do not simulate unsupported workflows
 - prefer shared primitives in `packages/ui` over one-off page styling where possible
 
+## Runtime UI Templates
+
+Admins can switch and edit the CRM's look at runtime (colours, font, logo, custom CSS and JavaScript) from **Admin → UI templates**, without changing functionality. See [docs/UI_TEMPLATES.md](docs/UI_TEMPLATES.md) for the template contract, the `crm` JavaScript API, safe mode, and the security model.
+
+When styling components, keep using the Tailwind palettes (`slate`, `indigo`, `emerald`, `amber`, `rose`, …). They resolve through `--crm-*` variables, so templates re-skin them automatically. Hard-coded hex colours are not themeable.
+
 ## Operator Workbenches
 
 The detailed frontend behavior for the live CRM admin modules is consolidated in:

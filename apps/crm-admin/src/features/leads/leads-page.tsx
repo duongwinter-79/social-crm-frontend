@@ -360,7 +360,7 @@ export function LeadsPage() {
 
           <div className="max-h-[calc(100vh-28rem)] min-h-[360px] overflow-auto">
             <table className="w-full min-w-[1120px] text-sm">
-              <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_0_rgba(226,232,240,1)]">
+              <thead className="sticky top-0 z-10 bg-slate-50 text-left text-[11px] uppercase tracking-[0.16em] text-slate-500 shadow-[0_1px_0_rgb(var(--crm-slate-200)/1)]">
                 <tr>
                   <th className="w-10 px-6 py-4">
                     <input
@@ -574,7 +574,7 @@ function Strip(props: { label: string; value: string | number; hint: string; ton
         : "border-slate-200 bg-white";
 
   return (
-    <div className={`rounded-[22px] border px-4 py-4 shadow-[0_14px_26px_rgba(15,23,42,0.04)] ${accentClass}`}>
+    <div className={`rounded-[22px] border px-4 py-4 shadow-[0_14px_26px_rgb(var(--crm-slate-900)/0.04)] ${accentClass}`}>
       <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{props.label}</div>
       <div className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-slate-900">{props.value}</div>
       <div className="mt-2 text-xs text-slate-500">{props.hint}</div>

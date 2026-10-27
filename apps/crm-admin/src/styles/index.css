@@ -3,12 +3,14 @@
 @tailwind utilities;
 
 :root {
-  --accent: #4f46e5;
-  --accent-strong: #4338ca;
+  --accent: rgb(var(--crm-indigo-600));
+  --accent-strong: rgb(var(--crm-indigo-700));
   --surface: #ffffff;
-  --surface-muted: #f8fafc;
-  --panel-border: #e2e8f0;
-  --page-bg: #f1f5f9;
+  --surface-muted: rgb(var(--crm-slate-50));
+  --panel-border: rgb(var(--crm-slate-200));
+  --page-bg: rgb(var(--crm-slate-100));
+  /* Overridden by the active UI template's fontFamily token (docs/UI_TEMPLATES.md). */
+  --crm-font-sans: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -18,8 +20,8 @@ html {
 body {
   margin: 0;
   background: var(--page-bg);
-  font-family: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #0f172a;
+  font-family: var(--crm-font-sans);
+  color: rgb(var(--crm-slate-900));
 }
 
 * {
@@ -50,38 +52,38 @@ a {
 .request-notice {
   overflow: hidden;
   border-radius: 18px;
-  border: 1px solid rgba(244, 63, 94, 0.18);
-  background: rgba(15, 23, 42, 0.96);
-  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.3);
-  color: #f8fafc;
+  border: 1px solid rgb(var(--crm-rose-500) / 0.18);
+  background: rgb(var(--crm-slate-900) / 0.96);
+  box-shadow: 0 20px 44px rgb(var(--crm-slate-900) / 0.3);
+  color: rgb(var(--crm-slate-50));
 }
 
 .request-notice--error {
   background:
-    linear-gradient(135deg, rgba(244, 63, 94, 0.18), rgba(15, 23, 42, 0) 42%),
-    rgba(15, 23, 42, 0.96);
-  border-color: rgba(244, 63, 94, 0.35);
+    linear-gradient(135deg, rgb(var(--crm-rose-500) / 0.18), rgb(var(--crm-slate-900) / 0) 42%),
+    rgb(var(--crm-slate-900) / 0.96);
+  border-color: rgb(var(--crm-rose-500) / 0.35);
 }
 
 .request-notice--success {
   background:
-    linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(15, 23, 42, 0) 42%),
-    rgba(15, 23, 42, 0.96);
-  border-color: rgba(16, 185, 129, 0.35);
+    linear-gradient(135deg, rgb(var(--crm-emerald-500) / 0.18), rgb(var(--crm-slate-900) / 0) 42%),
+    rgb(var(--crm-slate-900) / 0.96);
+  border-color: rgb(var(--crm-emerald-500) / 0.35);
 }
 
 .request-notice--info {
   background:
-    linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(15, 23, 42, 0) 42%),
-    rgba(15, 23, 42, 0.96);
-  border-color: rgba(99, 102, 241, 0.35);
+    linear-gradient(135deg, rgb(var(--crm-indigo-500) / 0.18), rgb(var(--crm-slate-900) / 0) 42%),
+    rgb(var(--crm-slate-900) / 0.96);
+  border-color: rgb(var(--crm-indigo-500) / 0.35);
 }
 
 .request-notice--warning {
   background:
-    linear-gradient(135deg, rgba(245, 158, 11, 0.20), rgba(15, 23, 42, 0) 42%),
-    rgba(15, 23, 42, 0.96);
-  border-color: rgba(245, 158, 11, 0.35);
+    linear-gradient(135deg, rgb(var(--crm-amber-500) / 0.20), rgb(var(--crm-slate-900) / 0) 42%),
+    rgb(var(--crm-slate-900) / 0.96);
+  border-color: rgb(var(--crm-amber-500) / 0.35);
 }
 
 .request-notice__title {
@@ -92,14 +94,14 @@ a {
   text-transform: uppercase;
 }
 
-.request-notice--error .request-notice__title { color: #fda4af; }
-.request-notice--success .request-notice__title { color: #6ee7b7; }
-.request-notice--info .request-notice__title { color: #a5b4fc; }
-.request-notice--warning .request-notice__title { color: #fcd34d; }
+.request-notice--error .request-notice__title { color: rgb(var(--crm-rose-300)); }
+.request-notice--success .request-notice__title { color: rgb(var(--crm-emerald-300)); }
+.request-notice--info .request-notice__title { color: rgb(var(--crm-indigo-300)); }
+.request-notice--warning .request-notice__title { color: rgb(var(--crm-amber-300)); }
 
 .request-notice__message {
   padding: 8px 16px 16px;
   font-size: 14px;
   line-height: 1.5;
-  color: #e2e8f0;
+  color: rgb(var(--crm-slate-200));
 }

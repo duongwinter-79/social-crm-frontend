@@ -128,7 +128,7 @@ function JourneyRow(props: {
 }) {
   const { row, phases, copy, formatPipelineStage, formatPipelineNextAction, formatPipelineBlocker } = props;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-[0_12px_28px_rgb(var(--crm-slate-900)/0.07)]">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
         {/* Identity */}
         <div className="w-full shrink-0 lg:w-56">
