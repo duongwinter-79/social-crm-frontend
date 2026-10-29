@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "./client";
-import type { AiSuggestion, ImportRowDedupStatus, OrderMutationPayload, PendingEditSessionStatus, TrainingFinanceCurrency, DepositStatusMode, UpsertRegionGroupPayload } from "./types";
+import type { AiSuggestion, ImportRowDedupStatus, LeadDossierPatch, OrderMutationPayload, PendingEditSessionStatus, TrainingFinanceCurrency, DepositStatusMode, UpsertRegionGroupPayload } from "./types";
+import { triggerBlobDownload } from "./downloads";
 
 export type BackgroundExtractionStatus = "idle" | "starting" | "running" | "completed" | "timeout" | "failed";
 
@@ -213,6 +214,7 @@ export function useLeadsQuery(params: {
   dateFrom?: string;
   dateTo?: string;
   hidePlaceholderNames?: boolean;
+  awaitingSignature?: boolean;
 }) {
   return useQuery({
     queryKey: ["leads", params],
@@ -656,6 +658,47 @@ export function useUpdateLeadQualificationMutation(leadId: string) {
       queryClient.invalidateQueries({ queryKey: ["lead", leadId, "ai-suggestions"] });
     },
     meta: { successMessage: { en: "Qualification saved", vi: "Đã lưu thông tin đánh giá" } }
+  });
+}
+
+/** FORM CHUẨN status: required fields still unverified + export / signature state. */
+export function useFormStandardReadinessQuery(leadId?: string) {
+  return useQuery({
+    queryKey: ["lead", leadId, "form-standard-readiness"],
+    queryFn: () => apiClient.getFormStandardReadiness(leadId as string),
+    enabled: Boolean(leadId)
+  });
+}
+
+/** Direct dossier edit from the FORM CHUẨN entry screen. */
+export function useUpdateLeadDossierMutation(leadId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: LeadDossierPatch) => apiClient.updateLeadDossier(leadId, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["candidate", "by-lead", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId, "form-standard-readiness"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId, "transitions"] });
+    },
+    meta: { successMessage: { en: "Form saved", vi: "Đã lưu hồ sơ" } }
+  });
+}
+
+/** Download FORM CHUẨN; refreshes the export / awaiting-signature state after. */
+export function useExportFormStandardMutation(leadId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { blob, filename } = await apiClient.exportFormStandardDocx(leadId);
+      triggerBlobDownload(blob, filename);
+      return filename;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId, "form-standard-readiness"] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    meta: { successMessage: { en: "FORM CHUẨN exported", vi: "Đã xuất FORM CHUẨN" } }
   });
 }
 

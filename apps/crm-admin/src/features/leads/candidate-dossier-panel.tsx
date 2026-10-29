@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Panel } from "@social-crm/ui";
 import { useI18n } from "@/i18n";
 import { DOSSIER_FIELD_ROWS, type DossierFieldRow } from "./dossier-fields.generated";
@@ -5,12 +6,11 @@ import { DOSSIER_FIELD_ROWS, type DossierFieldRow } from "./dossier-fields.gener
 /**
  * Read-only "Hồ sơ ứng viên (từ form)" panel.
  *
- * Renders the form-derived dossier — the parsed mirror of the most recently
- * confirmed FORM_STANDARD upload, stored on `recruitment.candidate_profiles`.
+ * Renders the dossier stored on `recruitment.candidate_profiles` — written by
+ * a confirmed FORM_STANDARD upload or typed on the FORM CHUẨN entry screen.
  *
  * Form data is the candidate's full information; the Lead is intentionally
- * narrower (channel signal only). To edit anything here, the operator removes
- * the linked form and re-uploads. When rendered inside the journey modal an
+ * narrower (channel signal only). Editing happens on the FORM CHUẨN section. When rendered inside the journey modal an
  * `onEditForm` callback opens the upload-form modal directly, so the subtitle
  * links to that action instead of exposing a raw route path to the operator.
  *
@@ -51,8 +51,27 @@ function isNonEmpty(v: unknown): boolean {
   return true;
 }
 
-function displayValue(v: unknown): string {
+function displayValue(v: unknown, row: FieldRow, yesNo: (v: boolean) => string): ReactNode {
   if (!isNonEmpty(v)) return "—";
+  if (row.kind === "record_list" && Array.isArray(v)) {
+    // FORM CHUẨN work table: one line per job.
+    return (
+      <ul className="space-y-1">
+        {v.map((r, i) => (
+          <li key={i}>
+            {r && typeof r === "object"
+              ? Object.values(r as Record<string, unknown>).filter((x) => typeof x === "string" && x.trim()).join(" · ")
+              : String(r)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof v === "boolean") return yesNo(v);
+  if (row.kind === "date" && typeof v === "string") {
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : v;
+  }
   if (Array.isArray(v)) return v.join(", ");
   if (v instanceof Date) return v.toISOString().slice(0, 10);
   return String(v);
@@ -85,22 +104,22 @@ export function CandidateDossierPanel({
   const subtitle = onEditForm ? (
     <>
       {copy({
-        en: "Read-only. Sourced from the most recently confirmed FORM_STANDARD upload. To edit, ",
-        vi: "Chỉ xem. Lấy từ form đã xác nhận gần nhất. Để sửa, ",
+        en: "Read-only here. Edit on the FORM CHUẨN section of the lead, or ",
+        vi: "Chỉ xem. Sửa ở mục FORM CHUẨN của hồ sơ, hoặc ",
       })}
       <button
         type="button"
         onClick={onEditForm}
         className="font-medium text-indigo-600 underline underline-offset-2 transition-colors hover:text-indigo-700"
       >
-        {copy({ en: "manage the form", vi: "quản lý form" })}
+        {copy({ en: "upload a form", vi: "tải form lên" })}
       </button>
-      {copy({ en: " and re-upload.", vi: " rồi tải lại." })}
+      {copy({ en: ".", vi: "." })}
     </>
   ) : (
     copy({
-      en: "Read-only. Sourced from the most recently confirmed FORM_STANDARD upload. To edit, manage the standard form and re-upload.",
-      vi: "Chỉ xem. Lấy từ form đã xác nhận gần nhất. Để sửa, hãy quản lý form chuẩn rồi tải lại.",
+      en: "Read-only here. Edit on the FORM CHUẨN section of the lead, or upload a form.",
+      vi: "Chỉ xem. Sửa ở mục FORM CHUẨN của hồ sơ, hoặc tải form lên.",
     })
   );
 
@@ -119,7 +138,9 @@ export function CandidateDossierPanel({
               {populated.map((row) => (
                 <div key={row.key} className="flex gap-2 border-b border-slate-100 pb-1.5">
                   <dt className="min-w-[180px] text-slate-500">{copy(row)}</dt>
-                  <dd className="flex-1 text-slate-900">{displayValue(readDossierValue(profile, row))}</dd>
+                  <dd className="flex-1 text-slate-900">
+                    {displayValue(readDossierValue(profile, row), row, (b) => copy(b ? { en: "Yes", vi: "Có" } : { en: "No", vi: "Không" }))}
+                  </dd>
                 </div>
               ))}
             </dl>

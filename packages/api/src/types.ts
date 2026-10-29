@@ -328,6 +328,10 @@ export interface Lead {
   disqualifiedReason?: string | null;
   previousStatus?: string | null;
   verifiedKeys?: string[] | null;
+  /** Last FORM CHUẨN export (ISO). */
+  formExportedAt?: string | null;
+  /** List rows only: exported, no signed FORM_STANDARD uploaded yet ("Đã xuất form · chờ ký"). */
+  formAwaitingSignature?: boolean;
   createdAt?: string;
   updatedAt?: string;
   threads?: Thread[];
@@ -481,6 +485,23 @@ export interface AiExtractionWorkerStatus {
 export interface ImportBatchRowListResponse {
   data: ImportBatchRow[];
   total: number;
+}
+
+/** Body for PATCH /leads/:id/dossier. `null` clears a key. */
+export interface LeadDossierPatch {
+  typed?: Partial<Record<"address" | "hometownProvince" | "dateOfBirth", string | null>>;
+  softFields?: Record<string, unknown>;
+}
+
+/** GET /leads/:id/form-standard/readiness. */
+export interface FormStandardReadiness {
+  /** Required fields the QUALIFIED → MATCHING gate still finds unverified. */
+  requiredMissing: Array<{ key: string; labelVi: string }>;
+  requiredTotal: number;
+  formExportedAt: string | null;
+  signedFormDocumentId: string | null;
+  /** Exported, signed copy not uploaded yet — "Đã xuất form · chờ ký". */
+  awaitingSignature: boolean;
 }
 
 export interface LeadQualificationSnapshot {
@@ -918,6 +939,13 @@ export interface VerifyPendingResult {
   currentSoft: Record<string, unknown> | null;
   phoneMatch: FormStandardLeadSuggestion | null;
   nameMatches: FormStandardLeadSuggestion[];
+  /**
+   * How the "from file" values were read. 'restored' = a FORM CHUẨN the CRM
+   * exported, re-uploaded unchanged: the values are exact and no AI ran.
+   * 'edited' = a CRM export changed after export, so AI re-read it.
+   */
+  roundTrip?: "restored" | "edited" | "other_lead" | "invalid" | "none";
+  roundTripLeadId?: string | null;
 }
 
 /** Inline lead-create payload used inside CommitPendingFormPayload. */
