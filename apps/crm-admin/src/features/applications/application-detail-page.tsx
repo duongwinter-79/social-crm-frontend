@@ -32,6 +32,7 @@ import type {
   LeadAcquisitionSource,
 } from "@social-crm/api";
 import { LeadPicker } from "@/components/lead-picker";
+import { DOSSIER_FIELD_ROWS } from "@/features/leads/dossier-fields.generated";
 import { ApplicationContextNav } from "./application-context-nav";
 
 /**
@@ -148,61 +149,67 @@ const CONTRACT_OPTIONS = [
   { value: "not_completed", vi: "Không hết HĐ", en: "Not completed" },
 ] as const;
 
-const VERIFY_FIELDS: readonly VerifyFieldDef[] = [
-  // ── Identity ─────────────────────────────────────────────────────────
+/**
+ * Typed dossier columns, listed by hand: their keys follow the extraction
+ * shape (`name`, not `fullName`) and some carry their own input.
+ */
+const TYPED_VERIFY_FIELDS: readonly VerifyFieldDef[] = [
   { key: "name",              group: "typed", section: "identity",   en: "Full name",          vi: "Họ và tên",            input: "text" },
   { key: "dateOfBirth",       group: "typed", section: "identity",   en: "Date of birth",      vi: "Ngày sinh",            input: "text" },
   { key: "birthYear",         group: "typed", section: "identity",   en: "Birth year",         vi: "Năm sinh",             input: "number" },
   { key: "gender",            group: "typed", section: "identity",   en: "Gender",             vi: "Giới tính",            input: "select-gender" },
-  // ── Physical ─────────────────────────────────────────────────────────
   { key: "heightCm",          group: "typed", section: "physical",   en: "Height (cm)",        vi: "Chiều cao (cm)",       input: "number" },
   { key: "weightKg",          group: "typed", section: "physical",   en: "Weight (kg)",        vi: "Cân nặng (kg)",        input: "number" },
-  { key: "vision",            group: "soft",  section: "physical",   en: "Vision",             vi: "Thị lực",              input: "text" },
-  { key: "visionNote",        group: "soft",  section: "physical",   en: "Vision detail",      vi: "Thị lực (chi tiết)",   input: "text" },
-  { key: "handedness",        group: "soft",  section: "physical",   en: "Handedness",         vi: "Thuận tay",            input: "text" },
-  { key: "tattooNote",        group: "soft",  section: "physical",   en: "Tattoo note",        vi: "Hình xăm",             input: "text" },
-  { key: "alcohol",           group: "soft",  section: "physical",   en: "Drinks alcohol",     vi: "Uống rượu",            input: "select-yes-no" },
-  { key: "smoking",           group: "soft",  section: "physical",   en: "Smokes",             vi: "Hút thuốc",            input: "select-yes-no" },
-  { key: "surgery",           group: "soft",  section: "physical",   en: "Surgery history",    vi: "Phẫu thuật",           input: "text" },
-  { key: "surgeryNote",       group: "soft",  section: "physical",   en: "Surgery detail",     vi: "Phẫu thuật (chi tiết)", input: "text" },
-  { key: "birthDefect",       group: "soft",  section: "physical",   en: "Birth defect",       vi: "Dị tật",               input: "text" },
-  { key: "birthDefectNote",   group: "soft",  section: "physical",   en: "Birth defect detail", vi: "Dị tật (chi tiết)",   input: "text" },
-  { key: "vaccinationStatus", group: "soft",  section: "physical",   en: "Vaccination",        vi: "Tiêm chủng",           input: "select", options: DOC_STATUS_OPTIONS },
-  { key: "vaccinationDate",   group: "soft",  section: "physical",   en: "Vaccinated on",      vi: "Thời gian tiêm",       input: "date" },
-  // ── Background ───────────────────────────────────────────────────────
   { key: "hometownProvince",  group: "typed", section: "background", en: "Hometown",           vi: "Hộ khẩu",              input: "text" },
   { key: "address",           group: "typed", section: "background", en: "Address",            vi: "Địa chỉ",              input: "text" },
-  { key: "education",         group: "soft",  section: "background", en: "Education",          vi: "Trình độ",             input: "text" },
-  { key: "educationMajor",    group: "soft",  section: "background", en: "Field of study",     vi: "Chuyên ngành",         input: "text" },
-  { key: "languages",         group: "soft",  section: "background", en: "Foreign languages",  vi: "Ngoại ngữ",            input: "text" },
-  { key: "legalViolation",    group: "soft",  section: "background", en: "Law violation",      vi: "Vi phạm pháp luật",    input: "select-yes-no" },
-  { key: "legalViolationNote", group: "soft", section: "background", en: "Law violation detail", vi: "Vi phạm pháp luật (chi tiết)", input: "text" },
-  { key: "referrer",          group: "soft",  section: "background", en: "Referrer",           vi: "Người giới thiệu",     input: "text" },
-  // ── Family ───────────────────────────────────────────────────────────
-  { key: "maritalStatus",     group: "soft",  section: "family",     en: "Marital status",     vi: "Tình trạng hôn nhân",  input: "text" },
-  { key: "marriageRegisteredAt", group: "soft", section: "family",   en: "Marriage registered on", vi: "Ngày đăng ký kết hôn", input: "date" },
-  { key: "spouseName",        group: "soft",  section: "family",     en: "Spouse name",        vi: "Họ tên vợ/chồng",      input: "text" },
-  { key: "spouseAge",         group: "soft",  section: "family",     en: "Spouse age",         vi: "Tuổi vợ/chồng",        input: "number" },
-  { key: "childrenCount",     group: "soft",  section: "family",     en: "Children count",     vi: "Số con",               input: "number" },
-  { key: "childrenAges",      group: "soft",  section: "family",     en: "Children ages",      vi: "Tuổi con",             input: "text" },
-  { key: "fatherName",        group: "soft",  section: "family",     en: "Father's name",      vi: "Họ tên bố",            input: "text" },
-  { key: "fatherAge",         group: "soft",  section: "family",     en: "Father's age",       vi: "Tuổi bố",              input: "number" },
-  { key: "motherName",        group: "soft",  section: "family",     en: "Mother's name",      vi: "Họ tên mẹ",            input: "text" },
-  { key: "motherAge",         group: "soft",  section: "family",     en: "Mother's age",       vi: "Tuổi mẹ",              input: "number" },
-  { key: "siblingsCount",     group: "soft",  section: "family",     en: "Siblings count",     vi: "Số anh chị em",        input: "number" },
-  { key: "birthOrder",        group: "soft",  section: "family",     en: "Birth order",        vi: "Thứ tự sinh",          input: "number" },
-  // ── Work ─────────────────────────────────────────────────────────────
   { key: "experienceField",   group: "typed", section: "work",       en: "Experience field",   vi: "Ngành kinh nghiệm",    input: "text" },
   { key: "experienceDetails", group: "typed", section: "work",       en: "Experience details", vi: "Chi tiết kinh nghiệm", input: "text" },
   { key: "experienceYears",   group: "typed", section: "work",       en: "Experience years",   vi: "Số năm KN",            input: "number" },
-  { key: "workExperience",    group: "soft",  section: "work",       en: "Work history (table)", vi: "Kinh nghiệm làm việc (bảng)", input: "rows" },
-  { key: "hasBeenToTaiwan",   group: "soft",  section: "work",       en: "Has been to Taiwan", vi: "Đã qua Đài Loan",      input: "select-yes-no" },
-  { key: "contractCompletion", group: "soft", section: "work",       en: "Previous Taiwan contract", vi: "Tình trạng hợp đồng", input: "select", options: CONTRACT_OPTIONS },
-  { key: "contractIncompleteReason", group: "soft", section: "work", en: "Why not completed",  vi: "Lý do không hết HĐ",  input: "text" },
-  // ── Wishes ───────────────────────────────────────────────────────────
   { key: "desiredIndustry",   group: "typed", section: "wishes",     en: "Desired industry",   vi: "Ngành mong muốn",      input: "text" },
   { key: "desiredSalary",     group: "typed", section: "wishes",     en: "Desired salary",     vi: "Lương mong muốn",      input: "text" },
 ];
+
+/** Readable labels for the soft enum fields' stored values. */
+const ENUM_OPTION_LABELS: Record<string, ReadonlyArray<{ value: string; vi: string; en: string }>> = {
+  vaccinationStatus: DOC_STATUS_OPTIONS,
+  contractCompletion: CONTRACT_OPTIONS,
+};
+
+function inputForKind(kind: string): VerifyFieldDef["input"] {
+  switch (kind) {
+    case "integer": return "number";
+    case "boolean": return "select-yes-no";
+    case "date": return "date";
+    case "enum": return "select";
+    case "record_list": return "rows";
+    default: return "text";
+  }
+}
+
+/**
+ * Soft (CandidateProfile.softFields) rows come straight from the generated
+ * dossier field list, so every field the manifest adds — and a CRM export
+ * carries back on re-upload — is offered here without a second list to keep.
+ */
+const SOFT_VERIFY_FIELDS: readonly VerifyFieldDef[] = DOSSIER_FIELD_ROWS.filter((r) => r.group === "soft").map((r) => ({
+  key: r.key,
+  group: "soft",
+  section: r.section,
+  en: r.en,
+  vi: r.vi,
+  input: inputForKind(r.kind),
+  options:
+    r.kind === "enum"
+      ? ENUM_OPTION_LABELS[r.key] ?? (r.enumValues ?? []).map((v) => ({ value: v, vi: v, en: v }))
+      : undefined,
+}));
+
+const VERIFY_SECTIONS = ["identity", "physical", "background", "family", "work", "wishes"] as const;
+
+const VERIFY_FIELDS: readonly VerifyFieldDef[] = VERIFY_SECTIONS.flatMap((section) => [
+  ...TYPED_VERIFY_FIELDS.filter((f) => f.section === section),
+  ...SOFT_VERIFY_FIELDS.filter((f) => f.section === section),
+]);
 
 const SECTION_LABELS: Record<VerifyFieldDef["section"], { en: string; vi: string }> = {
   identity:   { en: "Identity",   vi: "Thông tin cơ bản" },

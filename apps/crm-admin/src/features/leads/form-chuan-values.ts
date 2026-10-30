@@ -94,12 +94,36 @@ export function readEnglish(languages: unknown): (typeof ENGLISH_OPTIONS)[number
   if (entry.includes("khong")) return "Không biết";
   return null;
 }
-/** Replace (or add) the English entry, keeping every other language as written. */
-export function writeEnglish(languages: unknown, level: (typeof ENGLISH_OPTIONS)[number]): string[] {
+/** Replace (or add) one language's entry, keeping every other language as written. */
+function writeLanguage(languages: unknown, isIt: (folded: string) => boolean, entry: string): string[] {
   const others = (Array.isArray(languages) ? languages : []).filter(
-    (l): l is string => typeof l === "string" && !fold(l).includes("anh"),
+    (l): l is string => typeof l === "string" && !isIt(fold(l)),
   );
-  return [...others, `${ENGLISH_PREFIX}${level}`];
+  return [...others, entry];
+}
+
+const isEnglish = (f: string) => f.includes("anh");
+const isChinese = (f: string) => f.includes("trung") || f.includes("hoa");
+
+export function writeEnglish(languages: unknown, level: (typeof ENGLISH_OPTIONS)[number]): string[] {
+  return writeLanguage(languages, isEnglish, `${ENGLISH_PREFIX}${level}`);
+}
+
+/** The form's five Chinese levels, lowest first. */
+export const CHINESE_OPTIONS = ["Bắt đầu học", "Hiểu đơn giản", "Nghe nói cơ bản", "Nghe nói lưu loát", "Thông thạo 4 kỹ năng"] as const;
+export function readChinese(languages: unknown): (typeof CHINESE_OPTIONS)[number] | null {
+  if (!Array.isArray(languages)) return null;
+  const entry = languages.map(fold).find(isChinese);
+  if (!entry) return null;
+  if (entry.includes("thong thao") || entry.includes("4 ky nang")) return "Thông thạo 4 kỹ năng";
+  if (entry.includes("luu loat")) return "Nghe nói lưu loát";
+  if (entry.includes("nghe noi")) return "Nghe nói cơ bản";
+  if (entry.includes("don gian") || entry.includes("co ban")) return "Hiểu đơn giản";
+  if (entry.includes("bat dau")) return "Bắt đầu học";
+  return null;
+}
+export function writeChinese(languages: unknown, level: (typeof CHINESE_OPTIONS)[number]): string[] {
+  return writeLanguage(languages, isChinese, `Tiếng Trung: ${level}`);
 }
 
 export const HAND_OPTIONS = ["Trái", "Phải"] as const;
@@ -133,6 +157,7 @@ export const REGION_OPTIONS = [
 export function contactChannelLabel(source: unknown): string {
   if (source === "website") return "Website";
   if (source === "facebook" || source === "zalo" || source === "tiktok") return "Mạng XH";
+  if (source === "gioi_thieu") return "Người giới thiệu";
   if (typeof source === "string" && source) return "Khác";
   return "";
 }
@@ -158,6 +183,24 @@ export function readWorkRows(raw: unknown): WorkRow[] {
       description: text(r.description),
       period: text(r.period),
     }));
+}
+
+/** A four-digit year, blank = cleared. Returns undefined while it is not one yet. */
+export function parseYear(v: string): number | null | undefined {
+  const t = v.trim();
+  if (t === "") return null;
+  return /^(19|20)\d{2}$/.test(t) ? Number(t) : undefined;
+}
+
+/** Age today from an ISO birth date, else from a birth year. */
+export function ageFrom(dateOfBirth: string, birthYear: string, today = new Date()): string {
+  const m = dateOfBirth.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const before = today.getMonth() + 1 < mo || (today.getMonth() + 1 === mo && today.getDate() < d);
+    return String(today.getFullYear() - y - (before ? 1 : 0));
+  }
+  return /^\d{4}$/.test(birthYear.trim()) ? String(today.getFullYear() - Number(birthYear)) : "";
 }
 
 /** Integer input: digits only, blank = cleared. Returns undefined when not a number. */

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  ageFrom,
   contactChannelLabel,
+  parseYear,
+  readChinese,
+  writeChinese,
   parseWholeNumber,
   readEducation,
   readEnglish,
@@ -48,6 +52,24 @@ describe("FORM CHUẨN value readers", () => {
     expect(writeEnglish(undefined, "Không biết")).toEqual(["Tiếng Anh: Không biết"]);
   });
 
+  it("reads and writes the Chinese level beside English", () => {
+    const next = writeChinese(["Tiếng Anh: Không biết"], "Nghe nói lưu loát");
+    expect(next).toEqual(["Tiếng Anh: Không biết", "Tiếng Trung: Nghe nói lưu loát"]);
+    expect(readChinese(next)).toBe("Nghe nói lưu loát");
+    expect(readChinese(["tiếng hoa: thông thạo 4 kỹ năng"])).toBe("Thông thạo 4 kỹ năng");
+    expect(readEnglish(next)).toBe("Không biết");
+  });
+
+  it("parses years and works out the age", () => {
+    expect(parseYear("1968")).toBe(1968);
+    expect(parseYear("196")).toBeUndefined();
+    expect(parseYear("")).toBeNull();
+    const today = new Date(2026, 9, 30);
+    expect(ageFrom("1998-11-15", "", today)).toBe("27");
+    expect(ageFrom("", "1998", today)).toBe("28");
+    expect(ageFrom("", "", today)).toBe("");
+  });
+
   it("reads the work table defensively", () => {
     expect(readWorkRows([{ occupation: "CNC", company: "Hanwha", period: 2021 }, "junk", null])).toEqual([
       { occupation: "CNC", location: "", company: "Hanwha", description: "", period: "2021" }
@@ -64,7 +86,8 @@ describe("FORM CHUẨN value readers", () => {
   it("labels the contact channel like the printed form", () => {
     expect(contactChannelLabel("website")).toBe("Website");
     expect(contactChannelLabel("zalo")).toBe("Mạng XH");
-    expect(contactChannelLabel("gioi_thieu")).toBe("Khác");
+    expect(contactChannelLabel("gioi_thieu")).toBe("Người giới thiệu");
+    expect(contactChannelLabel("other")).toBe("Khác");
     expect(contactChannelLabel(null)).toBe("");
   });
 });

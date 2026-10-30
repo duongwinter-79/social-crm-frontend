@@ -30,6 +30,11 @@ import {
   readVision,
   readWorkRows,
   visionLegacyDetail,
+  ageFrom,
+  CHINESE_OPTIONS,
+  parseYear,
+  readChinese,
+  writeChinese,
   readYesNoText,
   text,
   writeEnglish,
@@ -63,11 +68,13 @@ interface Draft {
   desiredSalary: string;
   preferredRegion: string[];
   address: string;
+  /** Dossier date of birth, ISO yyyy-mm-dd. */
+  dateOfBirth: string;
   soft: Soft;
 }
 
 /** Lead fields on this screen → the keys the verified layer may hold them under. */
-const VERIFIED_KEYS: Record<Exclude<keyof Draft, "address" | "soft">, string[]> = {
+const VERIFIED_KEYS: Record<Exclude<keyof Draft, "address" | "dateOfBirth" | "soft">, string[]> = {
   fullName: ["fullName"],
   phone: ["phone"],
   birthYear: ["birthYear", "age"],
@@ -110,6 +117,7 @@ function buildBaseline(lead: Lead, snapshot: LeadQualificationSnapshot | undefin
     desiredSalary: text(v("desiredSalary")),
     preferredRegion: Array.isArray(regions) ? regions.filter((r): r is string => typeof r === "string") : [],
     address: text(profile?.address),
+    dateOfBirth: text(profile?.dateOfBirth).slice(0, 10),
     soft: soft && typeof soft === "object" && !Array.isArray(soft) ? { ...(soft as Soft) } : {}
   };
 }
@@ -131,6 +139,9 @@ function buildSuggestions(lead: Lead, snapshot: LeadQualificationSnapshot | unde
     desiredSalary: pick(m.desiredSalary, p.desiredSalary)
   } as Record<string, string>;
 }
+
+/** Family birth years: typed as text, sent as a 4-digit year. */
+const YEAR_KEYS: ReadonlySet<string> = new Set(["fatherBirthYear", "motherBirthYear", "spouseBirthYear"]);
 
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
@@ -285,9 +296,20 @@ export function FormChuanEntryPanel(props: {
 
       const softPatch: Soft = {};
       for (const k of new Set([...Object.keys(draft.soft), ...Object.keys(baseline.soft)])) {
-        if (!sameJson(draft.soft[k], baseline.soft[k])) softPatch[k] = blankToNull(draft.soft[k]);
+        if (sameJson(draft.soft[k], baseline.soft[k])) continue;
+        let v = blankToNull(draft.soft[k]);
+        // Year inputs hold the text being typed; send it as a year, or stop.
+        if (YEAR_KEYS.has(k) && typeof v === "string") {
+          const y = parseYear(v);
+          if (y === undefined) throw new Error(copy({ en: `${k}: enter a 4-digit year`, vi: `Năm sinh phải gồm 4 chữ số (${v})` }));
+          v = y;
+        }
+        softPatch[k] = v;
       }
-      const typed = changed("address") ? { address: draft.address.trim() || null } : undefined;
+      const typedPatch: Record<string, string | null> = {};
+      if (changed("address")) typedPatch.address = draft.address.trim() || null;
+      if (changed("dateOfBirth")) typedPatch.dateOfBirth = draft.dateOfBirth || null;
+      const typed = Object.keys(typedPatch).length ? typedPatch : undefined;
 
       // One after another, never in parallel: the identity and qualification
       // writes both extend the lead's verifiedKeys, and concurrent writes would
@@ -429,10 +451,16 @@ export function FormChuanEntryPanel(props: {
             <Input label={`${copy({ en: "Full name", vi: "Họ tên" })} *`} value={draft.fullName} onChange={(e) => set("fullName", e.target.value)} disabled={disabled} />
             <Unverified value={suggestions.fullName} current={draft.fullName} onUse={() => set("fullName", suggestions.fullName)} disabled={disabled} />
           </div>
-          <div>
-            <Input label={`${copy({ en: "Birth year", vi: "Năm sinh" })} *`} inputMode="numeric" value={draft.birthYear} onChange={(e) => set("birthYear", e.target.value)} disabled={disabled} />
-            <Unverified value={suggestions.birthYear} current={draft.birthYear} onUse={() => set("birthYear", suggestions.birthYear)} disabled={disabled} />
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_110px]">
+            <div>
+              <Input label={`${copy({ en: "Birth year", vi: "Năm sinh" })} *`} inputMode="numeric" value={draft.birthYear} onChange={(e) => set("birthYear", e.target.value)} disabled={disabled} />
+              <Unverified value={suggestions.birthYear} current={draft.birthYear} onUse={() => set("birthYear", suggestions.birthYear)} disabled={disabled} />
+            </div>
+            <Input label={copy({ en: "Age", vi: "Tuổi" })} value={ageFrom(draft.dateOfBirth, draft.birthYear)} disabled readOnly />
           </div>
+        </div>
+        <div className="sm:max-w-xs">
+          <Input type="date" label={copy({ en: "Date of birth", vi: "Ngày sinh" })} value={draft.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} disabled={disabled} />
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
@@ -448,7 +476,8 @@ export function FormChuanEntryPanel(props: {
             <Unverified value={suggestions.weight} current={draft.weight} onUse={() => set("weight", suggestions.weight)} disabled={disabled} />
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Seg label={copy({ en: "Drinks alcohol", vi: "Uống rượu" })} options={["Không", "Có"] as const} value={soft.alcohol === true ? "Có" : soft.alcohol === false ? "Không" : null} onChange={(v) => setSoft({ alcohol: v === "Có" })} disabled={disabled} />
           <Seg label={copy({ en: "Smokes", vi: "Hút thuốc" })} options={["Không", "Có"] as const} value={soft.smoking === true ? "Có" : soft.smoking === false ? "Không" : null} onChange={(v) => setSoft({ smoking: v === "Có" })} disabled={disabled} />
           <Seg label={copy({ en: "Handedness", vi: "Thuận tay" })} options={HAND_OPTIONS} value={readHand(soft.handedness)} onChange={(v) => setSoft({ handedness: v })} disabled={disabled} />
         </div>
@@ -518,44 +547,93 @@ export function FormChuanEntryPanel(props: {
       </Section>
 
       <Section id="fc-s2" num={2} title={copy({ en: "Family", vi: "Thông tin gia đình" })} hint={copy({ en: "One row per person, as on paper.", vi: "Mỗi người một dòng, đúng như bản giấy." })}>
-        {([
-          ["Bố", "fatherName", "Họ tên", "fatherAge", "Tuổi"],
-          ["Mẹ", "motherName", "Họ tên", "motherAge", "Tuổi"],
-          ["Vợ / chồng", "spouseName", "Họ tên", "spouseAge", "Tuổi"],
-          ["Con", "childrenCount", "Số con", "childrenAges", "Tuổi các con"],
-          ["Anh chị em", "siblingsCount", "Số người", "birthOrder", "Thứ mấy trong nhà"]
-        ] as const).map(([who, aKey, aLabel, bKey, bLabel]) => {
-          const numeric = new Set<string>(["fatherAge", "motherAge", "spouseAge", "childrenCount", "siblingsCount"]);
-          const input = (key: string, label: string) => (
+        {(() => {
+          const softText = (key: string, label: string, extra: { numeric?: boolean; year?: boolean; placeholder?: string } = {}) => (
             <Input
               label={label}
-              inputMode={numeric.has(key) ? "numeric" : undefined}
+              inputMode={extra.numeric || extra.year ? "numeric" : undefined}
+              placeholder={extra.placeholder}
               value={text(soft[key])}
               disabled={disabled}
               onChange={(e) => {
                 const raw = e.target.value;
-                if (!numeric.has(key)) return setSoft({ [key]: raw });
+                // Years stay text while typed; save() turns them into numbers.
+                if (!extra.numeric) return setSoft({ [key]: raw });
                 const n = parseWholeNumber(raw);
                 if (n !== undefined) setSoft({ [key]: n });
               }}
             />
           );
+          const legacyAge = (key: string) =>
+            text(soft[key]) ? (
+              <span className="text-xs text-slate-500">
+                {copy({ en: `Age on record: ${text(soft[key])} — prints if no year is given`, vi: `Đã lưu tuổi: ${text(soft[key])} — in ra nếu chưa có năm sinh` })}
+              </span>
+            ) : null;
           return (
-            <div key={who} className="grid items-end gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-[110px_minmax(0,2fr)_minmax(0,1fr)]">
-              <span className="pb-3 text-sm font-bold text-slate-800">{who}</span>
-              {input(aKey, aLabel)}
-              {input(bKey, bLabel)}
-            </div>
+            <>
+              {([
+                ["Bố", "father"],
+                ["Mẹ", "mother"],
+                ["Vợ / chồng", "spouse"]
+              ] as const).map(([who, k]) => (
+                <div key={k} className="grid items-start gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-[100px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.5fr)]">
+                  <span className="pt-8 text-sm font-bold text-slate-800">{who}</span>
+                  {softText(`${k}Name`, "Họ tên")}
+                  <div className="flex flex-col gap-1">
+                    {softText(`${k}BirthYear`, "Năm sinh", { year: true, placeholder: "1968" })}
+                    {text(soft[`${k}BirthYear`]) ? null : legacyAge(`${k}Age`)}
+                  </div>
+                  {softText(`${k}Occupation`, "Nghề nghiệp")}
+                </div>
+              ))}
+              <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+                <Seg
+                  label={copy({ en: "Relative in Taiwan", vi: "Người thân ở Đài Loan" })}
+                  options={["Không", "Có"] as const}
+                  value={soft.relativeInTaiwan === true ? "Có" : soft.relativeInTaiwan === false ? "Không" : null}
+                  onChange={(v) =>
+                    setSoft(v === "Có" ? { relativeInTaiwan: true } : { relativeInTaiwan: false, relativeInTaiwanRelation: null, relativeInTaiwanWorkplace: null })
+                  }
+                  disabled={disabled}
+                />
+                {soft.relativeInTaiwan === true ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {softText("relativeInTaiwanRelation", "Quan hệ")}
+                    {softText("relativeInTaiwanWorkplace", "Nơi làm việc")}
+                  </div>
+                ) : null}
+              </div>
+              <div className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-3">
+                {softText("childrenCount", "Số con", { numeric: true })}
+                {softText("sonsAges", "Con trai — tuổi", { placeholder: "5, 8" })}
+                {softText("daughtersAges", "Con gái — tuổi", { placeholder: "3" })}
+                {text(soft.childrenAges) && !text(soft.sonsAges) && !text(soft.daughtersAges) ? (
+                  <span className="text-xs text-slate-500 sm:col-span-3">
+                    {copy({ en: `Children's ages on record: ${text(soft.childrenAges)}`, vi: `Đã lưu tuổi các con: ${text(soft.childrenAges)}` })}
+                  </span>
+                ) : null}
+              </div>
+              <div className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-5">
+                {softText("olderBrothers", "Anh trai", { numeric: true })}
+                {softText("olderSisters", "Chị gái", { numeric: true })}
+                {softText("youngerBrothers", "Em trai", { numeric: true })}
+                {softText("youngerSisters", "Em gái", { numeric: true })}
+                {softText("birthOrder", "Đứng thứ")}
+              </div>
+            </>
           );
-        })}
+        })()}
       </Section>
 
       <Section id="fc-s3" num={3} title={copy({ en: "Education & papers", vi: "Học vấn & giấy tờ" })}>
         <Seg label={copy({ en: "Highest education", vi: "Trình độ văn hóa cao nhất" })} options={EDUCATION_OPTIONS} value={readEducation(soft.education)} onChange={(v) => setSoft({ education: v })} disabled={disabled} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label={copy({ en: "Field of study", vi: "Chuyên ngành" })} value={text(soft.educationMajor)} onChange={(e) => setSoft({ educationMajor: e.target.value })} disabled={disabled} />
-          <Seg label={copy({ en: "English", vi: "Tiếng Anh" })} options={ENGLISH_OPTIONS} value={readEnglish(soft.languages)} onChange={(v) => setSoft({ languages: writeEnglish(soft.languages, v) })} disabled={disabled} />
+          <Input label={copy({ en: "Study period", vi: "Thời gian" })} placeholder="2015 – 2018" value={text(soft.educationPeriod)} onChange={(e) => setSoft({ educationPeriod: e.target.value })} disabled={disabled} />
         </div>
+        <Seg label={copy({ en: "Chinese", vi: "Tiếng Trung" })} options={CHINESE_OPTIONS} value={readChinese(soft.languages)} onChange={(v) => setSoft({ languages: writeChinese(soft.languages, v) })} disabled={disabled} />
+        <Seg label={copy({ en: "English", vi: "Tiếng Anh" })} options={ENGLISH_OPTIONS} value={readEnglish(soft.languages)} onChange={(v) => setSoft({ languages: writeEnglish(soft.languages, v) })} disabled={disabled} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Seg label={copy({ en: "Vaccination", vi: "Tiêm chủng" })} options={VACCINATION_OPTIONS} value={(text(soft.vaccinationStatus) || null) as "have" | "in_progress" | "none" | null} onChange={(v) => setSoft({ vaccinationStatus: v })} disabled={disabled} />
           <Input type="date" label={copy({ en: "Vaccinated on", vi: "Thời gian tiêm" })} value={text(soft.vaccinationDate)} onChange={(e) => setSoft({ vaccinationDate: e.target.value })} disabled={disabled} />
