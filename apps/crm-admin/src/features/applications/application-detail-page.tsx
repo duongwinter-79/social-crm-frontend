@@ -32,6 +32,7 @@ import type {
   LeadAcquisitionSource,
 } from "@social-crm/api";
 import { LeadPicker } from "@/components/lead-picker";
+import { DOSSIER_FIELD_ROWS } from "@/features/leads/dossier-fields.generated";
 import { ApplicationContextNav } from "./application-context-nav";
 
 /**
@@ -121,53 +122,94 @@ type VerifyFieldDef = {
   section: "identity" | "physical" | "background" | "family" | "work" | "wishes";
   en: string;
   vi: string;
-  /** UI input type for the Override column. */
-  input: "text" | "number" | "select-gender" | "select-yes-no";
+  /** UI input type for the Override column. "rows" (a record list) has no override. */
+  input: "text" | "number" | "date" | "select-gender" | "select-yes-no" | "select" | "rows";
+  /** Options for input "select". */
+  options?: ReadonlyArray<{ value: string; vi: string; en: string }>;
 };
 
-const VERIFY_FIELDS: readonly VerifyFieldDef[] = [
-  // ── Identity ─────────────────────────────────────────────────────────
+/**
+ * Sensitive self-declarations (customer decision 2026-10-29): AI may propose
+ * them, but they are never pre-selected — the operator must pick "Use form".
+ * The exception is an exact restore of a CRM-exported form, whose values a
+ * person already confirmed before it was printed.
+ */
+const SENSITIVE_VERIFY_KEYS: ReadonlySet<string> = new Set([
+  "legalViolation", "legalViolationNote", "surgery", "surgeryNote", "birthDefect", "birthDefectNote",
+]);
+
+const DOC_STATUS_OPTIONS = [
+  { value: "have", vi: "Đã tiêm", en: "Done" },
+  { value: "in_progress", vi: "Đang tiêm", en: "In progress" },
+  { value: "none", vi: "Chưa", en: "Not yet" },
+] as const;
+
+const CONTRACT_OPTIONS = [
+  { value: "completed", vi: "Mãn hạn HĐ", en: "Completed" },
+  { value: "not_completed", vi: "Không hết HĐ", en: "Not completed" },
+] as const;
+
+/**
+ * Typed dossier columns, listed by hand: their keys follow the extraction
+ * shape (`name`, not `fullName`) and some carry their own input.
+ */
+const TYPED_VERIFY_FIELDS: readonly VerifyFieldDef[] = [
   { key: "name",              group: "typed", section: "identity",   en: "Full name",          vi: "Họ và tên",            input: "text" },
   { key: "dateOfBirth",       group: "typed", section: "identity",   en: "Date of birth",      vi: "Ngày sinh",            input: "text" },
   { key: "birthYear",         group: "typed", section: "identity",   en: "Birth year",         vi: "Năm sinh",             input: "number" },
   { key: "gender",            group: "typed", section: "identity",   en: "Gender",             vi: "Giới tính",            input: "select-gender" },
-  // ── Physical ─────────────────────────────────────────────────────────
   { key: "heightCm",          group: "typed", section: "physical",   en: "Height (cm)",        vi: "Chiều cao (cm)",       input: "number" },
   { key: "weightKg",          group: "typed", section: "physical",   en: "Weight (kg)",        vi: "Cân nặng (kg)",        input: "number" },
-  { key: "vision",            group: "soft",  section: "physical",   en: "Vision",             vi: "Thị lực",              input: "text" },
-  { key: "handedness",        group: "soft",  section: "physical",   en: "Handedness",         vi: "Thuận tay",            input: "text" },
-  { key: "tattooNote",        group: "soft",  section: "physical",   en: "Tattoo note",        vi: "Hình xăm",             input: "text" },
-  { key: "alcohol",           group: "soft",  section: "physical",   en: "Drinks alcohol",     vi: "Uống rượu",            input: "select-yes-no" },
-  { key: "smoking",           group: "soft",  section: "physical",   en: "Smokes",             vi: "Hút thuốc",            input: "select-yes-no" },
-  { key: "surgery",           group: "soft",  section: "physical",   en: "Surgery history",    vi: "Phẫu thuật",           input: "text" },
-  { key: "birthDefect",       group: "soft",  section: "physical",   en: "Birth defect",       vi: "Dị tật",               input: "text" },
-  // ── Background ───────────────────────────────────────────────────────
   { key: "hometownProvince",  group: "typed", section: "background", en: "Hometown",           vi: "Hộ khẩu",              input: "text" },
   { key: "address",           group: "typed", section: "background", en: "Address",            vi: "Địa chỉ",              input: "text" },
-  { key: "education",         group: "soft",  section: "background", en: "Education",          vi: "Trình độ",             input: "text" },
-  { key: "languages",         group: "soft",  section: "background", en: "Foreign languages",  vi: "Ngoại ngữ",            input: "text" },
-  { key: "referrer",          group: "soft",  section: "background", en: "Referrer",           vi: "Người giới thiệu",     input: "text" },
-  // ── Family ───────────────────────────────────────────────────────────
-  { key: "maritalStatus",     group: "soft",  section: "family",     en: "Marital status",     vi: "Tình trạng hôn nhân",  input: "text" },
-  { key: "spouseName",        group: "soft",  section: "family",     en: "Spouse name",        vi: "Họ tên vợ/chồng",      input: "text" },
-  { key: "spouseAge",         group: "soft",  section: "family",     en: "Spouse age",         vi: "Tuổi vợ/chồng",        input: "number" },
-  { key: "childrenCount",     group: "soft",  section: "family",     en: "Children count",     vi: "Số con",               input: "number" },
-  { key: "childrenAges",      group: "soft",  section: "family",     en: "Children ages",      vi: "Tuổi con",             input: "text" },
-  { key: "fatherName",        group: "soft",  section: "family",     en: "Father's name",      vi: "Họ tên bố",            input: "text" },
-  { key: "fatherAge",         group: "soft",  section: "family",     en: "Father's age",       vi: "Tuổi bố",              input: "number" },
-  { key: "motherName",        group: "soft",  section: "family",     en: "Mother's name",      vi: "Họ tên mẹ",            input: "text" },
-  { key: "motherAge",         group: "soft",  section: "family",     en: "Mother's age",       vi: "Tuổi mẹ",              input: "number" },
-  { key: "siblingsCount",     group: "soft",  section: "family",     en: "Siblings count",     vi: "Số anh chị em",        input: "number" },
-  { key: "birthOrder",        group: "soft",  section: "family",     en: "Birth order",        vi: "Thứ tự sinh",          input: "number" },
-  // ── Work ─────────────────────────────────────────────────────────────
   { key: "experienceField",   group: "typed", section: "work",       en: "Experience field",   vi: "Ngành kinh nghiệm",    input: "text" },
   { key: "experienceDetails", group: "typed", section: "work",       en: "Experience details", vi: "Chi tiết kinh nghiệm", input: "text" },
   { key: "experienceYears",   group: "typed", section: "work",       en: "Experience years",   vi: "Số năm KN",            input: "number" },
-  { key: "hasBeenToTaiwan",   group: "soft",  section: "work",       en: "Has been to Taiwan", vi: "Đã qua Đài Loan",      input: "select-yes-no" },
-  // ── Wishes ───────────────────────────────────────────────────────────
   { key: "desiredIndustry",   group: "typed", section: "wishes",     en: "Desired industry",   vi: "Ngành mong muốn",      input: "text" },
   { key: "desiredSalary",     group: "typed", section: "wishes",     en: "Desired salary",     vi: "Lương mong muốn",      input: "text" },
 ];
+
+/** Readable labels for the soft enum fields' stored values. */
+const ENUM_OPTION_LABELS: Record<string, ReadonlyArray<{ value: string; vi: string; en: string }>> = {
+  vaccinationStatus: DOC_STATUS_OPTIONS,
+  contractCompletion: CONTRACT_OPTIONS,
+};
+
+function inputForKind(kind: string): VerifyFieldDef["input"] {
+  switch (kind) {
+    case "integer": return "number";
+    case "boolean": return "select-yes-no";
+    case "date": return "date";
+    case "enum": return "select";
+    case "record_list": return "rows";
+    default: return "text";
+  }
+}
+
+/**
+ * Soft (CandidateProfile.softFields) rows come straight from the generated
+ * dossier field list, so every field the manifest adds — and a CRM export
+ * carries back on re-upload — is offered here without a second list to keep.
+ */
+const SOFT_VERIFY_FIELDS: readonly VerifyFieldDef[] = DOSSIER_FIELD_ROWS.filter((r) => r.group === "soft").map((r) => ({
+  key: r.key,
+  group: "soft",
+  section: r.section,
+  en: r.en,
+  vi: r.vi,
+  input: inputForKind(r.kind),
+  options:
+    r.kind === "enum"
+      ? ENUM_OPTION_LABELS[r.key] ?? (r.enumValues ?? []).map((v) => ({ value: v, vi: v, en: v }))
+      : undefined,
+}));
+
+const VERIFY_SECTIONS = ["identity", "physical", "background", "family", "work", "wishes"] as const;
+
+const VERIFY_FIELDS: readonly VerifyFieldDef[] = VERIFY_SECTIONS.flatMap((section) => [
+  ...TYPED_VERIFY_FIELDS.filter((f) => f.section === section),
+  ...SOFT_VERIFY_FIELDS.filter((f) => f.section === section),
+]);
 
 const SECTION_LABELS: Record<VerifyFieldDef["section"], { en: string; vi: string }> = {
   identity:   { en: "Identity",   vi: "Thông tin cơ bản" },
@@ -563,10 +605,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
           // pre-select "form"; otherwise pre-select "current". Operator can
           // flip to override per row and type a fresh value.
           const initialChoices: Record<string, ChoicePerField> = {};
-          for (const f of VERIFY_FIELDS) {
-            const formVal = readFieldValue(result.extracted, result.extractedSoft, f);
-            initialChoices[f.key] = isNonEmpty(formVal) ? "form" : "current";
-          }
+          for (const f of VERIFY_FIELDS) initialChoices[f.key] = defaultChoice(result, f);
           setChoices(initialChoices);
           setOverrides({});
           // Pre-fill the create-new-lead panel from extracted fields.
@@ -1003,6 +1042,28 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
           title={<UiText id="appdetail.confirm.title" />}
           subtitle={<UiText id="appdetail.confirm.subtitle" />}
         >
+          {verifyResult.roundTrip === "restored" ? (
+            <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              {copy({
+                en: "This is a FORM CHUẨN exported by the CRM, unchanged since export — its values were restored exactly (no AI).",
+                vi: "Đây là FORM CHUẨN do CRM xuất, chưa bị sửa từ khi xuất — giá trị được khôi phục chính xác (không qua AI)."
+              })}
+            </div>
+          ) : verifyResult.roundTrip === "edited" ? (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {copy({
+                en: "This CRM-exported form was edited after export, so AI re-read its current text. Check each value.",
+                vi: "Form do CRM xuất nhưng đã bị sửa sau khi xuất — AI đọc lại nội dung hiện tại. Hãy kiểm tra từng giá trị."
+              })}
+            </div>
+          ) : verifyResult.roundTrip === "other_lead" ? (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {copy({
+                en: `This form was exported for a different lead (${verifyResult.roundTripLeadId?.slice(0, 8) ?? "?"}); AI read it instead. Make sure it is the right file.`,
+                vi: `Form này được xuất cho một hồ sơ khác (${verifyResult.roundTripLeadId?.slice(0, 8) ?? "?"}); đã dùng AI để đọc. Hãy kiểm tra đúng file.`
+              })}
+            </div>
+          ) : null}
           <div className="mb-3 flex items-center gap-3 text-sm">
             <button type="button" onClick={resetAllToFormWins} className="text-indigo-600 hover:underline">
               {copy({ en: "Reset all to form-wins", vi: "Đặt lại tất cả về form-wins" })}
@@ -1067,6 +1128,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
                               type="radio"
                               name={`choice-${field.key}`}
                               checked={choice === "override"}
+                              disabled={field.input === "rows"}
                               onChange={() => setChoice(field.key, "override")}
                               className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
                             />
@@ -1095,9 +1157,20 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
                                 <option value="true">{copy({ en: "Yes", vi: "Rồi" })}</option>
                                 <option value="false">{copy({ en: "No", vi: "Chưa" })}</option>
                               </select>
+                            ) : field.input === "select" ? (
+                              <select
+                                value={override}
+                                onChange={(e) => setOverride(field.key, e.target.value)}
+                                className="w-full rounded-md border border-slate-200 px-2 py-1 text-xs"
+                              >
+                                <option value="">—</option>
+                                {(field.options ?? []).map((o) => (
+                                  <option key={o.value} value={o.value}>{copy(o)}</option>
+                                ))}
+                              </select>
                             ) : (
                               <OverrideTextInput
-                                type={field.input === "number" ? "number" : "text"}
+                                type={field.input === "number" ? "number" : field.input === "date" ? "date" : "text"}
                                 value={override}
                                 onChange={(value) => setOverride(field.key, value)}
                                 placeholder={String(displayValue(formVal))}
@@ -1370,10 +1443,7 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
   function resetAllToFormWins() {
     if (!verifyResult) return;
     const next: Record<string, ChoicePerField> = {};
-    for (const f of VERIFY_FIELDS) {
-      const formVal = readFieldValue(verifyResult.extracted, verifyResult.extractedSoft, f);
-      next[f.key] = isNonEmpty(formVal) ? "form" : "current";
-    }
+    for (const f of VERIFY_FIELDS) next[f.key] = defaultChoice(verifyResult, f);
     setChoices(next);
   }
 }
@@ -1387,6 +1457,16 @@ function readFieldValue(
 ): unknown {
   if (field.group === "typed") return typed ? (typed as any)[field.key] : null;
   return soft ? (soft as any)[field.key] : null;
+}
+
+/**
+ * Form-wins default: pre-select "form" when the file has a value, except a
+ * sensitive declaration read by AI, which waits for the operator's choice.
+ */
+function defaultChoice(result: VerifyPendingResult, field: VerifyFieldDef): ChoicePerField {
+  if (!isNonEmpty(readFieldValue(result.extracted, result.extractedSoft, field))) return "current";
+  if (SENSITIVE_VERIFY_KEYS.has(field.key) && result.roundTrip !== "restored") return "current";
+  return "form";
 }
 
 function isNonEmpty(v: unknown): boolean {
@@ -1427,6 +1507,8 @@ function buildDossierFields(
         value = Number.isFinite(n) ? n : null;
       } else if (field.input === "select-yes-no") {
         value = raw === "true" ? true : raw === "false" ? false : null;
+      } else if (field.input === "rows") {
+        continue; // a table has no free-text override
       } else if (raw.trim() === "") {
         value = null;
       } else {
@@ -1451,7 +1533,16 @@ function buildDossierFields(
 
 function displayValue(value: any): string {
   if (value === null || value === undefined || value === "") return "—";
-  if (Array.isArray(value)) return value.join(", ") || "—";
+  if (Array.isArray(value)) {
+    // A record list (FORM CHUẨN work table) shows one job per "; ".
+    const parts = value.map((v) =>
+      v && typeof v === "object"
+        ? Object.values(v as Record<string, unknown>).filter((x) => typeof x === "string" && x.trim()).join(" · ")
+        : String(v),
+    );
+    return parts.filter(Boolean).join("; ") || "—";
+  }
+  if (typeof value === "boolean") return value ? "Có" : "Không";
   return String(value);
 }
 
@@ -1498,7 +1589,7 @@ function FieldInput(props: { label: string; value: string; onChange: (v: string)
 }
 
 function OverrideTextInput(props: {
-  type: "number" | "text";
+  type: "number" | "text" | "date";
   value: string;
   placeholder: string;
   onChange: (value: string) => void;

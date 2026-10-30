@@ -73,7 +73,9 @@ import type {
   UiTemplatePayload,
   UiTemplateRuntime,
   UiTextRuntimeOverride,
-  UpdateUiTextOverridePayload
+  UpdateUiTextOverridePayload,
+  LeadDossierPatch,
+  FormStandardReadiness
 } from "./types";
 
 const API_BASE_URL =
@@ -553,6 +555,7 @@ export class SocialCrmApiClient {
     dateFrom?: string;
     dateTo?: string;
     hidePlaceholderNames?: boolean;
+    awaitingSignature?: boolean;
   }) {
     const response = await this.http.get<ApiEnvelope<LeadListResponse> | LeadListResponse>("/leads", { params });
     return unwrapEnvelope(response.data);
@@ -641,6 +644,31 @@ export class SocialCrmApiClient {
   async updateLeadQualification(leadId: string, patch: Record<string, unknown>) {
     const response = await this.http.patch<ApiEnvelope<Lead> | Lead>(`/leads/${leadId}/qualification`, patch);
     return unwrapEnvelope(response.data);
+  }
+
+  /**
+   * Write the candidate dossier directly (FORM CHUẨN entry screen). Only
+   * dossier-owned keys: typed address / hometownProvince / dateOfBirth and the
+   * manifest soft fields. `null` clears a key. Lead-owned fields (name, phone,
+   * gender, height, …) go through updateLead / updateLeadQualification.
+   */
+  async updateLeadDossier(leadId: string, patch: LeadDossierPatch) {
+    const response = await this.http.patch<ApiEnvelope<Record<string, unknown>> | Record<string, unknown>>(`/leads/${leadId}/dossier`, patch);
+    return unwrapEnvelope(response.data);
+  }
+
+  async getFormStandardReadiness(leadId: string) {
+    const response = await this.http.get<ApiEnvelope<FormStandardReadiness> | FormStandardReadiness>(
+      `/leads/${leadId}/form-standard/readiness`,
+    );
+    return unwrapEnvelope(response.data);
+  }
+
+  /** Download the filled FORM CHUẨN (.docx). Prints verified values only. */
+  async exportFormStandardDocx(leadId: string) {
+    const response = await this.http.get<Blob>(`/leads/${leadId}/form-standard.docx`, { responseType: "blob" });
+    const filename = parseFilenameFromContentDisposition(response.headers["content-disposition"]) ?? `FORM-CHUAN-${leadId.slice(0, 8)}.docx`;
+    return { blob: response.data, filename };
   }
 
   async listThreads(params: { offset: number; limit: number; channel?: string; leadId?: string; analyzeStatus?: string; search?: string }) {

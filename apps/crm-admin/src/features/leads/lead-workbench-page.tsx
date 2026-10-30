@@ -37,6 +37,7 @@ import {
 import { LeadStatusLine } from "./lead-status-line";
 import { CandidateWorkbench } from "@/features/candidate-workbench/candidate-workbench";
 import { DossierModal } from "./dossier-modal";
+import { FormChuanEntryPanel } from "./form-chuan-entry-panel";
 import { useI18n } from "../../i18n";
 import { UiText } from "@/ui-text/ui-text";
 import { type NavigationReturnState, resolveReturnState } from "@/app/navigation-state";
@@ -491,8 +492,21 @@ export function LeadWorkbenchPage() {
 
       <CandidateWorkbench
         className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-        defaultSection="basic"
+        defaultSection="formStandard"
         sections={[
+          {
+            key: "formStandard",
+            content: (
+              <FormChuanEntryPanel
+                leadId={leadId}
+                lead={lead}
+                qualification={qualificationQuery.data}
+                profile={(candidate?.profile as Record<string, unknown> | null | undefined) ?? null}
+                canEdit={canEditLeads}
+                canViewPii={canViewLeadPii}
+              />
+            )
+          },
           {
             key: "extraction",
             content: (

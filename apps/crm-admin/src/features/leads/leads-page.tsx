@@ -103,6 +103,9 @@ export function LeadsPage() {
   // Default ON: unidentified Zalo intake rows (placeholder name, no phone/
   // fullName) are hidden unless the operator opts in via ?hideUnnamed=0.
   const hideUnnamed = searchParams.get("hideUnnamed") !== "0";
+  // "Đã xuất form · chờ ký": FORM CHUẨN exported, signed copy not uploaded yet.
+  // The pipeline no longer waits for the signature, so this is where the gap shows.
+  const awaitingSignature = searchParams.get("form") === "awaiting";
   const [isExporting, setIsExporting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   // Create-from-form: the Journey "new" mode now lives here as a modal.
@@ -130,7 +133,8 @@ export function LeadsPage() {
     source: source || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
-    hidePlaceholderNames: hideUnnamed || undefined
+    hidePlaceholderNames: hideUnnamed || undefined,
+    awaitingSignature: awaitingSignature || undefined
   });
 
   const leads = query.data?.data ?? [];
@@ -272,7 +276,8 @@ export function LeadsPage() {
                     to: null,
                     page: null,
                     pageSize: null,
-                    hideUnnamed: null
+                    hideUnnamed: null,
+                    form: null
                   });
                 }}
               >
@@ -281,7 +286,7 @@ export function LeadsPage() {
             </ToolbarActions>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4 xl:grid-cols-[1fr_1fr_1fr_auto]">
+          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">
             <Select
               label={copy({ en: "Unidentified Zalo accounts", vi: "Tài khoản Zalo chưa định danh" })}
               value={hideUnnamed ? "hide" : "show"}
@@ -294,6 +299,16 @@ export function LeadsPage() {
             >
               <option value="hide">{copy({ en: "Hide", vi: "Ẩn" })}</option>
               <option value="show">{copy({ en: "Show", vi: "Hiện" })}</option>
+            </Select>
+            <Select
+              label={copy({ en: "Standard form", vi: "FORM CHUẨN" })}
+              value={awaitingSignature ? "awaiting" : ""}
+              onChange={(event) => {
+                updateLeadParams({ form: event.target.value || null, ...resetPageUpdate });
+              }}
+            >
+              <option value="">{copy({ en: "All", vi: "Tất cả" })}</option>
+              <option value="awaiting">{copy({ en: "Exported · awaiting signature", vi: "Đã xuất form · chờ ký" })}</option>
             </Select>
             <Input
               type="date"
@@ -492,7 +507,10 @@ export function LeadsPage() {
                           )}
                         </td>
                         <td className="py-5 pr-4">
-                          <Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>
+                          <div className="flex flex-col items-start gap-1">
+                            <Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>
+                            {lead.formAwaitingSignature ? <Badge tone="warning">Đã xuất form · chờ ký</Badge> : null}
+                          </div>
                         </td>
                         <td className="py-5 pr-4">
                           <div className="flex items-center gap-2">

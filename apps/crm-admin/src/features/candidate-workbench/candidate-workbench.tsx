@@ -18,6 +18,7 @@ import { LeadStatusLine } from "@/features/leads/lead-status-line";
  */
 
 export type WorkbenchSectionKey =
+  | "formStandard"
   | "basic"
   | "skills"
   | "documents"
@@ -49,6 +50,7 @@ const SECTION_META: Record<
   WorkbenchSectionKey,
   { group: SectionGroup; en: string; vi: string; icon: ReactNode }
 > = {
+  formStandard: { group: "profile", en: "Standard form", vi: "FORM CHUẨN", icon: <IconDoc /> },
   basic: { group: "profile", en: "Basic info", vi: "Thông tin cơ bản", icon: <IconUser /> },
   skills: { group: "profile", en: "Skills & experience", vi: "Kỹ năng & KN", icon: <IconBriefcase /> },
   extraction: { group: "profile", en: "AI extraction", vi: "Trích xuất AI", icon: <IconSpark /> },
