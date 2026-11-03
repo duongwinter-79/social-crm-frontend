@@ -3,28 +3,27 @@ import { useI18n } from "@/i18n";
 import { LeadStatusLine } from "@/features/leads/lead-status-line";
 
 /**
- * Shared candidate workbench shell.
+ * Candidate workbench shell.
  *
- * One layout used by both the lead-workbench page (extraction-heavy) and the
- * order-side candidate modal. It owns the chrome — the horizontal status line,
- * the grouped section nav, and the active-section switching — while each
- * consumer supplies the actual section content. This keeps one consistent
- * "lead model" vocabulary everywhere (matches the reference LeadModal: data
- * sections on the left, pipeline stage on top), without forcing the same body
- * into both surfaces.
+ * It owns the chrome — the horizontal status line, the grouped section nav,
+ * and the active-section switching — while the consumer supplies the actual
+ * section content (data sections on the left, pipeline stage on top).
  *
  * The section keys/labels/groups are the single source of truth for how a
- * candidate is decomposed — see SECTION_META.
+ * candidate is decomposed — see SECTION_META. A key only belongs here once
+ * something renders it: `skills` sat in this list unrendered by anyone.
+ *
+ * NOTE: lead-workbench-page is the only consumer. An earlier version of this
+ * comment claimed the order-side candidate modal shared the shell; it does
+ * not, so changes here affect exactly one screen.
  */
 
 export type WorkbenchSectionKey =
   | "formStandard"
   | "basic"
-  | "skills"
   | "documents"
   | "application"
   | "progressFinance"
-  | "departure"
   | "history"
   | "extraction";
 
@@ -52,12 +51,10 @@ const SECTION_META: Record<
 > = {
   formStandard: { group: "profile", en: "Standard form", vi: "FORM CHUẨN", icon: <IconDoc /> },
   basic: { group: "profile", en: "Basic info", vi: "Thông tin cơ bản", icon: <IconUser /> },
-  skills: { group: "profile", en: "Skills & experience", vi: "Kỹ năng & KN", icon: <IconBriefcase /> },
   extraction: { group: "profile", en: "AI extraction", vi: "Trích xuất AI", icon: <IconSpark /> },
   documents: { group: "process", en: "Form & documents", vi: "Hồ sơ & Form", icon: <IconDoc /> },
   application: { group: "process", en: "Application", vi: "Ứng tuyển", icon: <IconCap /> },
   progressFinance: { group: "process", en: "Progress & finance", vi: "Tiến độ & Tài chính", icon: <IconMoney /> },
-  departure: { group: "process", en: "Departure", vi: "Xuất cảnh", icon: <IconPlane /> },
   history: { group: "other", en: "History & notes", vi: "Lịch sử & Note", icon: <IconChat /> },
 };
 
@@ -157,9 +154,6 @@ function svg(path: ReactNode) {
 function IconUser() {
   return svg(<><circle cx="12" cy="8" r="3.2" /><path d="M5 19a7 7 0 0 1 14 0" /></>);
 }
-function IconBriefcase() {
-  return svg(<><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></>);
-}
 function IconSpark() {
   return svg(<><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></>);
 }
@@ -171,9 +165,6 @@ function IconCap() {
 }
 function IconMoney() {
   return svg(<><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></>);
-}
-function IconPlane() {
-  return svg(<><path d="M21 4 3 11l7 2.5L12.5 21 21 4Z" /><path d="M10 13.5 21 4" /></>);
 }
 function IconChat() {
   return svg(<><path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6A2.5 2.5 0 0 1 16.5 15H10l-4 3v-3a1 1 0 0 1-1-1z" /></>);

@@ -248,7 +248,6 @@ export function LeadWorkbenchPage() {
     ? formatDocumentStatus(form.documentStatus)
     : copy({ en: "Form missing", vi: "Chưa có form" });
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
-  const hasCandidate = Boolean(candidate?.id);
 
   // Per-field provenance lookup. `verifiedKeys` lives on the lead detail.
   const suggestionsByField = useMemo(
@@ -481,11 +480,10 @@ export function LeadWorkbenchPage() {
         <div className="flex flex-wrap items-center gap-3">
           <span>{copy({ en: "Use backend state transitions first.", vi: "Ưu tiên dùng luồng chuyển trạng thái do hệ thống kiểm soát." })}</span>
           <Badge tone="neutral">{copy({ en: "Profile completeness drives matching quality", vi: "Độ đầy đủ hồ sơ ảnh hưởng chất lượng ghép đơn" })}</Badge>
-          <Badge tone="neutral">
-            {hasCandidate
-              ? copy({ en: "Candidate record linked", vi: "Đã liên kết hồ sơ ứng viên" })
-              : copy({ en: "No candidate created yet", vi: "Chưa tạo hồ sơ ứng viên" })}
-          </Badge>
+          {/* One badge, not two: the tone-carrying one below already says
+              "Chưa tạo hồ sơ ứng viên" when there is no candidate, and says
+              strictly more (the code) when there is. A second neutral badge
+              rendered the same sentence twice side by side. */}
           <Badge tone={candidate ? "success" : "warning"}>{candidate ? `${copy({ en: "Candidate", vi: "Ứng viên" })} ${candidate.code ?? candidate.id}` : copy({ en: "No candidate created yet", vi: "Chưa tạo hồ sơ ứng viên" })}</Badge>
         </div>
       </InfoStrip>
@@ -939,26 +937,12 @@ export function LeadWorkbenchPage() {
               <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />
             ),
           },
-          {
-            key: "departure",
-            content: (
-              <Panel
-                title={<UiText id="lead.workbench.departure.title" />}
-                subtitle={<UiText id="lead.workbench.departure.subtitle" />}
-              >
-                <DescriptionList
-                  items={[
-                    { label: copy({ en: "Departure date", vi: "Ngày xuất cảnh" }), value: tf?.departureDate || copy({ en: "Not scheduled", vi: "Chưa lên lịch" }) },
-                    { label: copy({ en: "Visa date", vi: "Ngày có visa" }), value: tf?.visaDate || copy({ en: "Not set", vi: "Chưa có" }) },
-                    { label: copy({ en: "Pipeline status", vi: "Trạng thái quy trình" }), value: formatLeadStatus(lead.status) }
-                  ]}
-                />
-                <p className="mt-3 text-xs leading-5 text-slate-500">
-                  <UiText id="journey.workbench.departure.helper" />
-                </p>
-              </Panel>
-            ),
-          },
+          // "Xuất cảnh" was removed here: it rendered departureDate and
+          // visaDate read-only off the same `tf` record that the section
+          // above owns, where training-finance-detail-page.tsx:547-548
+          // renders them as editable inputs. Its third row, pipeline status,
+          // is already in the page header. A whole section for a worse copy
+          // of the neighbouring one.
           {
             key: "history",
             content: (
@@ -986,7 +970,6 @@ export function LeadWorkbenchPage() {
                       { label: copy({ en: "Risk history", vi: "Lịch sử rủi ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chưa rõ" }) }
                     ]}
                   />
-                  <pre className="mt-4 overflow-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">{JSON.stringify(qualificationQuery.data?.verifiedData ?? lead.verifiedProfileData ?? {}, null, 2)}</pre>
                 </Panel>
               </div>
             ),
