@@ -41,10 +41,18 @@ including `fullName`/`phone`, and already honours `canViewPii` (`:282`).
 FORM CHUẨN is strictly more capable than `basic`. The only thing `basic`
 uniquely owns is five **inputs**, not plumbing.
 
-**2.3 FORM CHUẨN is deliberately incomplete, and says so.**
+**2.3 FORM CHUẨN sends the operator elsewhere for part of the record.**
 `form-chuan-entry-panel.tsx:643`: *"Passport, criminal record and health check
-print from the Form & documents section."* The core form sends the operator to
-another section to finish the document it exports.
+print from the Form & documents section."*
+
+**Corrected 2026-11-04, during phase C.** That sentence is *true* and must
+stay. The printed Hộ chiếu / Tư pháp / Sức khỏe boxes are driven by uploaded
+`Document` rows and their status/expiry
+(`form-standard-export.service.ts:115-117` → `docState`), and the export never
+reads the qualification flags `hasPassport` / `healthMeetsCriteria` /
+`hasRiskHistory` at all. Those flags are a *different thing* — operator
+verification answers that feed matching and scoring, not document status. The
+two must not be conflated in labels or in the field map below.
 
 **2.4 `departure` is a read-only view of `progressFinance`'s record.**
 Lines 943–962 render three fields off `tf` — `departureDate`, `visaDate`,
@@ -106,16 +114,17 @@ The five fields `basic` uniquely owns all have a home:
 | Field | Moves to | Why there |
 |---|---|---|
 | `region` | Step 1 · Cá nhân, beside `address` | It is an address field |
-| `hasPassport` | Step 3 · Học vấn & giấy tờ | Already a printed cell (*Hộ chiếu*) |
+| `hasPassport` | Step 3, under *Thông tin xác minh* | Verification answer about papers |
+| `healthMeetsCriteria` | Step 3, under *Thông tin xác minh* | Verification answer about papers |
+| `hasRiskHistory` | Step 3, under *Thông tin xác minh* | Verification answer about papers |
 | `hasWorkedAbroad` | Step 5 · Nguyện vọng | Sits with the previous-contract block |
-| `healthMeetsCriteria` | Step 3 · Học vấn & giấy tờ | Printed cell (*Sức khỏe · Tiêm*) |
-| `hasRiskHistory` | Step 3 · Học vấn & giấy tờ | Printed cell (*Tư pháp*) |
 
 `displayName` (channel handle) is not form data — it becomes read-only text in
 the page header.
 
-Moving these three into step 3 lets the hint at `:643` be deleted and makes the
-export self-sufficient from one screen.
+These four are **not** the printed Hộ chiếu / Tư pháp / Sức khỏe cells (§2.3),
+so they sit under their own *Thông tin xác minh* heading and the hint at `:643`
+stays, reworded to say which side drives the print. Done 2026-11-04.
 
 ## 5. Phases
 
@@ -129,12 +138,23 @@ delete the `<pre>` JSON dump, fix the stale "shared shell" comment.
 Delete lines 943–962 and the `departure` key. If the three dates are wanted at a
 glance, they belong in the page header, not a section.
 
-**C · Make the form self-sufficient** *(~3h)*
-Add the five inputs from §4 to `form-chuan-entry-panel.tsx` using the existing
-`FieldWithProvenance` wrapper so the verified/extracted state and the *Dùng*
-affordance keep working. Delete the `:643` hint. **Verify the export fills the
-Hộ chiếu / Tư pháp / Sức khỏe cells and that the FORM_STANDARD pipeline gate
-still computes** — this is the one step that can silently break the gate.
+**C · Move the five orphan fields onto the form** *(done 2026-11-04)*
+Added the five inputs from §4 to `form-chuan-entry-panel.tsx`. They join the
+panel's existing save path: `region` rides the identity patch (`updateLead`),
+the other four the qualification patch (`updateQualification`), as tri-state
+`"" | "true" | "false"` so an unanswered question stays distinct from a "no".
+
+Verified against a local stack (Postgres in Docker, backend on :3000, seeded
+test lead): set all five in the UI, saved, reloaded, and read them back out of
+the database — `region='Nghệ An'`, `hasPassport=true`, `healthMeetsCriteria=true`,
+`hasRiskHistory='none'`, `hasWorkedAbroad=true`.
+
+**The gate is unaffected**, and this was checked rather than assumed: the
+required set comes from the field manifest (`getRequiredFields()` →
+`lead-completeness.util.ts`), and none of the four qualification fields carries
+`required: true`. The required list is still exactly fullName, phone, birthYear,
+gender, heightCm, weightKg, experienceField — the banner is unchanged after the
+save.
 
 **D · Delete `basic`** *(~2h)*
 Remove lines 636–856 and the `basic` key. No new mutation work: §2.2 shows the

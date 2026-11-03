@@ -17,8 +17,11 @@ import {
   EMPTY_WORK_ROW,
   ENGLISH_OPTIONS,
   HAND_OPTIONS,
+  HEALTH_FIT_OPTIONS,
   MARITAL_OPTIONS,
   REGION_OPTIONS,
+  RISK_HISTORY_OPTIONS,
+  YES_NO_OPTIONS,
   VACCINATION_OPTIONS,
   VISION_OPTIONS,
   contactChannelLabel,
@@ -59,6 +62,8 @@ type Soft = Record<string, unknown>;
 interface Draft {
   fullName: string;
   phone: string;
+  /** Lead.region — a plain lead column, not part of the verified layer. */
+  region: string;
   birthYear: string;
   gender: string;
   height: string;
@@ -70,11 +75,18 @@ interface Draft {
   address: string;
   /** Dossier date of birth, ISO yyyy-mm-dd. */
   dateOfBirth: string;
+  // Tri-state qualification answers held as "" | "true" | "false" so an
+  // unanswered question stays distinguishable from a "no".
+  hasPassport: string;
+  hasWorkedAbroad: string;
+  healthMeetsCriteria: string;
+  /** Qualification enum; "" means unknown. See RISK_HISTORY_OPTIONS. */
+  hasRiskHistory: string;
   soft: Soft;
 }
 
 /** Lead fields on this screen → the keys the verified layer may hold them under. */
-const VERIFIED_KEYS: Record<Exclude<keyof Draft, "address" | "dateOfBirth" | "soft">, string[]> = {
+const VERIFIED_KEYS: Record<Exclude<keyof Draft, "address" | "dateOfBirth" | "region" | "soft">, string[]> = {
   fullName: ["fullName"],
   phone: ["phone"],
   birthYear: ["birthYear", "age"],
@@ -84,8 +96,19 @@ const VERIFIED_KEYS: Record<Exclude<keyof Draft, "address" | "dateOfBirth" | "so
   experienceField: ["experienceField"],
   desiredIndustry: ["desiredIndustry"],
   desiredSalary: ["desiredSalary"],
-  preferredRegion: ["preferredRegion", "preferredRegions"]
+  preferredRegion: ["preferredRegion", "preferredRegions"],
+  hasPassport: ["hasPassport"],
+  hasWorkedAbroad: ["hasWorkedAbroad"],
+  healthMeetsCriteria: ["healthMeetsCriteria"],
+  hasRiskHistory: ["hasRiskHistory"]
 };
+
+/** Verified-layer boolean → the "" | "true" | "false" the tri-state Segs hold. */
+function boolText(v: unknown): string {
+  if (v === true || v === "true") return "true";
+  if (v === false || v === "false") return "false";
+  return "";
+}
 
 function verifiedValue(lead: Lead, verifiedData: Record<string, unknown>, keys: string[]): unknown {
   const listed = Array.isArray(lead.verifiedKeys) ? lead.verifiedKeys : null;
@@ -108,6 +131,7 @@ function buildBaseline(lead: Lead, snapshot: LeadQualificationSnapshot | undefin
   return {
     fullName: text(v("fullName")),
     phone: text(v("phone")),
+    region: text(lead.region),
     birthYear: text(v("birthYear")),
     gender: text(v("gender")),
     height: text(v("height")),
@@ -118,6 +142,10 @@ function buildBaseline(lead: Lead, snapshot: LeadQualificationSnapshot | undefin
     preferredRegion: Array.isArray(regions) ? regions.filter((r): r is string => typeof r === "string") : [],
     address: text(profile?.address),
     dateOfBirth: text(profile?.dateOfBirth).slice(0, 10),
+    hasPassport: boolText(v("hasPassport")),
+    hasWorkedAbroad: boolText(v("hasWorkedAbroad")),
+    healthMeetsCriteria: boolText(v("healthMeetsCriteria")),
+    hasRiskHistory: text(v("hasRiskHistory")),
     soft: soft && typeof soft === "object" && !Array.isArray(soft) ? { ...(soft as Soft) } : {}
   };
 }
@@ -280,6 +308,7 @@ export function FormChuanEntryPanel(props: {
       if (changed("fullName")) identity.fullName = draft.fullName.trim();
       // A caller who only sees a masked phone must never send it back.
       if (canViewPii && changed("phone")) identity.phone = draft.phone.trim();
+      if (changed("region")) identity.region = draft.region.trim() || null;
 
       const q: Record<string, unknown> = {};
       for (const k of ["birthYear", "height", "weight"] as const) {
@@ -293,6 +322,11 @@ export function FormChuanEntryPanel(props: {
         if (changed(k)) q[k] = draft[k].trim() || null;
       }
       if (changed("preferredRegion")) q.preferredRegion = draft.preferredRegion;
+      // Tri-state: "" clears the answer rather than sending a false.
+      for (const k of ["hasPassport", "hasWorkedAbroad", "healthMeetsCriteria"] as const) {
+        if (changed(k)) q[k] = draft[k] === "" ? null : draft[k] === "true";
+      }
+      if (changed("hasRiskHistory")) q.hasRiskHistory = draft.hasRiskHistory || null;
 
       const softPatch: Soft = {};
       for (const k of new Set([...Object.keys(draft.soft), ...Object.keys(baseline.soft)])) {
@@ -481,7 +515,10 @@ export function FormChuanEntryPanel(props: {
           <Seg label={copy({ en: "Smokes", vi: "Hút thuốc" })} options={["Không", "Có"] as const} value={soft.smoking === true ? "Có" : soft.smoking === false ? "Không" : null} onChange={(v) => setSoft({ smoking: v === "Có" })} disabled={disabled} />
           <Seg label={copy({ en: "Handedness", vi: "Thuận tay" })} options={HAND_OPTIONS} value={readHand(soft.handedness)} onChange={(v) => setSoft({ handedness: v })} disabled={disabled} />
         </div>
-        <Input label={copy({ en: "Address", vi: "Địa chỉ" })} value={draft.address} onChange={(e) => set("address", e.target.value)} disabled={disabled} />
+        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+          <Input label={copy({ en: "Address", vi: "Địa chỉ" })} value={draft.address} onChange={(e) => set("address", e.target.value)} disabled={disabled} />
+          <Input label={copy({ en: "Region", vi: "Khu vực" })} value={draft.region} onChange={(e) => set("region", e.target.value)} disabled={disabled} />
+        </div>
         <div className="sm:max-w-sm">
           {canViewPii ? (
             <>
@@ -638,10 +675,46 @@ export function FormChuanEntryPanel(props: {
           <Seg label={copy({ en: "Vaccination", vi: "Tiêm chủng" })} options={VACCINATION_OPTIONS} value={(text(soft.vaccinationStatus) || null) as "have" | "in_progress" | "none" | null} onChange={(v) => setSoft({ vaccinationStatus: v })} disabled={disabled} />
           <Input type="date" label={copy({ en: "Vaccinated on", vi: "Thời gian tiêm" })} value={text(soft.vaccinationDate)} onChange={(e) => setSoft({ vaccinationDate: e.target.value })} disabled={disabled} />
         </div>
+        <div className="h-px bg-slate-100" />
+
+        {/* Verification answers, NOT document status. The printed
+            Hộ chiếu / Tư pháp / Sức khỏe boxes are driven by uploaded
+            Document rows and their status/expiry
+            (form-standard-export.service.ts:115-117), and never read these
+            fields. They live here because they are part of the profile the
+            operator verifies — they were previously editable only on
+            "Thông tin cơ bản". Keep the two ideas apart in the labels. */}
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {copy({ en: "Verification answers", vi: "Thông tin xác minh" })}
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Seg
+            label={copy({ en: "Owns a passport", vi: "Đã có hộ chiếu" })}
+            options={YES_NO_OPTIONS}
+            value={draft.hasPassport || null}
+            onChange={(v) => set("hasPassport", v)}
+            disabled={disabled}
+          />
+          <Seg
+            label={copy({ en: "Mandatory health fit", vi: "Sức khỏe đạt yêu cầu" })}
+            options={HEALTH_FIT_OPTIONS}
+            value={draft.healthMeetsCriteria || null}
+            onChange={(v) => set("healthMeetsCriteria", v)}
+            disabled={disabled}
+          />
+        </div>
+        <Seg
+          label={copy({ en: "Risk history", vi: "Lịch sử rủi ro" })}
+          options={RISK_HISTORY_OPTIONS}
+          value={draft.hasRiskHistory || null}
+          onChange={(v) => set("hasRiskHistory", v)}
+          disabled={disabled}
+        />
+
         <p className="text-xs text-slate-500">
           {copy({
-            en: "Passport, criminal record and health check print from the Form & documents section.",
-            vi: "Hộ chiếu, Tư pháp và Sức khỏe được in theo trạng thái ở mục Hồ sơ & Form."
+            en: "The printed Passport / Criminal record / Health check boxes follow the uploaded documents in the Form & documents section, not the answers above.",
+            vi: "Các ô Hộ chiếu / Tư pháp / Sức khỏe trên bản in theo tài liệu đã tải lên ở mục Hồ sơ & Form, không theo các câu trả lời ở trên."
           })}
         </p>
       </Section>
@@ -728,6 +801,13 @@ export function FormChuanEntryPanel(props: {
             })}
           </div>
         </div>
+        <Seg
+          label={copy({ en: "Worked abroad before", vi: "Từng đi làm việc nước ngoài" })}
+          options={YES_NO_OPTIONS}
+          value={draft.hasWorkedAbroad || null}
+          onChange={(v) => set("hasWorkedAbroad", v)}
+          disabled={disabled}
+        />
         <Seg label={copy({ en: "Been to Taiwan before", vi: "Đã từng đi Đài Loan" })} options={["Chưa", "Đã từng"] as const} value={beenToTaiwan} onChange={(v) => setSoft({ hasBeenToTaiwan: v === "Đã từng", ...(v === "Chưa" ? { contractCompletion: null, contractIncompleteReason: null } : {}) })} disabled={disabled} />
         {beenToTaiwan === "Đã từng" ? (
           <div className="space-y-3 border-l-4 border-indigo-100 pl-4">
