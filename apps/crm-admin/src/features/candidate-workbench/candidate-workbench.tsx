@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { useI18n } from "@/i18n";
+import { UiText } from "@/ui-text/ui-text";
 import { LeadStatusLine } from "@/features/leads/lead-status-line";
 
 /**
@@ -20,14 +20,9 @@ import { LeadStatusLine } from "@/features/leads/lead-status-line";
 
 export type WorkbenchSectionKey =
   | "formStandard"
-  | "basic"
   | "documents"
   | "application"
-  | "progressFinance"
-  | "history"
-  | "extraction";
-
-type SectionGroup = "profile" | "process" | "other";
+  | "history";
 
 export interface WorkbenchSection {
   key: WorkbenchSectionKey;
@@ -37,26 +32,23 @@ export interface WorkbenchSection {
   disabled?: boolean;
 }
 
-const GROUP_LABEL: Record<SectionGroup, { en: string; vi: string }> = {
-  profile: { en: "Profile", vi: "Hồ sơ" },
-  process: { en: "Process", vi: "Quy trình" },
-  other: { en: "Other", vi: "Khác" },
+/**
+ * Four sections, no group headers. Three headers over eight entries was
+ * scaffolding for a decomposition that no longer exists: the worker's record
+ * is one thing (`formStandard`), and the rest are the jobs around it.
+ *
+ * The labels live in ui-text.registry.ts under these ids, not here, so the
+ * customer can rename a section from the UI-text screen without a deploy.
+ */
+const SECTION_META: Record<WorkbenchSectionKey, { uiTextId: string; icon: ReactNode }> = {
+  formStandard: { uiTextId: "lead.section.form-standard", icon: <IconDoc /> },
+  documents: { uiTextId: "lead.section.documents", icon: <IconFolder /> },
+  application: { uiTextId: "lead.section.application", icon: <IconCap /> },
+  history: { uiTextId: "lead.section.history", icon: <IconChat /> },
 };
 
-const GROUP_ORDER: SectionGroup[] = ["profile", "process", "other"];
-
-const SECTION_META: Record<
-  WorkbenchSectionKey,
-  { group: SectionGroup; en: string; vi: string; icon: ReactNode }
-> = {
-  formStandard: { group: "profile", en: "Standard form", vi: "FORM CHUẨN", icon: <IconDoc /> },
-  basic: { group: "profile", en: "Basic info", vi: "Thông tin cơ bản", icon: <IconUser /> },
-  extraction: { group: "profile", en: "AI extraction", vi: "Trích xuất AI", icon: <IconSpark /> },
-  documents: { group: "process", en: "Form & documents", vi: "Hồ sơ & Form", icon: <IconDoc /> },
-  application: { group: "process", en: "Application", vi: "Ứng tuyển", icon: <IconCap /> },
-  progressFinance: { group: "process", en: "Progress & finance", vi: "Tiến độ & Tài chính", icon: <IconMoney /> },
-  history: { group: "other", en: "History & notes", vi: "Lịch sử & Note", icon: <IconChat /> },
-};
+/** Canonical order — the sequence an operator works through a lead in. */
+const SECTION_ORDER: WorkbenchSectionKey[] = ["formStandard", "documents", "application", "history"];
 
 export function CandidateWorkbench(props: {
   /** Lead status for the top status line. Omit to hide it. */
@@ -71,18 +63,16 @@ export function CandidateWorkbench(props: {
   sidebarFooter?: ReactNode;
   className?: string;
 }) {
-  const { copy } = useI18n();
   const available = props.sections.filter((s) => !s.disabled);
-  const firstKey = props.defaultSection ?? available[0]?.key ?? "basic";
+  const firstKey = props.defaultSection ?? available[0]?.key ?? "formStandard";
   const [active, setActive] = useState<WorkbenchSectionKey>(firstKey);
 
   const activeSection = props.sections.find((s) => s.key === active) ?? available[0];
 
-  // Group the provided sections in canonical order for the nav.
-  const grouped = GROUP_ORDER.map((group) => ({
-    group,
-    items: props.sections.filter((s) => SECTION_META[s.key].group === group),
-  })).filter((g) => g.items.length > 0);
+  // Flat nav in canonical order — no groups to collapse into.
+  const items = SECTION_ORDER.map((key) => props.sections.find((s) => s.key === key)).filter(
+    (s): s is WorkbenchSection => Boolean(s)
+  );
 
   return (
     <div className={`flex flex-col ${props.className ?? ""}`}>
@@ -97,36 +87,31 @@ export function CandidateWorkbench(props: {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Section nav — horizontal scroll strip on mobile, sidebar on lg. */}
         <nav className="flex shrink-0 gap-3 overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 py-2 lg:w-60 lg:flex-col lg:gap-0 lg:overflow-x-visible lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-0 lg:py-4">
-          {grouped.map(({ group, items }) => (
-            <div key={group} className="mb-0 shrink-0 px-0 lg:mb-4 lg:px-3">
-              <div className="mb-1.5 hidden px-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400 lg:block">
-                {copy(GROUP_LABEL[group])}
-              </div>
-              <div className="flex gap-1.5 lg:block lg:space-y-0.5">
-                {items.map((section) => {
-                  const meta = SECTION_META[section.key];
-                  const isActive = section.key === active;
-                  return (
-                    <button
-                      key={section.key}
-                      type="button"
-                      disabled={section.disabled}
-                      onClick={() => setActive(section.key)}
-                      className={`flex w-full items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
-                        isActive
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "text-slate-600 hover:bg-white hover:text-slate-900"
-                      } ${section.disabled ? "cursor-not-allowed opacity-40" : ""}`}
-                    >
-                      <span className={isActive ? "text-white" : "text-slate-400"}>{meta.icon}</span>
-                      <span className="lg:flex-1 lg:truncate">{copy({ en: meta.en, vi: meta.vi })}</span>
-                      {section.badge ? <span>{section.badge}</span> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <div className="flex gap-1.5 lg:block lg:space-y-1 lg:px-3">
+            {items.map((section) => {
+              const meta = SECTION_META[section.key];
+              const isActive = section.key === active;
+              return (
+                <button
+                  key={section.key}
+                  type="button"
+                  disabled={section.disabled}
+                  onClick={() => setActive(section.key)}
+                  className={`flex w-full items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-600 hover:bg-white hover:text-slate-900"
+                  } ${section.disabled ? "cursor-not-allowed opacity-40" : ""}`}
+                >
+                  <span className={isActive ? "text-white" : "text-slate-400"}>{meta.icon}</span>
+                  <span className="lg:flex-1 lg:truncate">
+                    <UiText id={meta.uiTextId} />
+                  </span>
+                  {section.badge ? <span>{section.badge}</span> : null}
+                </button>
+              );
+            })}
+          </div>
 
           {props.sidebarFooter ? (
             <div className="hidden px-3 lg:mt-auto lg:block lg:border-t lg:border-slate-200 lg:pt-3">{props.sidebarFooter}</div>
@@ -151,20 +136,14 @@ function svg(path: ReactNode) {
     </svg>
   );
 }
-function IconUser() {
-  return svg(<><circle cx="12" cy="8" r="3.2" /><path d="M5 19a7 7 0 0 1 14 0" /></>);
-}
-function IconSpark() {
-  return svg(<><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" /></>);
+function IconFolder() {
+  return svg(<><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></>);
 }
 function IconDoc() {
   return svg(<><path d="M8 3h6l4 4v14H6V5a2 2 0 0 1 2-2Z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></>);
 }
 function IconCap() {
   return svg(<><path d="M3 9l9-4 9 4-9 4-9-4Z" /><path d="M7 11v5c0 1 2.2 2 5 2s5-1 5-2v-5" /></>);
-}
-function IconMoney() {
-  return svg(<><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></>);
 }
 function IconChat() {
   return svg(<><path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6A2.5 2.5 0 0 1 16.5 15H10l-4 3v-3a1 1 0 0 1-1-1z" /></>);

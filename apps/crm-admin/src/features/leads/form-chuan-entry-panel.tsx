@@ -21,6 +21,7 @@ import {
   MARITAL_OPTIONS,
   REGION_OPTIONS,
   RISK_HISTORY_OPTIONS,
+  TATTOO_STATUS_OPTIONS,
   YES_NO_OPTIONS,
   VACCINATION_OPTIONS,
   VISION_OPTIONS,
@@ -82,11 +83,37 @@ interface Draft {
   healthMeetsCriteria: string;
   /** Qualification enum; "" means unknown. See RISK_HISTORY_OPTIONS. */
   hasRiskHistory: string;
+  /** Qualification enum; "" means unknown. See TATTOO_STATUS_OPTIONS. */
+  tattooStatus: string;
+  // Whole-number qualification fields, held as text while being typed.
+  experienceYears: string;
+  readyToDepartInMonths: string;
+  lateCancellationCount: string;
+  noShowCount: string;
+  unreasonableCancellationCount: string;
+  inconsistentInfoCount: string;
+  /** Free-text operator note on the qualification record. */
+  note: string;
+  /** Lead.displayName — the channel handle, a plain lead column. */
+  displayName: string;
   soft: Soft;
 }
 
+/** Whole-number Draft keys: parsed on save, cleared to null when blank. */
+const COUNT_KEYS = [
+  "experienceYears",
+  "readyToDepartInMonths",
+  "lateCancellationCount",
+  "noShowCount",
+  "unreasonableCancellationCount",
+  "inconsistentInfoCount"
+] as const;
+
 /** Lead fields on this screen → the keys the verified layer may hold them under. */
-const VERIFIED_KEYS: Record<Exclude<keyof Draft, "address" | "dateOfBirth" | "region" | "soft">, string[]> = {
+const VERIFIED_KEYS: Record<
+  Exclude<keyof Draft, "address" | "dateOfBirth" | "region" | "displayName" | "note" | "soft">,
+  string[]
+> = {
   fullName: ["fullName"],
   phone: ["phone"],
   birthYear: ["birthYear", "age"],
@@ -100,7 +127,14 @@ const VERIFIED_KEYS: Record<Exclude<keyof Draft, "address" | "dateOfBirth" | "re
   hasPassport: ["hasPassport"],
   hasWorkedAbroad: ["hasWorkedAbroad"],
   healthMeetsCriteria: ["healthMeetsCriteria"],
-  hasRiskHistory: ["hasRiskHistory"]
+  hasRiskHistory: ["hasRiskHistory"],
+  tattooStatus: ["tattooStatus"],
+  experienceYears: ["experienceYears"],
+  readyToDepartInMonths: ["readyToDepartInMonths"],
+  lateCancellationCount: ["lateCancellationCount"],
+  noShowCount: ["noShowCount"],
+  unreasonableCancellationCount: ["unreasonableCancellationCount"],
+  inconsistentInfoCount: ["inconsistentInfoCount"]
 };
 
 /** Verified-layer boolean → the "" | "true" | "false" the tri-state Segs hold. */
@@ -146,6 +180,17 @@ function buildBaseline(lead: Lead, snapshot: LeadQualificationSnapshot | undefin
     hasWorkedAbroad: boolText(v("hasWorkedAbroad")),
     healthMeetsCriteria: boolText(v("healthMeetsCriteria")),
     hasRiskHistory: text(v("hasRiskHistory")),
+    tattooStatus: text(v("tattooStatus")),
+    experienceYears: text(v("experienceYears")),
+    readyToDepartInMonths: text(v("readyToDepartInMonths")),
+    lateCancellationCount: text(v("lateCancellationCount")),
+    noShowCount: text(v("noShowCount")),
+    unreasonableCancellationCount: text(v("unreasonableCancellationCount")),
+    inconsistentInfoCount: text(v("inconsistentInfoCount")),
+    // The qualification note is tucked inside the verified bag's meta, not a
+    // column of its own — mirrors readQualificationNote in lead-workbench-page.
+    note: text((vd._qualificationMeta as Record<string, unknown> | undefined)?.note),
+    displayName: text(lead.displayName),
     soft: soft && typeof soft === "object" && !Array.isArray(soft) ? { ...(soft as Soft) } : {}
   };
 }
@@ -309,6 +354,7 @@ export function FormChuanEntryPanel(props: {
       // A caller who only sees a masked phone must never send it back.
       if (canViewPii && changed("phone")) identity.phone = draft.phone.trim();
       if (changed("region")) identity.region = draft.region.trim() || null;
+      if (changed("displayName")) identity.displayName = draft.displayName.trim() || null;
 
       const q: Record<string, unknown> = {};
       for (const k of ["birthYear", "height", "weight"] as const) {
@@ -327,6 +373,19 @@ export function FormChuanEntryPanel(props: {
         if (changed(k)) q[k] = draft[k] === "" ? null : draft[k] === "true";
       }
       if (changed("hasRiskHistory")) q.hasRiskHistory = draft.hasRiskHistory || null;
+      if (changed("tattooStatus")) q.tattooStatus = draft.tattooStatus || null;
+      if (changed("note")) q.note = draft.note.trim() || null;
+      for (const k of COUNT_KEYS) {
+        if (!changed(k)) continue;
+        const raw = draft[k].trim();
+        if (raw === "") {
+          q[k] = null;
+          continue;
+        }
+        const n = parseWholeNumber(raw);
+        if (n === undefined) throw new Error(copy({ en: `${k} must be a whole number`, vi: `${k} phải là số nguyên` }));
+        q[k] = n;
+      }
 
       const softPatch: Soft = {};
       for (const k of new Set([...Object.keys(draft.soft), ...Object.keys(baseline.soft)])) {
@@ -550,6 +609,18 @@ export function FormChuanEntryPanel(props: {
             (v) => setSoft({ tattooNote: v.trim() ? v : "Có" }),
             copy({ en: "Where, how big", vi: "Vị trí, kích thước" })
           )}
+          {/* The scoring enum, distinct from the printed yes/no above: an
+              operator can answer "Có" and still need to say how visible it
+              is, which is what matching reads. */}
+          {tattoo.answer === "yes" ? (
+            <Seg
+              label={copy({ en: "Tattoo risk (for matching)", vi: "Mức độ hình xăm (để ghép đơn)" })}
+              options={TATTOO_STATUS_OPTIONS}
+              value={draft.tattooStatus || null}
+              onChange={(v) => set("tattooStatus", v)}
+              disabled={disabled}
+            />
+          ) : null}
           <div className="flex flex-col gap-2">
             <Seg label={copy({ en: "Vision", vi: "Thị lực" })} options={VISION_OPTIONS} value={vision} onChange={(v) => setSoft({ vision: v, ...(v === "Bình thường" ? { visionNote: null } : {}) })} disabled={disabled} />
             {vision && vision !== "Bình thường" ? (
@@ -710,6 +781,14 @@ export function FormChuanEntryPanel(props: {
           onChange={(v) => set("hasRiskHistory", v)}
           disabled={disabled}
         />
+        {/* Scoring counters. They print nowhere, but this was their only
+            editor in the whole app before "Thông tin cơ bản" was removed. */}
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Input label={copy({ en: "Late cancellations", vi: "Số lần hủy muộn" })} inputMode="numeric" value={draft.lateCancellationCount} onChange={(e) => set("lateCancellationCount", e.target.value)} disabled={disabled} />
+          <Input label={copy({ en: "No-shows", vi: "Số lần vắng mặt" })} inputMode="numeric" value={draft.noShowCount} onChange={(e) => set("noShowCount", e.target.value)} disabled={disabled} />
+          <Input label={copy({ en: "Unreasonable cancellations", vi: "Số lần hủy vô lý" })} inputMode="numeric" value={draft.unreasonableCancellationCount} onChange={(e) => set("unreasonableCancellationCount", e.target.value)} disabled={disabled} />
+          <Input label={copy({ en: "Inconsistent info", vi: "Thông tin không nhất quán" })} inputMode="numeric" value={draft.inconsistentInfoCount} onChange={(e) => set("inconsistentInfoCount", e.target.value)} disabled={disabled} />
+        </div>
 
         <p className="text-xs text-slate-500">
           {copy({
@@ -720,9 +799,12 @@ export function FormChuanEntryPanel(props: {
       </Section>
 
       <Section id="fc-s4" num={4} title={copy({ en: "Work experience", vi: "Kinh nghiệm làm việc / chuyên môn" })} hint={copy({ en: "One row per job — the export prints three more blank rows.", vi: "Mỗi công việc một dòng — bản xuất in thêm 3 dòng trống." })}>
-        <div className="sm:max-w-md">
-          <Input label={`${copy({ en: "Experience field", vi: "Lĩnh vực kinh nghiệm" })} *`} value={draft.experienceField} onChange={(e) => set("experienceField", e.target.value)} disabled={disabled} />
-          <Unverified value={suggestions.experienceField} current={draft.experienceField} onUse={() => set("experienceField", suggestions.experienceField)} disabled={disabled} />
+        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+          <div>
+            <Input label={`${copy({ en: "Experience field", vi: "Lĩnh vực kinh nghiệm" })} *`} value={draft.experienceField} onChange={(e) => set("experienceField", e.target.value)} disabled={disabled} />
+            <Unverified value={suggestions.experienceField} current={draft.experienceField} onUse={() => set("experienceField", suggestions.experienceField)} disabled={disabled} />
+          </div>
+          <Input label={copy({ en: "Experience years", vi: "Số năm kinh nghiệm" })} inputMode="numeric" value={draft.experienceYears} onChange={(e) => set("experienceYears", e.target.value)} disabled={disabled} />
         </div>
         <ol className="space-y-3">
           {shownRows.map((row, i) => (
@@ -801,13 +883,23 @@ export function FormChuanEntryPanel(props: {
             })}
           </div>
         </div>
-        <Seg
-          label={copy({ en: "Worked abroad before", vi: "Từng đi làm việc nước ngoài" })}
-          options={YES_NO_OPTIONS}
-          value={draft.hasWorkedAbroad || null}
-          onChange={(v) => set("hasWorkedAbroad", v)}
-          disabled={disabled}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Seg
+            label={copy({ en: "Worked abroad before", vi: "Từng đi làm việc nước ngoài" })}
+            options={YES_NO_OPTIONS}
+            value={draft.hasWorkedAbroad || null}
+            onChange={(v) => set("hasWorkedAbroad", v)}
+            disabled={disabled}
+          />
+          <Input
+            label={copy({ en: "Ready to depart (months)", vi: "Sẵn sàng xuất cảnh (tháng)" })}
+            inputMode="numeric"
+            value={draft.readyToDepartInMonths}
+            onChange={(e) => set("readyToDepartInMonths", e.target.value)}
+            disabled={disabled}
+            className="sm:max-w-[220px]"
+          />
+        </div>
         <Seg label={copy({ en: "Been to Taiwan before", vi: "Đã từng đi Đài Loan" })} options={["Chưa", "Đã từng"] as const} value={beenToTaiwan} onChange={(v) => setSoft({ hasBeenToTaiwan: v === "Đã từng", ...(v === "Chưa" ? { contractCompletion: null, contractIncompleteReason: null } : {}) })} disabled={disabled} />
         {beenToTaiwan === "Đã từng" ? (
           <div className="space-y-3 border-l-4 border-indigo-100 pl-4">
@@ -823,6 +915,13 @@ export function FormChuanEntryPanel(props: {
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label={copy({ en: "Contact channel", vi: "Phương thức liên hệ đăng ký" })} value={contactChannelLabel((lead as Lead & { leadSource?: string }).leadSource ?? lead.source)} disabled readOnly />
           <Input label={copy({ en: "Referrer", vi: "Người giới thiệu" })} value={text(soft.referrer)} placeholder={copy({ en: "Name / CTV code", vi: "Họ tên / mã CTV" })} onChange={(e) => setSoft({ referrer: e.target.value })} disabled={disabled} />
+        </div>
+        {/* Channel handle and the operator's own note. Neither prints; they
+            sit here because this step is already the "about the record
+            rather than the worker" step. */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input label={copy({ en: "Display name (channel)", vi: "Tên hiển thị (kênh)" })} value={draft.displayName} onChange={(e) => set("displayName", e.target.value)} disabled={disabled} />
+          <Input label={copy({ en: "Verification note", vi: "Ghi chú xác minh" })} value={draft.note} onChange={(e) => set("note", e.target.value)} disabled={disabled} />
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
           {copy({

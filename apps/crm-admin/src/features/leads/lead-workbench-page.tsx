@@ -6,12 +6,10 @@ import {
   Button,
   DescriptionList,
   EmptyState,
-  FieldGroup,
   InfoCard,
   InfoStrip,
   Input,
   Panel,
-  Select,
   SectionHeader,
   Toolbar,
   ToolbarActions
@@ -42,9 +40,7 @@ import { useI18n } from "../../i18n";
 import { UiText } from "@/ui-text/ui-text";
 import { type NavigationReturnState, resolveReturnState } from "@/app/navigation-state";
 import {
-  FieldWithProvenance,
   findPhoneMergeCandidate,
-  indexSuggestions
 } from "./field-with-provenance";
 import { LeadConversationInline } from "./lead-conversation-inline";
 import { LeadAiSnapshotCard } from "./lead-ai-snapshot-card";
@@ -147,12 +143,11 @@ export function LeadWorkbenchPage() {
 
   const [prompt, setPrompt] = useState("Summarize this conversation and identify any signals that the lead is high potential.");
   const [conversationVisible, setConversationVisible] = useState(false);
+  // The AI block sits collapsed above the form; per-field "Dùng" means an
+  // operator rarely needs to open it at all.
+  const [aiVisible, setAiVisible] = useState(false);
   const [dossierOpen, setDossierOpen] = useState(false);
   const [formModalOpen, setFormModalOpen] = useState(false);
-  // Editable identity (Lead channel fields). Staff can correct fullName/phone
-  // directly here — important because the deterministic extractor can suggest
-  // wrong values (e.g. a company name) and those suggestions aren't rejectable.
-  const [identityForm, setIdentityForm] = useState({ fullName: "", displayName: "", phone: "", region: "" });
   const [qualificationForm, setQualificationForm] = useState({
     birthYear: "",
     gender: "",
@@ -179,19 +174,6 @@ export function LeadWorkbenchPage() {
     hasRiskHistory: "",
     note: ""
   });
-  // Last-saved snapshot of the qualification form, used to flag fields the
-  // operator has edited but not yet re-saved (see FieldWithProvenance.savedValue).
-  const [savedQualification, setSavedQualification] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!leadQuery.data) return;
-    setIdentityForm({
-      fullName: leadQuery.data.fullName ?? "",
-      displayName: leadQuery.data.displayName ?? "",
-      phone: leadQuery.data.phone ?? "",
-      region: leadQuery.data.region ?? "",
-    });
-  }, [leadQuery.data]);
 
   useEffect(() => {
     if (!qualificationQuery.data) return;
@@ -228,10 +210,6 @@ export function LeadWorkbenchPage() {
       note: readQualificationNote(verified)
     };
     setQualificationForm(seeded);
-    // Baseline snapshot — drives the per-field "Edited · not saved" badge. A
-    // successful save refetches qualificationQuery, re-running this effect and
-    // resetting the baseline to the freshly-saved values.
-    setSavedQualification(seeded);
   }, [qualificationQuery.data]);
 
   const lead = leadQuery.data;
@@ -248,16 +226,9 @@ export function LeadWorkbenchPage() {
     ? formatDocumentStatus(form.documentStatus)
     : copy({ en: "Form missing", vi: "Chưa có form" });
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
+  /** How many AI values are still waiting on an operator — the strip's label. */
+  const aiSuggestionCount = suggestionsQuery.data?.length ?? 0;
 
-  // Per-field provenance lookup. `verifiedKeys` lives on the lead detail.
-  const suggestionsByField = useMemo(
-    () => indexSuggestions(suggestionsQuery.data),
-    [suggestionsQuery.data]
-  );
-  const verifiedKeys: string[] = Array.isArray((lead as any)?.verifiedKeys)
-    ? ((lead as any).verifiedKeys as string[])
-    : [];
-  const isFieldVerified = (key: string) => verifiedKeys.includes(key);
   const phoneMergeConflictId = findPhoneMergeCandidate(suggestionsQuery.data);
 
   if (!lead) {
@@ -495,362 +466,88 @@ export function LeadWorkbenchPage() {
           {
             key: "formStandard",
             content: (
-              <FormChuanEntryPanel
-                leadId={leadId}
-                lead={lead}
-                qualification={qualificationQuery.data}
-                profile={(candidate?.profile as Record<string, unknown> | null | undefined) ?? null}
-                canEdit={canEditLeads}
-                canViewPii={canViewLeadPii}
-              />
+              <div className="space-y-5">
+                {/* The AI data used to be a sidebar section of its own, but
+                    the form already offers "Dùng" inline on every field that
+                    has an unverified value. It lives here, collapsed, so the
+                    one screen still reaches it without being a second place
+                    to go looking. */}
+                <div className="rounded-2xl border border-indigo-200/80 bg-indigo-50/40">
+                  <button
+                    type="button"
+                    onClick={() => setAiVisible((v) => !v)}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                  >
+                    <span className="text-sm font-semibold text-indigo-900">
+                      {aiSuggestionCount > 0
+                        ? copy({
+                            en: `${aiSuggestionCount} AI values not verified yet`,
+                            vi: `${aiSuggestionCount} giá trị AI chưa xác minh`
+                          })
+                        : copy({ en: "AI extraction", vi: "Dữ liệu AI" })}
+                    </span>
+                    <span className="text-xs font-medium text-indigo-700">
+                      {aiVisible ? copy({ en: "Hide", vi: "Ẩn" }) : copy({ en: "Show", vi: "Xem" })}
+                    </span>
+                  </button>
+                  {aiVisible ? (
+                    <div className="space-y-6 border-t border-indigo-100 p-4">
+                      <FormExtractionProgress leadId={leadId} />
+                      <LeadAiSnapshotCard
+                        lead={lead}
+                        suggestions={suggestionsQuery.data ?? []}
+                        qualification={qualificationQuery.data}
+                        onVerifyAll={(patch, identityPatch) => {
+                          if (Object.keys(patch).length > 0) {
+                            qualificationMutation.mutate(patch);
+                          }
+                          // Identity fields (fullName/phone) are Lead-level, not qualification.
+                          // "Verify all" verifies EVERY actionable field in the snapshot card,
+                          // identity included — so persist them via updateLead (which mirrors
+                          // them into lead_field_state as verified). A phone collision surfaces
+                          // as an error on this mutation while the qualification save still
+                          // succeeds independently.
+                          if (identityPatch && Object.keys(identityPatch).length > 0) {
+                            const idPatch: { fullName?: string; phone?: string } = {};
+                            if (typeof identityPatch.fullName === "string") idPatch.fullName = identityPatch.fullName;
+                            if (typeof identityPatch.phone === "string") idPatch.phone = identityPatch.phone;
+                            if (Object.keys(idPatch).length > 0) {
+                              updateLead.mutate({ id: leadId, patch: idPatch });
+                            }
+                          }
+                        }}
+                        onRerunExtraction={(scanMode) => {
+                          if (selectedThreadId) {
+                            runExtraction.mutate({ leadId, threadId: selectedThreadId, scanMode });
+                          }
+                        }}
+                        onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+                        isDismissing={dismissSuggestion.isPending}
+                        isVerifyAllPending={qualificationMutation.isPending}
+                        isRerunPending={runExtraction.isPending}
+                        extractionStatus={runExtraction.backgroundStatus}
+                        className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <FormChuanEntryPanel
+                  leadId={leadId}
+                  lead={lead}
+                  qualification={qualificationQuery.data}
+                  profile={(candidate?.profile as Record<string, unknown> | null | undefined) ?? null}
+                  canEdit={canEditLeads}
+                  canViewPii={canViewLeadPii}
+                />
+              </div>
             )
           },
-          {
-            key: "extraction",
-            content: (
-              <div className="space-y-6">
-      <FormExtractionProgress leadId={leadId} />
-      <LeadAiSnapshotCard
-        lead={lead}
-        suggestions={suggestionsQuery.data ?? []}
-        qualification={qualificationQuery.data}
-        onVerifyAll={(patch, identityPatch) => {
-          if (Object.keys(patch).length > 0) {
-            qualificationMutation.mutate(patch);
-          }
-          // Identity fields (fullName/phone) are Lead-level, not qualification.
-          // "Verify all" verifies EVERY actionable field in the snapshot card,
-          // identity included — so persist them via updateLead (which mirrors
-          // them into lead_field_state as verified). A phone collision surfaces
-          // as an error on this mutation while the qualification save still
-          // succeeds independently.
-          if (identityPatch && Object.keys(identityPatch).length > 0) {
-            const idPatch: { fullName?: string; phone?: string } = {};
-            if (typeof identityPatch.fullName === "string") idPatch.fullName = identityPatch.fullName;
-            if (typeof identityPatch.phone === "string") idPatch.phone = identityPatch.phone;
-            if (Object.keys(idPatch).length > 0) {
-              // Reflect immediately for snappy feedback; the refetch after save
-              // re-seeds the form authoritatively.
-              setIdentityForm((s) => ({ ...s, ...idPatch }));
-              updateLead.mutate({ id: leadId, patch: idPatch });
-            }
-          }
-        }}
-        onRerunExtraction={(scanMode) => {
-          if (selectedThreadId) {
-            runExtraction.mutate({ leadId, threadId: selectedThreadId, scanMode });
-          }
-        }}
-        onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-        isDismissing={dismissSuggestion.isPending}
-        isVerifyAllPending={qualificationMutation.isPending}
-        isRerunPending={runExtraction.isPending}
-        extractionStatus={runExtraction.backgroundStatus}
-        className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
-      />
-
-          <Panel
-            title={<UiText id="lead.workbench.conversation.title" />}
-            subtitle={<UiText id="lead.workbench.conversation.subtitle" />}
-          >
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="text-sm text-slate-600">
-                {selectedThreadId
-                  ? copy({ en: "Conversation is hidden by default to keep this workbench focused.", vi: "Hội thoại được ẩn mặc định để trang xử lý gọn hơn." })
-                  : copy({ en: "No primary conversation thread is linked to this lead.", vi: "Chưa có luồng hội thoại chính được liên kết với hồ sơ này." })}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setConversationVisible((value) => !value)}
-                  disabled={!selectedThreadId}
-                >
-                  {conversationVisible
-                    ? copy({ en: "Hide conversation", vi: "Ẩn hội thoại" })
-                    : copy({ en: "Show conversation", vi: "Xem hội thoại" })}
-                </Button>
-                {selectedThreadId ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() => navigate(`/conversations?threadId=${selectedThreadId}`)}
-                  >
-                    {copy({ en: "Open full page", vi: "Mở trang hội thoại" })}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-
-            {conversationVisible ? (
-              <div className="mt-4">
-                <LeadConversationInline thread={lead.threads?.[0]} />
-              </div>
-            ) : null}
-
-            {lead.threads?.length ? (
-              <div className="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs md:grid-cols-3">
-                <div>
-                  <span className="text-slate-400">{copy({ en: "Status", vi: "Trạng thái AI" })}: </span>
-                  <Badge tone="warning">{lead.threads[0].analyzeStatus}</Badge>
-                </div>
-                <div>
-                  <span className="text-slate-400">{copy({ en: "Last message", vi: "Tin nhắn cuối" })}: </span>
-                  <span className="text-slate-600">{lead.threads[0].lastMessageAt ?? "—"}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400">{copy({ en: "Last AI scan", vi: "AI quét gần nhất" })}: </span>
-                  <span className="text-slate-600">{lead.threads[0].lastAiExtractedAt ?? "—"}</span>
-                </div>
-              </div>
-            ) : null}
-          </Panel>
-
-          <Panel
-            title={<UiText id="lead.workbench.ai-question.title" />}
-            subtitle={<UiText id="lead.workbench.ai-question.subtitle" />}
-          >
-            <div className="space-y-3">
-              <InfoStrip className="border-indigo-100 bg-indigo-50/70 text-indigo-900">
-                <div className="text-sm leading-6">
-                  {copy({
-                    en: "For saved structured extraction, use the AI snapshot action above.",
-                    vi: "Muốn cập nhật dữ liệu trích xuất đã lưu, dùng nút trong khối Dữ liệu AI phía trên."
-                  })}
-                </div>
-              </InfoStrip>
-              <Input label={copy({ en: "Question", vi: "Câu hỏi" })} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
-              <div className="flex flex-wrap items-center gap-3">
-                <Button onClick={() => { if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt }); }} disabled={!selectedThreadId || aiMutation.isPending}>
-                  {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Đang hỏi AI..." }) : copy({ en: "Run query", vi: "Hỏi AI" })}
-                </Button>
-                <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng luồng hội thoại ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có luồng hội thoại" })}</span>
-              </div>
-              {aiMutation.data ? renderAiQueryResult(aiMutation.data.result, copy) : null}
-            </div>
-          </Panel>
-              </div>
-            ),
-          },
-          {
-            key: "basic",
-            content: (
-              <div className="space-y-6">
-          <Panel
-            title={<UiText id="lead.workbench.identity.title" />}
-            subtitle={<UiText id="lead.workbench.identity.subtitle" />}
-          >
-            <FieldGroup columns={2}>
-              <Input label={copy({ en: "Full name", vi: "Họ và tên" })} value={identityForm.fullName} onChange={(e) => setIdentityForm((s) => ({ ...s, fullName: e.target.value }))} />
-              <Input label={copy({ en: "Display name (channel)", vi: "Tên hiển thị (kênh)" })} value={identityForm.displayName} onChange={(e) => setIdentityForm((s) => ({ ...s, displayName: e.target.value }))} />
-              <Input
-                label={copy({ en: "Phone", vi: "Số điện thoại" })}
-                value={identityForm.phone}
-                onChange={(e) => setIdentityForm((s) => ({ ...s, phone: e.target.value }))}
-                disabled={!canViewLeadPii}
-                hint={!canViewLeadPii ? copy({ en: "Masked — requires PII access to view or edit", vi: "Đã ẩn — cần quyền xem dữ liệu cá nhân để xem/sửa" }) : undefined}
-              />
-              <Input label={copy({ en: "Region", vi: "Khu vực" })} value={identityForm.region} onChange={(e) => setIdentityForm((s) => ({ ...s, region: e.target.value }))} />
-            </FieldGroup>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <span className="text-xs text-slate-500">
-                {copy({ en: "Source", vi: "Nguồn" })}: <Badge tone="neutral">{lead.source}</Badge>
-              </span>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              {canEditLeads ? (
-                <Button
-                  onClick={() => updateLead.mutate({ id: leadId, patch: {
-                    fullName: identityForm.fullName.trim() || null,
-                    displayName: identityForm.displayName.trim() || null,
-                    // Only send phone when the operator can actually see it — a
-                    // masked value must never be written back over the real one.
-                    // The backend also strips phone from non-PII callers' patches.
-                    ...(canViewLeadPii ? { phone: identityForm.phone.trim() || null } : {}),
-                    region: identityForm.region.trim() || null,
-                  } })}
-                  disabled={updateLead.isPending}
-                >
-                  {updateLead.isPending ? copy({ en: "Saving...", vi: "Đang lưu..." }) : copy({ en: "Save identity", vi: "Lưu thông tin" })}
-                </Button>
-              ) : (
-                <span className="text-xs italic text-slate-500">
-                  {copy({ en: "Read-only — requires edit_leads permission", vi: "Chỉ xem — cần quyền edit_leads để lưu" })}
-                </span>
-              )}
-              <span className="text-xs text-slate-400">
-                {copy({ en: "Phone must be unique; a duplicate will be rejected.", vi: "Số điện thoại phải duy nhất; trùng sẽ bị từ chối." })}
-              </span>
-            </div>
-          </Panel>
-
-          <Panel title={<UiText id="lead.workbench.qualification.title" />} subtitle={<UiText id="lead.workbench.qualification.subtitle" />}>
-            <FieldGroup columns={2}>
-              <FieldWithProvenance
-                fieldKey="birthYear"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.birthYear ?? suggestionsByField.age}
-                isVerified={isFieldVerified("birthYear") || isFieldVerified("age")}
-                currentValue={qualificationForm.birthYear}
-                savedValue={savedQualification.birthYear}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, birthYear: v == null ? "" : String(v) }))}
-              >
-                <Input label={copy({ en: "Verified birth year (YYYY)", vi: "Năm sinh đã xác minh (YYYY)" })} value={qualificationForm.birthYear} onChange={(e) => setQualificationForm((s) => ({ ...s, birthYear: e.target.value }))} />
-              </FieldWithProvenance>
-              <FieldWithProvenance
-                fieldKey="gender"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.gender}
-                isVerified={isFieldVerified("gender")}
-                currentValue={qualificationForm.gender}
-                savedValue={savedQualification.gender}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, gender: typeof v === "string" ? v : "" }))}
-              >
-                <Select label={copy({ en: "Verified gender", vi: "Giới tính đã xác minh" })} value={qualificationForm.gender} onChange={(e) => setQualificationForm((s) => ({ ...s, gender: e.target.value }))}>
-                  <option value="">{copy({ en: "Unspecified", vi: "Chưa xác định" })}</option>
-                  <option value="male">{copy({ en: "Male", vi: "Nam" })}</option>
-                  <option value="female">{copy({ en: "Female", vi: "Nữ" })}</option>
-                  <option value="other">{copy({ en: "Other", vi: "Khác" })}</option>
-                </Select>
-              </FieldWithProvenance>
-              <FieldWithProvenance
-                fieldKey="hasPassport"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.hasPassport}
-                isVerified={isFieldVerified("hasPassport")}
-                currentValue={qualificationForm.hasPassport}
-                savedValue={savedQualification.hasPassport}
-              >
-                <Select label={copy({ en: "Has passport", vi: "Có hộ chiếu" })} value={qualificationForm.hasPassport} onChange={(e) => setQualificationForm((s) => ({ ...s, hasPassport: e.target.value }))}>
-                  <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                  <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
-                  <option value="false">{copy({ en: "No", vi: "Không" })}</option>
-                </Select>
-              </FieldWithProvenance>
-              <FieldWithProvenance
-                fieldKey="height"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.heightCm ?? suggestionsByField.height}
-                isVerified={isFieldVerified("height") || isFieldVerified("heightCm")}
-                currentValue={qualificationForm.height}
-                savedValue={savedQualification.height}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, height: v == null ? "" : String(v) }))}
-              >
-                <Input label={copy({ en: "Verified height (cm)", vi: "Chiều cao đã xác minh (cm)" })} value={qualificationForm.height} onChange={(e) => setQualificationForm((s) => ({ ...s, height: e.target.value }))} />
-              </FieldWithProvenance>
-              <FieldWithProvenance
-                fieldKey="weight"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.weightKg ?? suggestionsByField.weight}
-                isVerified={isFieldVerified("weight") || isFieldVerified("weightKg")}
-                currentValue={qualificationForm.weight}
-                savedValue={savedQualification.weight}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, weight: v == null ? "" : String(v) }))}
-              >
-                <Input label={copy({ en: "Verified weight (kg)", vi: "Cân nặng đã xác minh (kg)" })} value={qualificationForm.weight} onChange={(e) => setQualificationForm((s) => ({ ...s, weight: e.target.value }))} />
-              </FieldWithProvenance>
-              <Input label={copy({ en: "Experience years", vi: "Số năm kinh nghiệm" })} value={qualificationForm.experienceYears} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceYears: e.target.value }))} />
-              <FieldWithProvenance
-                fieldKey="experienceField"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.experienceField}
-                isVerified={isFieldVerified("experienceField")}
-                currentValue={qualificationForm.experienceField}
-                savedValue={savedQualification.experienceField}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, experienceField: typeof v === "string" ? v : "" }))}
-              >
-                <Input label={copy({ en: "Experience field", vi: "Lĩnh vực kinh nghiệm" })} value={qualificationForm.experienceField} onChange={(e) => setQualificationForm((s) => ({ ...s, experienceField: e.target.value }))} />
-              </FieldWithProvenance>
-              <FieldWithProvenance
-                fieldKey="desiredIndustry"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.desiredIndustry}
-                isVerified={isFieldVerified("desiredIndustry")}
-                currentValue={qualificationForm.desiredIndustry}
-                savedValue={savedQualification.desiredIndustry}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, desiredIndustry: typeof v === "string" ? v : "" }))}
-              >
-                <Input label={copy({ en: "Desired industry", vi: "Ngành mong muốn" })} value={qualificationForm.desiredIndustry} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredIndustry: e.target.value }))} />
-              </FieldWithProvenance>
-              <Input label={copy({ en: "Ready to depart (months)", vi: "Sẵn sàng xuất cảnh (tháng)" })} value={qualificationForm.readyToDepartInMonths} onChange={(e) => setQualificationForm((s) => ({ ...s, readyToDepartInMonths: e.target.value }))} />
-              <FieldWithProvenance
-                fieldKey="preferredRegion"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.preferredRegion ?? suggestionsByField.preferredRegions}
-                isVerified={isFieldVerified("preferredRegion") || isFieldVerified("preferredRegions")}
-                currentValue={qualificationForm.preferredRegion}
-                savedValue={savedQualification.preferredRegion}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, preferredRegion: Array.isArray(v) ? v.join(", ") : v == null ? "" : String(v) }))}
-              >
-                <Input label={copy({ en: "Preferred region(s)", vi: "Khu vực mong muốn" })} value={qualificationForm.preferredRegion} onChange={(e) => setQualificationForm((s) => ({ ...s, preferredRegion: e.target.value }))} />
-              </FieldWithProvenance>
-              <FieldWithProvenance
-                fieldKey="desiredSalary"
-                onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                isDismissing={dismissSuggestion.isPending}
-                suggestion={suggestionsByField.desiredSalary}
-                isVerified={isFieldVerified("desiredSalary")}
-                currentValue={qualificationForm.desiredSalary}
-                savedValue={savedQualification.desiredSalary}
-                onApplySuggestion={(v) => setQualificationForm((s) => ({ ...s, desiredSalary: v == null ? "" : String(v) }))}
-              >
-                <Input label={copy({ en: "Desired salary", vi: "Mức lương mong muốn" })} value={qualificationForm.desiredSalary} onChange={(e) => setQualificationForm((s) => ({ ...s, desiredSalary: e.target.value }))} />
-              </FieldWithProvenance>
-              <Select label={copy({ en: "Worked abroad before", vi: "Từng đi nước ngoài" })} value={qualificationForm.hasWorkedAbroad} onChange={(e) => setQualificationForm((s) => ({ ...s, hasWorkedAbroad: e.target.value }))}>
-                <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                <option value="true">{copy({ en: "Yes", vi: "Có" })}</option>
-                <option value="false">{copy({ en: "No", vi: "Không" })}</option>
-              </Select>
-              <Select label={copy({ en: "Tattoo risk", vi: "Rủi ro hình xăm" })} value={qualificationForm.tattooStatus} onChange={(e) => setQualificationForm((s) => ({ ...s, tattooStatus: e.target.value }))}>
-                <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                <option value="none">{copy({ en: "None", vi: "Không có" })}</option>
-                <option value="hidden">{copy({ en: "Hidden", vi: "Ẩn" })}</option>
-                <option value="small">{copy({ en: "Small / coverable", vi: "Nhỏ / che được" })}</option>
-                <option value="visible">{copy({ en: "Visible", vi: "Lộ rõ" })}</option>
-                <option value="offensive">{copy({ en: "Offensive", vi: "Phản cảm" })}</option>
-                <option value="forbidden_zone">{copy({ en: "Forbidden zone", vi: "Vùng cấm" })}</option>
-              </Select>
-              <Select label={copy({ en: "Mandatory health fit", vi: "Sức khỏe đạt yêu cầu" })} value={qualificationForm.healthMeetsCriteria} onChange={(e) => setQualificationForm((s) => ({ ...s, healthMeetsCriteria: e.target.value }))}>
-                <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                <option value="true">{copy({ en: "Pass", vi: "Đạt" })}</option>
-                <option value="false">{copy({ en: "Fail", vi: "Không đạt" })}</option>
-              </Select>
-              <Select label={copy({ en: "Risk history", vi: "Lịch sử rủi ro" })} value={qualificationForm.hasRiskHistory} onChange={(e) => setQualificationForm((s) => ({ ...s, hasRiskHistory: e.target.value }))}>
-                <option value="">{copy({ en: "Unknown", vi: "Chưa rõ" })}</option>
-                <option value="none">{copy({ en: "None", vi: "Không có" })}</option>
-                <option value="dropped_deposit">{copy({ en: "Dropped deposit", vi: "Bỏ cọc" })}</option>
-                <option value="canceled_late">{copy({ en: "Canceled late", vi: "Hủy muộn" })}</option>
-                <option value="fake_profile">{copy({ en: "Fake profile", vi: "Hồ sơ giả" })}</option>
-              </Select>
-              <Input label={copy({ en: "Late cancellation count", vi: "Số lần hủy muộn" })} value={qualificationForm.lateCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, lateCancellationCount: e.target.value }))} />
-              <Input label={copy({ en: "No-show count", vi: "Số lần vắng mặt" })} value={qualificationForm.noShowCount} onChange={(e) => setQualificationForm((s) => ({ ...s, noShowCount: e.target.value }))} />
-              <Input label={copy({ en: "Unreasonable cancellation count", vi: "Số lần hủy vô lý" })} value={qualificationForm.unreasonableCancellationCount} onChange={(e) => setQualificationForm((s) => ({ ...s, unreasonableCancellationCount: e.target.value }))} />
-              <Input label={copy({ en: "Verified inconsistency count", vi: "Số lần thông tin không nhất quán" })} value={qualificationForm.inconsistentInfoCount} onChange={(e) => setQualificationForm((s) => ({ ...s, inconsistentInfoCount: e.target.value }))} />
-            </FieldGroup>
-            <div className="mt-4">
-              <Input label={copy({ en: "Qualification note", vi: "Ghi chú xác minh" })} value={qualificationForm.note} onChange={(e) => setQualificationForm((s) => ({ ...s, note: e.target.value }))} />
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              {canEditLeads ? (
-                <Button onClick={() => qualificationMutation.mutate(buildQualificationPatch(qualificationForm))} disabled={qualificationMutation.isPending}>
-                  {qualificationMutation.isPending ? copy({ en: "Saving qualification...", vi: "Đang lưu dữ liệu xác minh..." }) : copy({ en: "Save verified qualification", vi: "Lưu dữ liệu xác minh" })}
-                </Button>
-              ) : (
-                <span className="text-xs italic text-slate-500">
-                  {copy({ en: "Read-only — requires edit_leads permission", vi: "Chỉ xem — cần quyền edit_leads để lưu" })}
-                </span>
-              )}
-            </div>
-          </Panel>
-              </div>
-            ),
-          },
+          // "Thông tin cơ bản" was removed here. Every field it edited now
+          // lives on the FORM CHUẨN panel, which already owned all three
+          // writes (lead identity, qualification, dossier) and sequenced
+          // them. Keeping it meant the same lead data had two editors with
+          // two different sets of labels and two save buttons.
           {
             key: "documents",
             content: (
@@ -916,25 +613,26 @@ export function LeadWorkbenchPage() {
           },
           {
             key: "application",
+            // "Ứng tuyển" and "Tiến độ & Tài chính" were two sections for one
+            // job: getting this lead onto an order and through to departure.
+            // Both read the same application/tf records, so splitting them
+            // just made the operator click twice.
             content: (
-              <Panel
-                title={<UiText id="lead.workbench.application.title" />}
-                subtitle={<UiText id="lead.workbench.application.subtitle" />}
-              >
-                <ApplicationPhasePanel
-                  leadId={leadId}
-                  leadStatus={lead.status}
-                  candidate={candidate ?? null}
-                  form={form}
-                  application={application}
-                />
-              </Panel>
-            ),
-          },
-          {
-            key: "progressFinance",
-            content: (
-              <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />
+              <div className="space-y-6">
+                <Panel
+                  title={<UiText id="lead.workbench.application.title" />}
+                  subtitle={<UiText id="lead.workbench.application.subtitle" />}
+                >
+                  <ApplicationPhasePanel
+                    leadId={leadId}
+                    leadStatus={lead.status}
+                    candidate={candidate ?? null}
+                    form={form}
+                    application={application}
+                  />
+                </Panel>
+                <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />
+              </div>
             ),
           },
           // "Xuất cảnh" was removed here: it rendered departureDate and
@@ -970,6 +668,90 @@ export function LeadWorkbenchPage() {
                       { label: copy({ en: "Risk history", vi: "Lịch sử rủi ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chưa rõ" }) }
                     ]}
                   />
+                </Panel>
+
+                {/* Conversation and the ad-hoc AI question moved here from the
+                    old "Trích xuất AI" section: both are chronology, not data
+                    entry, and this is the chronology section. */}
+                <Panel
+                  title={<UiText id="lead.workbench.conversation.title" />}
+                  subtitle={<UiText id="lead.workbench.conversation.subtitle" />}
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-slate-600">
+                      {selectedThreadId
+                        ? copy({ en: "Conversation is hidden by default to keep this workbench focused.", vi: "Hội thoại được ẩn mặc định để trang xử lý gọn hơn." })
+                        : copy({ en: "No primary conversation thread is linked to this lead.", vi: "Chưa có luồng hội thoại chính được liên kết với hồ sơ này." })}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => setConversationVisible((value) => !value)}
+                        disabled={!selectedThreadId}
+                      >
+                        {conversationVisible
+                          ? copy({ en: "Hide conversation", vi: "Ẩn hội thoại" })
+                          : copy({ en: "Show conversation", vi: "Xem hội thoại" })}
+                      </Button>
+                      {selectedThreadId ? (
+                        <Button
+                          variant="ghost"
+                          onClick={() => navigate(`/conversations?threadId=${selectedThreadId}`)}
+                        >
+                          {copy({ en: "Open full page", vi: "Mở trang hội thoại" })}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {conversationVisible ? (
+                    <div className="mt-4">
+                      <LeadConversationInline thread={lead.threads?.[0]} />
+                    </div>
+                  ) : null}
+
+                  {lead.threads?.length ? (
+                    <div className="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs md:grid-cols-3">
+                      <div>
+                        <span className="text-slate-400">{copy({ en: "Status", vi: "Trạng thái AI" })}: </span>
+                        <Badge tone="warning">{lead.threads[0].analyzeStatus}</Badge>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">{copy({ en: "Last message", vi: "Tin nhắn cuối" })}: </span>
+                        <span className="text-slate-600">{lead.threads[0].lastMessageAt ?? "—"}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">{copy({ en: "Last AI scan", vi: "AI quét gần nhất" })}: </span>
+                        <span className="text-slate-600">{lead.threads[0].lastAiExtractedAt ?? "—"}</span>
+                      </div>
+                    </div>
+                  ) : null}
+                </Panel>
+
+                <Panel
+                  title={<UiText id="lead.workbench.ai-question.title" />}
+                  subtitle={<UiText id="lead.workbench.ai-question.subtitle" />}
+                >
+                  <div className="space-y-3">
+                    <InfoStrip className="border-indigo-100 bg-indigo-50/70 text-indigo-900">
+                      <div className="text-sm leading-6">
+                        {copy({
+                          // Was "above" — the AI block now lives on the worker
+                          // profile section, not in this one.
+                          en: "For saved structured extraction, open the AI data strip on the worker profile.",
+                          vi: "Muốn cập nhật dữ liệu trích xuất đã lưu, mở khối Dữ liệu AI ở mục Hồ sơ lao động."
+                        })}
+                      </div>
+                    </InfoStrip>
+                    <Input label={copy({ en: "Question", vi: "Câu hỏi" })} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button onClick={() => { if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt }); }} disabled={!selectedThreadId || aiMutation.isPending}>
+                        {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Đang hỏi AI..." }) : copy({ en: "Run query", vi: "Hỏi AI" })}
+                      </Button>
+                      <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng luồng hội thoại ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có luồng hội thoại" })}</span>
+                    </div>
+                    {aiMutation.data ? renderAiQueryResult(aiMutation.data.result, copy) : null}
+                  </div>
                 </Panel>
               </div>
             ),

@@ -156,18 +156,45 @@ required set comes from the field manifest (`getRequiredFields()` →
 gender, heightCm, weightKg, experienceField — the banner is unchanged after the
 save.
 
-**D · Delete `basic`** *(~2h)*
-Remove lines 636–856 and the `basic` key. No new mutation work: §2.2 shows the
-plumbing already exists. One save button for the whole record.
+**D · Delete `basic`** *(done 2026-11-04)*
+**Scope was wrong in §4.** That section listed five fields as `basic`'s own;
+enumerating every field it actually edited gave twenty-four, of which
+**fourteen** had no home on the form. Worse, the four risk counters
+(`lateCancellationCount`, `noShowCount`, `unreasonableCancellationCount`,
+`inconsistentInfoCount`) existed in **no other file in the app** — deleting
+`basic` as written would have removed the only way to record them.
 
-**E · Demote `extraction` to a banner** *(~3h)*
-Replace the section with a strip at the top of the form — *"N giá trị AI chưa
-xác minh · Dùng tất cả"* — since per-field accept already exists inline. Move
-the conversation viewer and the ask-AI panel into **Lịch sử**.
+So D became "move nine more, then delete": `experienceYears` → step 4,
+`readyToDepartInMonths` → step 5, `tattooStatus` → step 1 (shown only when the
+printed Hình xăm answer is "Có"; it is the scoring enum, not the printed
+yes/no), the four counters → step 3's verification block, `note` and
+`displayName` → step 6. Then the 221-line section went, along with the state
+only it read (`identityForm`, `savedQualification`, `suggestionsByField`,
+`isFieldVerified`) and four now-unused imports.
 
-**F · Regroup and rename** *(~2h)*
-Collapse to the four sections in §3, drop `GROUP_LABEL`/`GROUP_ORDER`, move
-section labels into `ui-text.registry.ts`.
+Verified by save round-trip on the local stack: `experienceYears=3`,
+`noShowCount=2`, `readyToDepartInMonths=6`, `note='Kiểm tra phase D'` — the
+note matters because it round-trips through `verifiedData._qualificationMeta`,
+not a column.
+
+**E · Demote `extraction` to a banner** *(done 2026-11-04)*
+The AI block (progress + snapshot card) moved onto the worker-profile section
+as a collapsed strip reading *"N giá trị AI chưa xác minh"*, or *"Dữ liệu AI"*
+when the count is zero. Deliberately **not** reimplemented as a bare banner
+with its own verify-all: the snapshot card computes that patch itself, and
+rebuilding it would have risked the AI write boundary for a cosmetic gain.
+Conversation and ask-AI moved into **Lịch sử**; a line of copy pointing at the
+AI block "above" was corrected, since it is no longer above anything.
+
+**F · Regroup and rename** *(done 2026-11-04)*
+Four flat sections, no group headers: **Hồ sơ lao động**, **Giấy tờ**,
+**Ứng tuyển & Tiến độ** (the old Ứng tuyển and Tiến độ & Tài chính, which read
+the same records), **Lịch sử**. `GROUP_LABEL`, `GROUP_ORDER` and `SectionGroup`
+are gone; `SECTION_META` now carries only a `uiTextId` and an icon, with the
+labels in `ui-text.registry.ts` under `lead.section.*`, so the customer can
+rename a section without a deploy.
+
+Sidebar entries: 8 → 4. Group headers: 3 → 0.
 
 Roughly 12 hours. Phases A and B are safe to land immediately; C is the one
 needing real verification.
