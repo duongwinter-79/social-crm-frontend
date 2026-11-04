@@ -84,7 +84,20 @@ export function CandidateWorkbench(props: {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      {/*
+        The cap is what makes this shell's scrolling work at all. `nav` and the
+        content pane below both carry `overflow-y-auto`, but overflow only
+        scrolls an element whose height is constrained — and nothing above
+        constrains it, because this layout came from a modal, where the dialog
+        supplied the height. On a page it had none, so the pane simply grew and
+        pushed the whole document down: this screen measured 5291px tall.
+
+        `max-h` rather than `h` so a short section (History on a quiet lead)
+        still collapses to its content instead of padding out a fixed box.
+        Capped only from `lg`: on mobile the nav is a horizontal strip and the
+        page should scroll normally.
+      */}
+      <div className="flex min-h-0 flex-1 flex-col lg:max-h-[calc(100vh-6rem)] lg:flex-row">
         {/* Section nav — horizontal scroll strip on mobile, sidebar on lg. */}
         <nav className="flex shrink-0 gap-3 overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 py-2 lg:w-60 lg:flex-col lg:gap-0 lg:overflow-x-visible lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-0 lg:py-4">
           <div className="flex gap-1.5 lg:block lg:space-y-1 lg:px-3">
