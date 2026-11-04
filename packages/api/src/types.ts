@@ -911,6 +911,16 @@ export interface FormStandardStageResult {
   originalFilename: string;
   mimeType: string;
   fileSize: number;
+  /**
+   * Present only when an optional capability was unavailable while staging.
+   * The file is staged regardless — this says what the operator does not get.
+   *
+   * `doc_conversion_unavailable`: a .doc could not be converted to .docx
+   * because Google Drive was unreachable, so it is stored as .doc. No Google
+   * Docs editing (that path is .docx-only) and no AI pre-fill on Verify (text
+   * extraction converts through Drive too).
+   */
+  conversionWarning?: "doc_conversion_unavailable";
 }
 
 /** Result of POST /documents/form-standard/pending/:id/edit-session. */

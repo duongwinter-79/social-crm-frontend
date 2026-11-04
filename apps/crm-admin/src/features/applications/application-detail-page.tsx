@@ -713,7 +713,11 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
 
   const ext = fileExtension(selectedRow?.fileUrl);
   const stagedExt = fileExtension(pending?.originalFilename);
-  const canEditInDocs = stagedExt === ".docx" || stagedExt === ".doc";
+  // .docx only. The backend's edit-session endpoint rejects anything else, and
+  // a staged file is only ever .doc when the Drive conversion failed — which is
+  // precisely when an edit session cannot work either. Offering the button
+  // there would just hand the operator a 400.
+  const canEditInDocs = stagedExt === ".docx";
   const isStaging = stageMutation.isPending;
   const visibleUploadProgress = uploadProgress ?? (isStaging ? 8 : 0);
   const uploadFileExtension = uploadFile?.name.includes(".")
@@ -973,6 +977,23 @@ export function ApplicationDetailPage(props: { embeddedLeadId?: string; embedded
               </div>
             </div>
           </div>
+
+          {pending?.conversionWarning === "doc_conversion_unavailable" ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
+              <div className="font-semibold">
+                {copy({
+                  en: "Saved as .doc — conversion unavailable",
+                  vi: "Đã lưu dạng .doc — không chuyển đổi được",
+                })}
+              </div>
+              <div className="mt-1 text-xs">
+                {copy({
+                  en: "The file is staged and safe, but Google Docs is unreachable, so this .doc could not be converted to .docx. Editing in Google Docs is unavailable and Verify will not pre-fill any fields — enter them by hand. To get both back, re-save the file as .docx and upload it again.",
+                  vi: "File đã được lưu tạm an toàn, nhưng không kết nối được Google Docs nên không chuyển .doc sang .docx. Không thể chỉnh sửa trong Google Docs và bước Xác minh sẽ không tự điền trường nào — hãy nhập tay. Muốn có lại cả hai, lưu file sang .docx rồi tải lên lại.",
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {editSessionOpen ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-800">
