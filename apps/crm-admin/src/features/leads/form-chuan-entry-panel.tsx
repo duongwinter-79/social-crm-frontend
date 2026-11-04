@@ -109,6 +109,16 @@ const COUNT_KEYS = [
   "inconsistentInfoCount"
 ] as const;
 
+/** Field names for the save error — never show the operator a code key. */
+const COUNT_LABELS: Record<(typeof COUNT_KEYS)[number], { en: string; vi: string }> = {
+  experienceYears: { en: "Experience years", vi: "Số năm kinh nghiệm" },
+  readyToDepartInMonths: { en: "Ready to depart (months)", vi: "Sẵn sàng xuất cảnh (tháng)" },
+  lateCancellationCount: { en: "Late cancellations", vi: "Số lần hủy muộn" },
+  noShowCount: { en: "No-shows", vi: "Số lần vắng mặt" },
+  unreasonableCancellationCount: { en: "Unreasonable cancellations", vi: "Số lần hủy vô lý" },
+  inconsistentInfoCount: { en: "Inconsistent info", vi: "Thông tin không nhất quán" }
+};
+
 /** Lead fields on this screen → the keys the verified layer may hold them under. */
 const VERIFIED_KEYS: Record<
   Exclude<keyof Draft, "address" | "dateOfBirth" | "region" | "displayName" | "note" | "soft">,
@@ -348,6 +358,9 @@ export function FormChuanEntryPanel(props: {
   async function save(): Promise<boolean> {
     setSaveError(null);
     const changed = (k: keyof Draft) => !sameJson(draft[k], baseline[k]);
+    // Read the printed tattoo answer the same way the form does, from the
+    // draft rather than the saved soft fields, so an unsaved flip counts.
+    const tattooAnswerNow = tattooAnswer ?? readYesNoText(draft.soft.tattooNote).answer;
     try {
       const identity: Record<string, unknown> = {};
       if (changed("fullName")) identity.fullName = draft.fullName.trim();
@@ -373,7 +386,16 @@ export function FormChuanEntryPanel(props: {
         if (changed(k)) q[k] = draft[k] === "" ? null : draft[k] === "true";
       }
       if (changed("hasRiskHistory")) q.hasRiskHistory = draft.hasRiskHistory || null;
-      if (changed("tattooStatus")) q.tattooStatus = draft.tattooStatus || null;
+      // "No tattoo" means there is no risk grade to carry. Derive it from the
+      // printed answer instead of trusting the draft: the grade's control is
+      // hidden once the answer is "Không", so a value set before the answer
+      // was corrected would otherwise be saved — and, worse, could never be
+      // cleared again from this screen. tattooStatus feeds order matching.
+      if (tattooAnswerNow === "no") {
+        if (baseline.tattooStatus !== "") q.tattooStatus = null;
+      } else if (changed("tattooStatus")) {
+        q.tattooStatus = draft.tattooStatus || null;
+      }
       if (changed("note")) q.note = draft.note.trim() || null;
       for (const k of COUNT_KEYS) {
         if (!changed(k)) continue;
@@ -383,7 +405,15 @@ export function FormChuanEntryPanel(props: {
           continue;
         }
         const n = parseWholeNumber(raw);
-        if (n === undefined) throw new Error(copy({ en: `${k} must be a whole number`, vi: `${k} phải là số nguyên` }));
+        if (n === undefined) {
+          const label = copy(COUNT_LABELS[k]);
+          throw new Error(
+            copy({
+              en: `${label}: enter a whole number from 0 to 999`,
+              vi: `${label}: nhập số nguyên từ 0 đến 999`
+            })
+          );
+        }
         q[k] = n;
       }
 
@@ -604,6 +634,11 @@ export function FormChuanEntryPanel(props: {
             (yes) => {
               setTattooAnswer(yes ? "yes" : "no");
               setSoft({ tattooNote: yes ? tattoo.detail || "Có" : "Không" });
+              // Drop the risk grade with the answer, the way Thị lực drops
+              // visionNote — otherwise it stays in the draft behind a hidden
+              // control. save() also derives this, so a grade stored before
+              // the answer was corrected gets cleared too.
+              if (!yes) set("tattooStatus", "");
             },
             tattoo.detail,
             (v) => setSoft({ tattooNote: v.trim() ? v : "Có" }),

@@ -226,8 +226,12 @@ export function LeadWorkbenchPage() {
     ? formatDocumentStatus(form.documentStatus)
     : copy({ en: "Form missing", vi: "Chưa có form" });
   const selectedThreadId = useMemo(() => lead?.threads?.[0]?.id ?? "", [lead]);
-  /** How many AI values are still waiting on an operator — the strip's label. */
-  const aiSuggestionCount = suggestionsQuery.data?.length ?? 0;
+  // How many AI values are still waiting on an operator — the strip's label.
+  // getActiveAiSuggestions drops only superseded and dismissed rows, so a
+  // verified suggestion is still "active"; counting those would leave the
+  // strip claiming work that is already done.
+  const aiSuggestionCount =
+    suggestionsQuery.data?.filter((s) => !s.appliedToVerifiedAt).length ?? 0;
 
   const phoneMergeConflictId = findPhoneMergeCandidate(suggestionsQuery.data);
 
