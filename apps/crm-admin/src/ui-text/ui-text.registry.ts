@@ -1132,6 +1132,42 @@ export const uiTextRegistry = [
     description: "Empty-state description when the candidate cannot be loaded."
   },
   {
+    key: "lead.section.form-standard",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "nav",
+    defaultText: { en: "Worker profile", vi: "Hồ sơ lao động" },
+    maxLength: 30,
+    description: "Sidebar section: the worker's record and the form it exports."
+  },
+  {
+    key: "lead.section.documents",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "nav",
+    defaultText: { en: "Documents", vi: "Giấy tờ" },
+    maxLength: 30,
+    description: "Sidebar section: uploaded files and document evidence."
+  },
+  {
+    key: "lead.section.application",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "nav",
+    defaultText: { en: "Application & progress", vi: "Ứng tuyển & Tiến độ" },
+    maxLength: 30,
+    description: "Sidebar section: order matching, training finance, departure dates."
+  },
+  {
+    key: "lead.section.history",
+    namespace: "leads",
+    screen: "lead-workbench",
+    slot: "nav",
+    defaultText: { en: "History", vi: "Lịch sử" },
+    maxLength: 30,
+    description: "Sidebar section: summary, conversation and the AI question log."
+  },
+  {
     key: "lead.workbench.title",
     namespace: "leads",
     screen: "lead-workbench",

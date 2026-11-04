@@ -145,6 +145,47 @@ export const CONTRACT_OPTIONS = [
   { value: "not_completed", label: "Không hết HĐ" },
 ] as const;
 
+/**
+ * Tri-state qualification answers. The value is the string form of the
+ * boolean; "" (no option selected) means the question is still unanswered,
+ * which is not the same as "no".
+ */
+export const YES_NO_OPTIONS = [
+  { value: "false", label: "Không" },
+  { value: "true", label: "Có" },
+] as const;
+
+export const HEALTH_FIT_OPTIONS = [
+  { value: "true", label: "Đạt" },
+  { value: "false", label: "Không đạt" },
+] as const;
+
+/**
+ * Qualification `tattooStatus` — the structured scoring enum, which is NOT the
+ * form's own "Hình xăm" yes/no + detail (that one is the `tattooNote` soft
+ * field and is what prints). Both are shown, side by side, so the difference
+ * is visible rather than implied.
+ */
+export const TATTOO_STATUS_OPTIONS = [
+  { value: "none", label: "Không có" },
+  { value: "hidden", label: "Ẩn" },
+  { value: "small", label: "Nhỏ / che được" },
+  { value: "visible", label: "Lộ rõ" },
+  { value: "offensive", label: "Phản cảm" },
+  { value: "forbidden_zone", label: "Vùng cấm" },
+] as const;
+
+/**
+ * Qualification `hasRiskHistory`. Values must stay in step with the backend
+ * enum — they were previously only offered on the "Thông tin cơ bản" screen.
+ */
+export const RISK_HISTORY_OPTIONS = [
+  { value: "none", label: "Không có" },
+  { value: "dropped_deposit", label: "Bỏ cọc" },
+  { value: "canceled_late", label: "Hủy muộn" },
+  { value: "fake_profile", label: "Hồ sơ giả" },
+] as const;
+
 export const REGION_OPTIONS = [
   { value: "dai_bac", label: "Đài Bắc" },
   { value: "dai_trung", label: "Đài Trung" },
