@@ -250,3 +250,36 @@ export function parseWholeNumber(v: string): number | null | undefined {
   if (t === "") return null;
   return /^\d{1,3}$/.test(t) ? Number(t) : undefined;
 }
+
+/** Letters without Vietnamese marks, case kept: "Nguyễn Đức" → "Nguyen Duc". */
+function stripMarks(v: string): string {
+  return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+}
+
+/**
+ * The name the export dialog starts with: "FORM-CHUAN-Nguyen-Van-Hung", the
+ * same pattern the server sends, or the lead's short id when there is no name.
+ */
+export function suggestedExportName(fullName: string, leadId: string): string {
+  const person = stripMarks(fullName)
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join("-");
+  return `FORM-CHUAN-${person || leadId.slice(0, 8)}`;
+}
+
+/**
+ * Turn what the operator typed into a safe .docx file name. Marks are
+ * dropped and anything outside letters, digits, "." "-" "_" becomes "-":
+ * some browsers and download folders refuse a Vietnamese or punctuated name
+ * and save the file as "download". Blank falls back to `fallback`.
+ */
+export function exportFileName(typed: string, fallback: string): string {
+  const base = stripMarks(typed.trim().replace(/\.docx$/i, ""))
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .slice(0, 100);
+  return `${base || fallback}.docx`;
+}

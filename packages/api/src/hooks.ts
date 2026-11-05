@@ -684,14 +684,16 @@ export function useUpdateLeadDossierMutation(leadId: string) {
   });
 }
 
-/** Download FORM CHUẨN; refreshes the export / awaiting-signature state after. */
+/** Download FORM CHUẨN under the given file name (or the server's); refreshes the export / awaiting-signature state after. */
 export function useExportFormStandardMutation(leadId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const { blob, filename } = await apiClient.exportFormStandardDocx(leadId);
-      triggerBlobDownload(blob, filename);
-      return filename;
+    /** `filename` (with .docx) overrides the server's suggested name. */
+    mutationFn: async (filename?: string) => {
+      const exported = await apiClient.exportFormStandardDocx(leadId);
+      const name = filename || exported.filename;
+      triggerBlobDownload(exported.blob, name);
+      return name;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["lead", leadId, "form-standard-readiness"] });

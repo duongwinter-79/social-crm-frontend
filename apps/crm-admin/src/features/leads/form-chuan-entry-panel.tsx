@@ -35,6 +35,8 @@ import {
   readWorkRows,
   visionLegacyDetail,
   ageFrom,
+  exportFileName,
+  suggestedExportName,
   CHINESE_OPTIONS,
   parseYear,
   readChinese,
@@ -324,6 +326,68 @@ function Section(props: { id: string; num: number; title: string; hint?: string;
   );
 }
 
+/** Asks for the exported file's name; Enter keeps the suggestion. */
+function ExportNameDialog(props: {
+  value: string;
+  fallback: string;
+  /** Unsaved edits get saved before the export — say so on the button. */
+  willSave: boolean;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: (filename: string) => void;
+}) {
+  const { copy } = useI18n();
+  const titleId = "fc-export-name-title";
+  const filename = exportFileName(props.value, props.fallback);
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/40 p-4"
+      onKeyDown={(e) => e.key === "Escape" && props.onCancel()}
+      onClick={(e) => e.target === e.currentTarget && props.onCancel()}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="w-full max-w-md space-y-4 rounded-2xl bg-white p-5 shadow-xl"
+        onSubmit={(e) => {
+          e.preventDefault();
+          props.onConfirm(filename);
+        }}
+      >
+        <h2 id={titleId} className="text-base font-bold text-slate-900">
+          {copy({ en: "Export FORM CHUẨN", vi: "Xuất FORM CHUẨN" })}
+        </h2>
+        <Input
+          label={copy({ en: "File name", vi: "Tên tệp" })}
+          value={props.value}
+          onChange={(e) => props.onChange(e.target.value)}
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          spellCheck={false}
+        />
+        <p className="break-all text-xs text-slate-500">
+          {copy({ en: "Saved as", vi: "Tệp sẽ lưu là" })} <span className="font-semibold text-slate-700">{filename}</span>
+          <span className="block break-normal pt-1">
+            {copy({
+              en: "Vietnamese marks and symbols are dropped so every browser keeps the name.",
+              vi: "Dấu tiếng Việt và ký tự đặc biệt được bỏ để mọi trình duyệt giữ đúng tên tệp."
+            })}
+          </span>
+        </p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={props.onCancel}>
+            {copy({ en: "Cancel", vi: "Hủy" })}
+          </Button>
+          <Button type="submit">
+            {props.willSave ? copy({ en: "Save & export", vi: "Lưu & xuất" }) : copy({ en: "Export", vi: "Xuất" })}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ── the panel ───────────────────────────────────────────────────────────
 
 export function FormChuanEntryPanel(props: {
@@ -472,9 +536,14 @@ export function FormChuanEntryPanel(props: {
     }
   }
 
-  async function saveAndExport() {
+  // The export asks for a file name first, pre-filled with the usual pattern;
+  // `null` = dialog closed.
+  const [exportName, setExportName] = useState<string | null>(null);
+  const defaultExportName = suggestedExportName(draft.fullName || lead.fullName || "", leadId);
+
+  async function saveAndExport(filename: string) {
     if (dirty && !(await save())) return;
-    exportForm.mutate();
+    exportForm.mutate(filename);
   }
 
   // ── derived view state ────────────────────────────────────────────────
@@ -519,7 +588,7 @@ export function FormChuanEntryPanel(props: {
   ];
 
   const exportButton = (
-    <Button onClick={saveAndExport} disabled={exportForm.isPending || saving || (dirty && !canEdit)}>
+    <Button onClick={() => setExportName(defaultExportName)} disabled={exportForm.isPending || saving || (dirty && !canEdit)}>
       {exportForm.isPending
         ? copy({ en: "Exporting…", vi: "Đang xuất…" })
         : dirty
@@ -530,6 +599,19 @@ export function FormChuanEntryPanel(props: {
 
   return (
     <div className="space-y-5">
+      {exportName !== null ? (
+        <ExportNameDialog
+          value={exportName}
+          fallback={defaultExportName}
+          willSave={dirty}
+          onChange={setExportName}
+          onCancel={() => setExportName(null)}
+          onConfirm={(filename) => {
+            setExportName(null);
+            void saveAndExport(filename);
+          }}
+        />
+      ) : null}
       {/* Header: what is still missing, export state, the primary action. */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <div className="min-w-0 flex-1 basis-64 space-y-1">
