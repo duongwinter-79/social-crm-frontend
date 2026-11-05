@@ -1,7 +1,7 @@
 import { useI18n } from "@/i18n";
 
 /**
- * Lead pipeline status line — horizontal numbered stepper.
+ * Lead pipeline status line — horizontal numbered stepper that fits its width.
  *
  * Grounded in the REAL backend lead state machine (src/features/leads/
  * lead-state-machine.ts), NOT the 9-step mockup. The happy path is the linear
@@ -51,42 +51,55 @@ export function LeadStatusLine(props: { status: string; className?: string }) {
 
   return (
     <div className={props.className}>
-      <div className="overflow-x-auto pb-6 pt-1">
-        <div className="flex min-w-max items-center px-1">
-          {SPINE.map((step, index) => {
-            const isCompleted = index <= currentIndex && !isDisqualified;
-            const isCurrent = index === currentIndex && !isBranch;
-            return (
-              <div key={step} className="flex items-center">
-                <div className="relative flex flex-col items-center">
-                  <div
-                    className={[
-                      "flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors",
-                      isCompleted
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-slate-300 bg-white text-slate-400",
-                      isCurrent ? "ring-4 ring-indigo-100" : "",
-                    ].join(" ")}
-                  >
-                    {isCompleted && !isCurrent ? "✓" : index + 1}
-                  </div>
-                  <span
-                    className={[
-                      "absolute top-9 w-24 text-center text-[10px] font-medium leading-tight",
-                      isCurrent ? "text-indigo-700" : "text-slate-500",
-                    ].join(" ")}
-                  >
-                    {formatLeadStatus(step)}
-                  </span>
-                </div>
-                {index < SPINE.length - 1 ? (
-                  <div className={`mx-2 h-1 w-10 rounded-full ${index < currentIndex && !isDisqualified ? "bg-indigo-600" : "bg-slate-200"}`} />
-                ) : null}
+      {/*
+        Ten equal columns that always fit the width — no sideways scroll. The
+        connector to the next step is drawn from each circle's centre across
+        its column. Labels show from `sm`; on a phone ten labels cannot fit
+        legibly, so the current step is named once underneath instead.
+      */}
+      <ol className="grid grid-cols-10 pb-2 pt-1">
+        {SPINE.map((step, index) => {
+          const isCompleted = index <= currentIndex && !isDisqualified;
+          const isCurrent = index === currentIndex && !isBranch;
+          return (
+            <li key={step} className="relative flex min-w-0 flex-col items-center" aria-current={isCurrent ? "step" : undefined}>
+              {index < SPINE.length - 1 ? (
+                <div
+                  aria-hidden="true"
+                  className={`absolute left-1/2 top-[12px] h-1 w-full sm:top-[14px] ${
+                    index < currentIndex && !isDisqualified ? "bg-indigo-600" : "bg-slate-200"
+                  }`}
+                />
+              ) : null}
+              <div
+                className={[
+                  "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors sm:h-8 sm:w-8",
+                  isCompleted
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-slate-300 bg-white text-slate-400",
+                  isCurrent ? "ring-4 ring-indigo-100" : "",
+                ].join(" ")}
+              >
+                {isCompleted && !isCurrent ? "✓" : index + 1}
               </div>
-            );
-          })}
-        </div>
-      </div>
+              <span
+                className={[
+                  "mt-1.5 hidden w-full break-words px-0.5 text-center text-[10px] font-medium leading-tight sm:block",
+                  isCurrent ? "text-indigo-700" : "text-slate-500",
+                ].join(" ")}
+              >
+                {formatLeadStatus(step)}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      {!isBranch && currentIndex >= 0 ? (
+        <p className="pb-2 text-center text-xs font-medium text-indigo-700 sm:hidden">
+          {copy({ en: `Step ${currentIndex + 1}/${SPINE.length}`, vi: `Bước ${currentIndex + 1}/${SPINE.length}` })} ·{" "}
+          {formatLeadStatus(SPINE[currentIndex])}
+        </p>
+      ) : null}
 
       {isBranch ? (
         <div

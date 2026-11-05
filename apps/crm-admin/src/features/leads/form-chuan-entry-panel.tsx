@@ -226,6 +226,20 @@ function buildSuggestions(lead: Lead, snapshot: LeadQualificationSnapshot | unde
 /** Family birth years: typed as text, sent as a 4-digit year. */
 const YEAR_KEYS: ReadonlySet<string> = new Set(["fatherBirthYear", "motherBirthYear", "spouseBirthYear"]);
 
+/**
+ * Row layouts that size to the form pane, not the window. The pane sits beside
+ * the app sidebar and the section menu, so at a 1280px window it is ~580px
+ * wide; `sm:`/`xl:` column counts, which read the window, put five 250px
+ * fields in it and the form scrolled sideways. These fit as many columns of at
+ * least the given width as the pane has room for, down to one.
+ */
+const ROW_WIDE = "grid gap-5 grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]";
+const ROW = "grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))]";
+const ROW_NARROW = "grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))]";
+/** Short answers (numbers, two-option choices): pairs up even on a phone. */
+const ROW_SHORT = "grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))]";
+const ROW_TINY = "grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,5.5rem),1fr))]";
+
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 function blankToNull(v: unknown): unknown {
@@ -517,8 +531,8 @@ export function FormChuanEntryPanel(props: {
   return (
     <div className="space-y-5">
       {/* Header: what is still missing, export state, the primary action. */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 space-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="min-w-0 flex-1 basis-64 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-slate-900">{copy({ en: "Standard form", vi: "Hồ sơ lao động — FORM CHUẨN" })}</span>
             {awaitingSignature ? <Badge tone="warning">Đã xuất form · chờ ký</Badge> : null}
@@ -569,12 +583,12 @@ export function FormChuanEntryPanel(props: {
       </p>
 
       <Section id="fc-s1" num={1} title={copy({ en: "Personal information", vi: "Thông tin cá nhân" })}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <div>
             <Input label={`${copy({ en: "Full name", vi: "Họ tên" })} *`} value={draft.fullName} onChange={(e) => set("fullName", e.target.value)} disabled={disabled} />
             <Unverified value={suggestions.fullName} current={draft.fullName} onUse={() => set("fullName", suggestions.fullName)} disabled={disabled} />
           </div>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_110px]">
+          <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-4">
             <div>
               <Input label={`${copy({ en: "Birth year", vi: "Năm sinh" })} *`} inputMode="numeric" value={draft.birthYear} onChange={(e) => set("birthYear", e.target.value)} disabled={disabled} />
               <Unverified value={suggestions.birthYear} current={draft.birthYear} onUse={() => set("birthYear", suggestions.birthYear)} disabled={disabled} />
@@ -582,10 +596,10 @@ export function FormChuanEntryPanel(props: {
             <Input label={copy({ en: "Age", vi: "Tuổi" })} value={ageFrom(draft.dateOfBirth, draft.birthYear)} disabled readOnly />
           </div>
         </div>
-        <div className="sm:max-w-xs">
+        <div className="max-w-xs">
           <Input type="date" label={copy({ en: "Date of birth", vi: "Ngày sinh" })} value={draft.dateOfBirth} onChange={(e) => set("dateOfBirth", e.target.value)} disabled={disabled} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className={ROW_SHORT}>
           <div>
             <Seg label={copy({ en: "Gender", vi: "Giới tính" })} required options={[{ value: "female", label: "Nữ" }, { value: "male", label: "Nam" }]} value={(draft.gender || null) as "male" | "female" | null} onChange={(v) => set("gender", v)} disabled={disabled} />
             <Unverified value={suggestions.gender === "male" ? "Nam" : suggestions.gender === "female" ? "Nữ" : ""} current={draft.gender === "male" ? "Nam" : draft.gender === "female" ? "Nữ" : ""} onUse={() => set("gender", suggestions.gender)} disabled={disabled} />
@@ -599,16 +613,16 @@ export function FormChuanEntryPanel(props: {
             <Unverified value={suggestions.weight} current={draft.weight} onUse={() => set("weight", suggestions.weight)} disabled={disabled} />
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className={ROW_SHORT}>
           <Seg label={copy({ en: "Drinks alcohol", vi: "Uống rượu" })} options={["Không", "Có"] as const} value={soft.alcohol === true ? "Có" : soft.alcohol === false ? "Không" : null} onChange={(v) => setSoft({ alcohol: v === "Có" })} disabled={disabled} />
           <Seg label={copy({ en: "Smokes", vi: "Hút thuốc" })} options={["Không", "Có"] as const} value={soft.smoking === true ? "Có" : soft.smoking === false ? "Không" : null} onChange={(v) => setSoft({ smoking: v === "Có" })} disabled={disabled} />
           <Seg label={copy({ en: "Handedness", vi: "Thuận tay" })} options={HAND_OPTIONS} value={readHand(soft.handedness)} onChange={(v) => setSoft({ handedness: v })} disabled={disabled} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+        <div className={ROW}>
           <Input label={copy({ en: "Address", vi: "Địa chỉ" })} value={draft.address} onChange={(e) => set("address", e.target.value)} disabled={disabled} />
           <Input label={copy({ en: "Region", vi: "Khu vực" })} value={draft.region} onChange={(e) => set("region", e.target.value)} disabled={disabled} />
         </div>
-        <div className="sm:max-w-sm">
+        <div className="max-w-sm">
           {canViewPii ? (
             <>
               <Input label={`${copy({ en: "Phone", vi: "Số điện thoại" })} *`} inputMode="tel" value={draft.phone} onChange={(e) => set("phone", e.target.value)} disabled={disabled} />
@@ -621,11 +635,11 @@ export function FormChuanEntryPanel(props: {
 
         <div className="h-px bg-slate-100" />
 
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className={ROW_WIDE}>
           <div className="flex flex-col gap-2">
             <Seg label={copy({ en: "Marital status", vi: "Tình trạng hôn nhân" })} options={MARITAL_OPTIONS} value={marital} onChange={(v) => setSoft({ maritalStatus: v })} disabled={disabled} />
             {marital === "Kết hôn" ? (
-              <Input type="date" label={copy({ en: "Marriage registered on", vi: "Ngày đăng ký kết hôn" })} value={text(soft.marriageRegisteredAt)} onChange={(e) => setSoft({ marriageRegisteredAt: e.target.value })} disabled={disabled} className="sm:max-w-[220px]" />
+              <Input type="date" label={copy({ en: "Marriage registered on", vi: "Ngày đăng ký kết hôn" })} value={text(soft.marriageRegisteredAt)} onChange={(e) => setSoft({ marriageRegisteredAt: e.target.value })} disabled={disabled} className="max-w-[220px]" />
             ) : null}
           </div>
           {yesNoDetail(
@@ -720,14 +734,16 @@ export function FormChuanEntryPanel(props: {
                 ["Mẹ", "mother"],
                 ["Vợ / chồng", "spouse"]
               ] as const).map(([who, k]) => (
-                <div key={k} className="grid items-start gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-[100px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.5fr)]">
-                  <span className="pt-8 text-sm font-bold text-slate-800">{who}</span>
-                  {softText(`${k}Name`, "Họ tên")}
-                  <div className="flex flex-col gap-1">
-                    {softText(`${k}BirthYear`, "Năm sinh", { year: true, placeholder: "1968" })}
-                    {text(soft[`${k}BirthYear`]) ? null : legacyAge(`${k}Age`)}
+                <div key={k} className="rounded-xl border border-slate-100 p-3">
+                  <div className="mb-2 text-sm font-bold text-slate-800">{who}</div>
+                  <div className={ROW_NARROW}>
+                    {softText(`${k}Name`, "Họ tên")}
+                    <div className="flex min-w-0 flex-col gap-1">
+                      {softText(`${k}BirthYear`, "Năm sinh", { year: true, placeholder: "1968" })}
+                      {text(soft[`${k}BirthYear`]) ? null : legacyAge(`${k}Age`)}
+                    </div>
+                    {softText(`${k}Occupation`, "Nghề nghiệp")}
                   </div>
-                  {softText(`${k}Occupation`, "Nghề nghiệp")}
                 </div>
               ))}
               <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
@@ -741,23 +757,23 @@ export function FormChuanEntryPanel(props: {
                   disabled={disabled}
                 />
                 {soft.relativeInTaiwan === true ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className={ROW}>
                     {softText("relativeInTaiwanRelation", "Quan hệ")}
                     {softText("relativeInTaiwanWorkplace", "Nơi làm việc")}
                   </div>
                 ) : null}
               </div>
-              <div className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-3">
+              <div className={`${ROW_SHORT} rounded-xl border border-slate-100 p-3`}>
                 {softText("childrenCount", "Số con", { numeric: true })}
                 {softText("sonsAges", "Con trai — tuổi", { placeholder: "5, 8" })}
                 {softText("daughtersAges", "Con gái — tuổi", { placeholder: "3" })}
                 {text(soft.childrenAges) && !text(soft.sonsAges) && !text(soft.daughtersAges) ? (
-                  <span className="text-xs text-slate-500 sm:col-span-3">
+                  <span className="col-span-full text-xs text-slate-500">
                     {copy({ en: `Children's ages on record: ${text(soft.childrenAges)}`, vi: `Đã lưu tuổi các con: ${text(soft.childrenAges)}` })}
                   </span>
                 ) : null}
               </div>
-              <div className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-5">
+              <div className={`${ROW_TINY} rounded-xl border border-slate-100 p-3`}>
                 {softText("olderBrothers", "Anh trai", { numeric: true })}
                 {softText("olderSisters", "Chị gái", { numeric: true })}
                 {softText("youngerBrothers", "Em trai", { numeric: true })}
@@ -771,13 +787,13 @@ export function FormChuanEntryPanel(props: {
 
       <Section id="fc-s3" num={3} title={copy({ en: "Education & papers", vi: "Học vấn & giấy tờ" })}>
         <Seg label={copy({ en: "Highest education", vi: "Trình độ văn hóa cao nhất" })} options={EDUCATION_OPTIONS} value={readEducation(soft.education)} onChange={(v) => setSoft({ education: v })} disabled={disabled} />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <Input label={copy({ en: "Field of study", vi: "Chuyên ngành" })} value={text(soft.educationMajor)} onChange={(e) => setSoft({ educationMajor: e.target.value })} disabled={disabled} />
           <Input label={copy({ en: "Study period", vi: "Thời gian" })} placeholder="2015 – 2018" value={text(soft.educationPeriod)} onChange={(e) => setSoft({ educationPeriod: e.target.value })} disabled={disabled} />
         </div>
         <Seg label={copy({ en: "Chinese", vi: "Tiếng Trung" })} options={CHINESE_OPTIONS} value={readChinese(soft.languages)} onChange={(v) => setSoft({ languages: writeChinese(soft.languages, v) })} disabled={disabled} />
         <Seg label={copy({ en: "English", vi: "Tiếng Anh" })} options={ENGLISH_OPTIONS} value={readEnglish(soft.languages)} onChange={(v) => setSoft({ languages: writeEnglish(soft.languages, v) })} disabled={disabled} />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <Seg label={copy({ en: "Vaccination", vi: "Tiêm chủng" })} options={VACCINATION_OPTIONS} value={(text(soft.vaccinationStatus) || null) as "have" | "in_progress" | "none" | null} onChange={(v) => setSoft({ vaccinationStatus: v })} disabled={disabled} />
           <Input type="date" label={copy({ en: "Vaccinated on", vi: "Thời gian tiêm" })} value={text(soft.vaccinationDate)} onChange={(e) => setSoft({ vaccinationDate: e.target.value })} disabled={disabled} />
         </div>
@@ -793,7 +809,7 @@ export function FormChuanEntryPanel(props: {
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           {copy({ en: "Verification answers", vi: "Thông tin xác minh" })}
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <Seg
             label={copy({ en: "Owns a passport", vi: "Đã có hộ chiếu" })}
             options={YES_NO_OPTIONS}
@@ -818,7 +834,7 @@ export function FormChuanEntryPanel(props: {
         />
         {/* Scoring counters. They print nowhere, but this was their only
             editor in the whole app before "Thông tin cơ bản" was removed. */}
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className={ROW_NARROW}>
           <Input label={copy({ en: "Late cancellations", vi: "Số lần hủy muộn" })} inputMode="numeric" value={draft.lateCancellationCount} onChange={(e) => set("lateCancellationCount", e.target.value)} disabled={disabled} />
           <Input label={copy({ en: "No-shows", vi: "Số lần vắng mặt" })} inputMode="numeric" value={draft.noShowCount} onChange={(e) => set("noShowCount", e.target.value)} disabled={disabled} />
           <Input label={copy({ en: "Unreasonable cancellations", vi: "Số lần hủy vô lý" })} inputMode="numeric" value={draft.unreasonableCancellationCount} onChange={(e) => set("unreasonableCancellationCount", e.target.value)} disabled={disabled} />
@@ -834,7 +850,7 @@ export function FormChuanEntryPanel(props: {
       </Section>
 
       <Section id="fc-s4" num={4} title={copy({ en: "Work experience", vi: "Kinh nghiệm làm việc / chuyên môn" })} hint={copy({ en: "One row per job — the export prints three more blank rows.", vi: "Mỗi công việc một dòng — bản xuất in thêm 3 dòng trống." })}>
-        <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+        <div className={ROW}>
           <div>
             <Input label={`${copy({ en: "Experience field", vi: "Lĩnh vực kinh nghiệm" })} *`} value={draft.experienceField} onChange={(e) => set("experienceField", e.target.value)} disabled={disabled} />
             <Unverified value={suggestions.experienceField} current={draft.experienceField} onUse={() => set("experienceField", suggestions.experienceField)} disabled={disabled} />
@@ -858,7 +874,7 @@ export function FormChuanEntryPanel(props: {
                   </button>
                 ) : null}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.5fr_0.8fr]">
+              <div className={ROW_NARROW}>
                 {(
                   [
                     ["occupation", "Nghề nghiệp"],
@@ -888,7 +904,7 @@ export function FormChuanEntryPanel(props: {
       </Section>
 
       <Section id="fc-s5" num={5} title={copy({ en: "Wishes & previous contract", vi: "Nguyện vọng & tình trạng hợp đồng" })}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <div>
             <Input label={copy({ en: "Desired industry", vi: "Ngành mong muốn" })} value={draft.desiredIndustry} onChange={(e) => set("desiredIndustry", e.target.value)} disabled={disabled} />
             <Unverified value={suggestions.desiredIndustry} current={draft.desiredIndustry} onUse={() => set("desiredIndustry", suggestions.desiredIndustry)} disabled={disabled} />
@@ -918,7 +934,7 @@ export function FormChuanEntryPanel(props: {
             })}
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <Seg
             label={copy({ en: "Worked abroad before", vi: "Từng đi làm việc nước ngoài" })}
             options={YES_NO_OPTIONS}
@@ -932,7 +948,7 @@ export function FormChuanEntryPanel(props: {
             value={draft.readyToDepartInMonths}
             onChange={(e) => set("readyToDepartInMonths", e.target.value)}
             disabled={disabled}
-            className="sm:max-w-[220px]"
+            className="max-w-[220px]"
           />
         </div>
         <Seg label={copy({ en: "Been to Taiwan before", vi: "Đã từng đi Đài Loan" })} options={["Chưa", "Đã từng"] as const} value={beenToTaiwan} onChange={(v) => setSoft({ hasBeenToTaiwan: v === "Đã từng", ...(v === "Chưa" ? { contractCompletion: null, contractIncompleteReason: null } : {}) })} disabled={disabled} />
@@ -947,14 +963,14 @@ export function FormChuanEntryPanel(props: {
       </Section>
 
       <Section id="fc-s6" num={6} title={copy({ en: "Confirmation", vi: "Xác nhận thông tin" })}>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <Input label={copy({ en: "Contact channel", vi: "Phương thức liên hệ đăng ký" })} value={contactChannelLabel((lead as Lead & { leadSource?: string }).leadSource ?? lead.source)} disabled readOnly />
           <Input label={copy({ en: "Referrer", vi: "Người giới thiệu" })} value={text(soft.referrer)} placeholder={copy({ en: "Name / CTV code", vi: "Họ tên / mã CTV" })} onChange={(e) => setSoft({ referrer: e.target.value })} disabled={disabled} />
         </div>
         {/* Channel handle and the operator's own note. Neither prints; they
             sit here because this step is already the "about the record
             rather than the worker" step. */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className={ROW}>
           <Input label={copy({ en: "Display name (channel)", vi: "Tên hiển thị (kênh)" })} value={draft.displayName} onChange={(e) => set("displayName", e.target.value)} disabled={disabled} />
           <Input label={copy({ en: "Verification note", vi: "Ghi chú xác minh" })} value={draft.note} onChange={(e) => set("note", e.target.value)} disabled={disabled} />
         </div>
@@ -966,8 +982,8 @@ export function FormChuanEntryPanel(props: {
         </div>
       </Section>
 
-      <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-sm text-slate-600">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+        <span className="min-w-0 flex-1 basis-64 text-sm text-slate-600">
           {awaitingSignature
             ? copy({
                 en: "Exported. When the worker has signed, upload the signed form and move the lead on — nothing waits on it.",

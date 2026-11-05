@@ -50,11 +50,14 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: s
   const ime = useImeSafeInput(typeof value === "string" ? value : undefined, onChange);
   const controlled = typeof value === "string";
   return (
-    <label data-crm-component="input" className="flex flex-col gap-2 text-sm text-slate-600">
+    // `min-w-0` + `w-full min-w-0` let the field shrink with its column. Without
+    // them an <input> keeps its intrinsic ~20-character width as a hard
+    // minimum, so a row of fields in a narrow grid track overflows sideways.
+    <label data-crm-component="input" className="flex min-w-0 flex-col gap-2 text-sm text-slate-600">
       {label ? <span className="font-medium text-slate-600">{label}</span> : null}
       <input
         className={cx(
-          "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
+          "w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
           className
         )}
         {...rest}
@@ -81,11 +84,11 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: s
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
   const { label, className, children, ...rest } = props;
   return (
-    <label data-crm-component="select" className="flex flex-col gap-2 text-sm text-slate-600">
+    <label data-crm-component="select" className="flex min-w-0 flex-col gap-2 text-sm text-slate-600">
       {label ? <span className="font-medium text-slate-600">{label}</span> : null}
       <select
         className={cx(
-          "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
+          "w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
           className
         )}
         {...rest}

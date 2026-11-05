@@ -79,7 +79,7 @@ export function CandidateWorkbench(props: {
       {props.header ? <div className="shrink-0">{props.header}</div> : null}
 
       {props.status ? (
-        <div className="shrink-0 border-b border-slate-100 bg-slate-50/60 px-6 pt-4">
+        <div className="shrink-0 border-b border-slate-100 bg-slate-50/60 px-4 pt-4 sm:px-6">
           <LeadStatusLine status={props.status} />
         </div>
       ) : null}
@@ -98,9 +98,10 @@ export function CandidateWorkbench(props: {
         page should scroll normally.
       */}
       <div className="flex min-h-0 flex-1 flex-col lg:max-h-[calc(100vh-6rem)] lg:flex-row">
-        {/* Section nav — horizontal scroll strip on mobile, sidebar on lg. */}
-        <nav className="flex shrink-0 gap-3 overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 py-2 lg:w-60 lg:flex-col lg:gap-0 lg:overflow-x-visible lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-0 lg:py-4">
-          <div className="flex gap-1.5 lg:block lg:space-y-1 lg:px-3">
+        {/* Section nav — wrapping buttons on small screens (never a sideways
+            scroll strip), sidebar on lg. */}
+        <nav className="flex shrink-0 gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 lg:w-60 lg:flex-col lg:gap-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-0 lg:py-4">
+          <div className="flex flex-wrap gap-1.5 lg:block lg:space-y-1 lg:px-3">
             {items.map((section) => {
               const meta = SECTION_META[section.key];
               const isActive = section.key === active;
@@ -110,7 +111,7 @@ export function CandidateWorkbench(props: {
                   type="button"
                   disabled={section.disabled}
                   onClick={() => setActive(section.key)}
-                  className={`flex w-full items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors lg:w-full ${
                     isActive
                       ? "bg-indigo-600 text-white shadow-sm"
                       : "text-slate-600 hover:bg-white hover:text-slate-900"
@@ -132,7 +133,9 @@ export function CandidateWorkbench(props: {
         </nav>
 
         {/* Active section content */}
-        <div className="min-w-0 flex-1 overflow-y-auto bg-white p-6">{activeSection?.content}</div>
+        {/* overflow-x-hidden backs up the layouts inside: this pane scrolls
+            up and down only. */}
+        <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden bg-white p-4 sm:p-6">{activeSection?.content}</div>
       </div>
 
       {props.footer ? <div className="shrink-0 border-t border-slate-200 bg-white px-6 py-4">{props.footer}</div> : null}

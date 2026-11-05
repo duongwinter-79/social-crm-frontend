@@ -226,6 +226,10 @@
 .admin-shell-footer {
   margin-top: auto;
   display: grid;
+  /* One shrinkable column: an implicit grid column grows to its longest
+     unbroken line (the signed-in email), which pushed the footer 24px past
+     the sidebar and made the sidebar scroll sideways. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   width: 100%;
   box-sizing: border-box;
