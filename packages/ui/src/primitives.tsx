@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from "react";
 import type {
   CompositionEvent,
   InputHTMLAttributes,
@@ -50,11 +51,14 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: s
   const ime = useImeSafeInput(typeof value === "string" ? value : undefined, onChange);
   const controlled = typeof value === "string";
   return (
-    <label data-crm-component="input" className="flex flex-col gap-2 text-sm text-slate-600">
+    // `min-w-0` + `w-full min-w-0` let the field shrink with its column. Without
+    // them an <input> keeps its intrinsic ~20-character width as a hard
+    // minimum, so a row of fields in a narrow grid track overflows sideways.
+    <label data-crm-component="input" className="flex min-w-0 flex-col gap-2 text-sm text-slate-600">
       {label ? <span className="font-medium text-slate-600">{label}</span> : null}
       <input
         className={cx(
-          "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
+          "w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
           className
         )}
         {...rest}
@@ -81,11 +85,11 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement> & { label?: s
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
   const { label, className, children, ...rest } = props;
   return (
-    <label data-crm-component="select" className="flex flex-col gap-2 text-sm text-slate-600">
+    <label data-crm-component="select" className="flex min-w-0 flex-col gap-2 text-sm text-slate-600">
       {label ? <span className="font-medium text-slate-600">{label}</span> : null}
       <select
         className={cx(
-          "rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
+          "w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-slate-900 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100",
           className
         )}
         {...rest}
@@ -311,20 +315,107 @@ export function DescriptionList(props: { items: Array<{ label: string; value: Re
   );
 }
 
-export function ShellFrame(props: PropsWithChildren<{ sidebar: ReactNode; header: ReactNode }>) {
+export function ShellFrame(
+  props: PropsWithChildren<{
+    sidebar: ReactNode;
+    header: ReactNode;
+    /** Compact brand for the small-screen top bar (logo + name). */
+    mobileBrand?: ReactNode;
+    /** Changes on navigation (e.g. the route path): closes the small-screen menu. */
+    navKey?: string;
+    menuLabel?: string;
+    closeMenuLabel?: string;
+  }>
+) {
+  // Below lg the sidebar is a drawer behind a menu button. Stacked above the
+  // page, as it was, it filled a phone's first screen before any content.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const drawerId = useId();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+
+  // Navigating from the drawer lands on the new page with the drawer shut.
+  useEffect(() => setMenuOpen(false), [props.navKey]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      // Hand focus back to the button that opened it, but not on first render.
+      if (wasOpen.current) menuButtonRef.current?.focus();
+      wasOpen.current = false;
+      return;
+    }
+    wasOpen.current = true;
+    closeButtonRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    // Growing past lg turns the drawer into the fixed sidebar; drop the open state.
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const onDesktop = () => desktop.matches && setMenuOpen(false);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
+    desktop.addEventListener("change", onDesktop);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKey);
+      desktop.removeEventListener("change", onDesktop);
+    };
+  }, [menuOpen]);
+
   return (
     <div data-crm-shell="frame" className="min-h-screen bg-[linear-gradient(180deg,rgb(var(--crm-slate-50))_0%,rgb(var(--crm-slate-100))_100%)] text-slate-900">
       <div className="grid min-h-screen lg:grid-cols-[272px_minmax(0,1fr)]">
+        {menuOpen ? (
+          <div aria-hidden="true" className="fixed inset-0 z-40 bg-slate-950/50 lg:hidden" onClick={() => setMenuOpen(false)} />
+        ) : null}
         {/*
-          Sidebar stays pinned to the viewport (sticky top:0 + height:100vh on lg+)
-          AND scrolls internally so a tall nav stays fully reachable on short
-          viewports. The visible scrollbar is suppressed via
-          `.admin-shell-sidebar-scroll` (see admin-shell.css).
+          lg+: pinned to the viewport (sticky top:0 + height:100vh) and scrolls
+          internally so a tall nav stays reachable on short viewports.
+          Below lg: an off-canvas drawer, hidden (and out of the tab order)
+          until the menu button opens it. The visible scrollbar is suppressed
+          via `.admin-shell-sidebar-scroll` (see admin-shell.css).
         */}
-        <aside data-crm-shell="sidebar" className="admin-shell-sidebar-scroll border-r border-slate-800 bg-slate-950 text-slate-200 lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto">
+        <aside
+          id={drawerId}
+          data-crm-shell="sidebar"
+          className={cx(
+            "admin-shell-sidebar-scroll fixed inset-y-0 left-0 z-50 w-[min(86vw,300px)] overflow-y-auto border-r border-slate-800 bg-slate-950 text-slate-200 transition-transform duration-200",
+            "lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-auto lg:translate-x-0 lg:self-start",
+            menuOpen ? "translate-x-0" : "-translate-x-full max-lg:invisible"
+          )}
+        >
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label={props.closeMenuLabel ?? "Close menu"}
+            className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl text-slate-300 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 lg:hidden"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
           {props.sidebar}
         </aside>
         <div className="min-w-0">
+          <div data-crm-shell="mobile-bar" className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-800 bg-slate-950 px-3 py-2 text-slate-100 lg:hidden">
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label={props.menuLabel ?? "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls={drawerId}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
+            <div className="min-w-0 flex-1">{props.mobileBrand}</div>
+          </div>
           <div data-crm-shell="header" className="border-b border-slate-200/80 bg-white/90 backdrop-blur">{props.header}</div>
           <main data-crm-shell="content" className="p-4 md:p-6 xl:p-8">{props.children}</main>
         </div>

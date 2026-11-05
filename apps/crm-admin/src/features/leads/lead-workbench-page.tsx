@@ -86,7 +86,9 @@ function ReturnNavigation(props: {
   copy: (value: { en: string; vi: string }) => string;
 }) {
   return (
-    <div className="sticky top-3 z-20 flex w-fit">
+    // Pinned from lg only: on a phone a pinned button floats over the form's
+    // inputs as the page scrolls, and the browser's own back is at hand there.
+    <div className="z-20 flex w-fit lg:sticky lg:top-3">
       <button
         type="button"
         onClick={props.onBack}

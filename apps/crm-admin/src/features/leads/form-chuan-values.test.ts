@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ageFrom,
+  exportFileName,
+  suggestedExportName,
   contactChannelLabel,
   parseYear,
   readChinese,
@@ -89,5 +91,15 @@ describe("FORM CHUẨN value readers", () => {
     expect(contactChannelLabel("gioi_thieu")).toBe("Người giới thiệu");
     expect(contactChannelLabel("other")).toBe("Khác");
     expect(contactChannelLabel(null)).toBe("");
+  });
+
+  it("suggests and cleans the export file name", () => {
+    expect(suggestedExportName("Nguyễn Văn Hùng", "33333333-aaaa")).toBe("FORM-CHUAN-Nguyen-Van-Hung");
+    expect(suggestedExportName("  đỗ thị HẰNG ", "x")).toBe("FORM-CHUAN-Do-Thi-Hang");
+    expect(suggestedExportName("", "33333333-aaaa")).toBe("FORM-CHUAN-33333333");
+    expect(exportFileName("FORM-CHUAN-Nguyen-Van-Hung", "F")).toBe("FORM-CHUAN-Nguyen-Van-Hung.docx");
+    expect(exportFileName("Hồ sơ Hùng – bản ký.docx", "F")).toBe("Ho-so-Hung-ban-ky.docx");
+    expect(exportFileName("a/b:c*?", "F")).toBe("a-b-c.docx");
+    expect(exportFileName("   ", "FORM-CHUAN-x")).toBe("FORM-CHUAN-x.docx");
   });
 });

@@ -174,6 +174,17 @@ function ProtectedLayout() {
 
   return (
     <ShellFrame
+      navKey={location.pathname}
+      menuLabel={copy({ en: "Open menu", vi: "Mở menu" })}
+      closeMenuLabel={copy({ en: "Close menu", vi: "Đóng menu" })}
+      mobileBrand={
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white" aria-hidden="true">
+            <img src={template.brand.logoUrl ?? "/sao-mai-logo.png"} alt="" className="h-6 w-6 object-contain" />
+          </span>
+          <span className="truncate text-sm font-semibold">{template.brand.name ?? "Sao Mai HR CRM"}</span>
+        </div>
+      }
       sidebar={
         <div className="admin-shell-sidebar">
           <div className="admin-shell-brand" data-crm-shell="brand">
