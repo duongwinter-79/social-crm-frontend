@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-11-10
+
+### Lead workbench — Back button for lead status; "Rớt đơn" returns to "Đã phỏng vấn"
+
+- new **← Quay lại {previous status}** button beside the status actions, from `previous` on `GET /leads/:id/transitions`; it moves the lead back one step on the status line. Shown to users who can change lead status, never on `new`, `departed` or `disqualified`
+- on "Rớt đơn" the only action is now **← Quay lại Đã phỏng vấn**, and the banner reads "Chỉ được phép quay lại Đã phỏng vấn" (was Đã liên hệ)
+- the status actions sit below the status cards up to 2xl screens, so the cards no longer squeeze when there are three or four actions
+
+### Lead details layout — drag-and-drop editor in UI templates (Elementor-style page layout)
+
+- new **Layout** tab in **Admin → UI templates**: the lead details screen as one column per tab, with blocks dragged to reorder them or move them between tabs, tabs dragged to reorder them, **Full / Half** width per block, **Hide**, **Add tab** (Vietnamese + English name), **Remove** (blocks go back to their own tabs) and **Reset to built-in**. Pointer, touch and keyboard drag (`@dnd-kit/core` 6.3.1, `@dnd-kit/sortable` 10.0.0, `@dnd-kit/utilities` 3.2.2), plus a **Move to** menu on every block; screen-reader announcements name the block and tab
+- the layout is part of the template: live preview, save, activate for everyone, use default, duplicate and JSON import/export all carry it (older `.crm-template.json` files without a layout still import)
+- lead details now renders from the layout (`templates/lead-details-layout.ts`): ten blocks (AI extraction, FORM CHUẨN entry, dossier & standard form, documents, application, training & finance, lead summary, verified snapshot, conversation, ask AI) in four built-in tabs. With no template the screen is the same as before. A stored layout is reconciled with the code every time: unknown ids are ignored and a block the layout does not place goes back to its tab, so a layout cannot lose a block. FORM CHUẨN entry cannot be hidden. Tabs with nothing visible are skipped and the page opens on the layout's first tab
+- half-width blocks pair up only when the content area (not the window) is at least 48rem wide, and stack below that: no sideways scrolling at any width
+- safe mode (`?crm-safe-mode=1`) shows the built-in layout
+- admins get a **Customize layout** link on every lead; it opens the editor on the Layout tab (and starts a template when none exists yet)
+- new hooks for template CSS/JS: `[data-crm-section]` (tab buttons), `[data-crm-tab]`, `[data-crm-block]` + `[data-crm-width]`
+- `CandidateWorkbench` takes sections in the order given and supports tabs with their own label
+- verified: `tsc` clean, vitest 69/69 (14 new: layout reconcile, editing helpers, template file round trip), production build; Playwright against the real backend + Postgres: reorder within a tab, move across tabs (incl. into an empty new tab), reorder tabs, keyboard pick-up/move/drop, Escape cancels, FORM CHUẨN has no Hide, save → canonical JSON in the database, live preview on a real lead (tab order, custom tab, half blocks side by side, hidden block gone), safe mode, 390px phone with no horizontal scroll; a non-admin receives the active layout and cannot change it (403)
+
 ## 2026-10-27
 
 ### Session — idle sign-out now really ends the session

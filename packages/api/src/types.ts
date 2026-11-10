@@ -158,11 +158,38 @@ export interface UiTemplateTokens {
   logoUrl?: string;
 }
 
-/** Active template as served to the app; `customCss` and `customJs` are absent on the public (login-page) variant. */
+/** One content block placed on a laid-out screen. */
+export interface UiLayoutBlock {
+  id: string;
+  /** Omitted means full width. */
+  width?: "half";
+  /** Omitted means shown. */
+  hidden?: true;
+}
+
+export interface UiLayoutTab {
+  id: string;
+  /** Only for tabs a template adds; built-in tabs are renamed on the UI-text screen. */
+  label?: { en?: string; vi?: string };
+  blocks: UiLayoutBlock[];
+}
+
+export interface UiScreenLayout {
+  version: 1;
+  tabs: UiLayoutTab[];
+}
+
+/** Drag-and-drop screen layouts; a screen that is absent keeps its built-in layout. */
+export interface UiTemplateLayouts {
+  leadDetails?: UiScreenLayout;
+}
+
+/** Active template as served to the app; `layouts`, `customCss` and `customJs` are absent on the public (login-page) variant. */
 export interface UiTemplateRuntime {
   id: string;
   name: string;
   tokens: UiTemplateTokens;
+  layouts?: UiTemplateLayouts;
   customCss?: string | null;
   customJs?: string | null;
   updatedAt?: string;
@@ -173,6 +200,7 @@ export interface AdminUiTemplate {
   name: string;
   description: string | null;
   tokens: UiTemplateTokens;
+  layouts?: UiTemplateLayouts;
   customCss: string | null;
   customJs: string | null;
   isActive: boolean;
@@ -191,6 +219,8 @@ export interface UiTemplatePayload {
   name: string;
   description?: string | null;
   tokens?: UiTemplateTokens;
+  /** A screen set to null goes back to its built-in layout. */
+  layouts?: { leadDetails?: UiScreenLayout | null };
   customCss?: string | null;
   customJs?: string | null;
 }
@@ -513,7 +543,10 @@ export interface LeadQualificationSnapshot {
 
 export interface LeadTransitions {
   current: string;
+  /** Forward moves ("Move to …"). */
   allowed: string[];
+  /** The one-step "Back" move: the previous status on the pipeline line, or null. */
+  previous?: string | null;
   isTerminal: boolean;
   /** Step 6 — gatekeeper-blocked transitions with operator-facing reasons. */
   blocked?: { status: string; reason: string }[];

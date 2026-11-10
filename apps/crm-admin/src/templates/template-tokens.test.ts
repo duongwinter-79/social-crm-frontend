@@ -67,9 +67,19 @@ describe("template files", () => {
       name: "Ocean",
       description: null,
       tokens: { brandName: "Ocean HR" },
+      layouts: {},
       customCss: "a{}",
       customJs: null
     });
+  });
+
+  it("carries the layout, and reads files exported before layouts existed", () => {
+    const leadDetails = { version: 1 as const, tabs: [{ id: "history", blocks: [{ id: "summary", width: "half" as const }] }] };
+    const file = toTemplateFile({ name: "L", description: null, tokens: {}, layouts: { leadDetails }, customCss: null, customJs: null });
+    expect(parseTemplateFile(JSON.stringify(file)).layouts).toEqual({ leadDetails });
+    const legacy = { format: "social-crm-ui-template", version: 1, name: "Old", tokens: {}, customCss: null, customJs: null };
+    expect(parseTemplateFile(JSON.stringify(legacy)).layouts).toEqual({});
+    expect(() => parseTemplateFile(JSON.stringify({ ...legacy, layouts: [] }))).toThrow(/layouts/);
   });
 
   it("rejects files that are not template exports", () => {

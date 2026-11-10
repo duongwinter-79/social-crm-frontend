@@ -1,4 +1,4 @@
-import type { AdminUiTemplate, UiTemplatePayload, UiTemplateRuntime, UiTemplateTokens } from "@social-crm/api";
+import type { AdminUiTemplate, UiTemplateLayouts, UiTemplatePayload, UiTemplateRuntime, UiTemplateTokens } from "@social-crm/api";
 
 /** File format for sharing templates between environments or with the customer. */
 export const TEMPLATE_FILE_FORMAT = "social-crm-ui-template";
@@ -10,17 +10,22 @@ export type TemplateFile = {
   name: string;
   description: string | null;
   tokens: UiTemplateTokens;
+  /** Added after version 1 shipped; older files simply have none. */
+  layouts?: UiTemplateLayouts;
   customCss: string | null;
   customJs: string | null;
 };
 
-export function toTemplateFile(template: Pick<AdminUiTemplate, "name" | "description" | "tokens" | "customCss" | "customJs">): TemplateFile {
+export function toTemplateFile(
+  template: Pick<AdminUiTemplate, "name" | "description" | "tokens" | "customCss" | "customJs"> & { layouts?: UiTemplateLayouts }
+): TemplateFile {
   return {
     format: TEMPLATE_FILE_FORMAT,
     version: TEMPLATE_FILE_VERSION,
     name: template.name,
     description: template.description ?? null,
     tokens: template.tokens ?? {},
+    layouts: template.layouts ?? {},
     customCss: template.customCss ?? null,
     customJs: template.customJs ?? null
   };
@@ -30,7 +35,7 @@ export function toTemplateFile(template: Pick<AdminUiTemplate, "name" | "descrip
  * Parses an exported template file. Only shape is checked here; the backend
  * validates tokens and sizes when the template is saved.
  */
-export function parseTemplateFile(text: string): UiTemplatePayload {
+export function parseTemplateFile(text: string): UiTemplatePayload & { layouts: UiTemplateLayouts } {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -55,10 +60,14 @@ export function parseTemplateFile(text: string): UiTemplatePayload {
   if (file.tokens !== undefined && (typeof file.tokens !== "object" || file.tokens === null || Array.isArray(file.tokens))) {
     throw new Error('"tokens" must be an object.');
   }
+  if (file.layouts !== undefined && (typeof file.layouts !== "object" || file.layouts === null || Array.isArray(file.layouts))) {
+    throw new Error('"layouts" must be an object.');
+  }
   return {
     name: file.name.trim(),
     description: optionalString(file.description, "description"),
     tokens: file.tokens ?? {},
+    layouts: file.layouts ?? {},
     customCss: optionalString(file.customCss, "customCss"),
     customJs: optionalString(file.customJs, "customJs")
   };
