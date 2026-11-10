@@ -571,15 +571,39 @@ export function LeadWorkbenchPage() {
       ) : null}
 
       <Toolbar compact className="border-slate-200/90">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="grid gap-3 md:grid-cols-4 xl:flex-1">
+        {/* Side by side only on very wide screens: with Back plus up to three
+            "Move to" actions, sharing a row any earlier squeezes the cards. */}
+        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+          <div className="grid gap-3 md:grid-cols-4 2xl:flex-1">
             <InfoCard label={copy({ en: "Status", vi: "Trạng thái" })} value={<Badge tone={toneForStatus(lead.status)}>{formatLeadStatus(lead.status)}</Badge>} className="bg-slate-50" />
             <InfoCard label={copy({ en: "Lead score", vi: "Điểm ứng viên" })} value={<Badge tone={(lead.leadScore ?? 0) >= 80 ? "success" : (lead.leadScore ?? 0) >= 60 ? "warning" : "neutral"}>{lead.leadScore ?? "-"}</Badge>} className="bg-slate-50" />
             <InfoCard label={copy({ en: "Classification", vi: "Phân loại" })} value={lead.leadClassification ?? copy({ en: "Unclassified", vi: "Chưa phân loại" })} className="bg-slate-50" />
             <InfoCard label={copy({ en: "Threads", vi: "Luồng hội thoại" })} value={lead.threads?.length ?? 0} className="bg-slate-50" />
           </div>
-          <ToolbarActions className="xl:justify-end">
-            {canTransitionLeadStatus && (transitionsQuery.data?.allowed ?? []).map((next) => {
+          <ToolbarActions className="2xl:justify-end">
+            {/* Back: undo the last step (one place along the status line). */}
+            {canTransitionLeadStatus && transitionsQuery.data?.previous ? (
+              <span
+                data-crm-action="status-back"
+                title={copy({
+                  en: "Move the lead back one step on the status line",
+                  vi: "Đưa ứng viên lùi lại một bước trên thanh trạng thái"
+                })}
+              >
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => transitionLead.mutate({ id: leadId, status: transitionsQuery.data!.previous! })}
+                  disabled={transitionLead.isPending}
+                >
+                  {`← ${copy({ en: "Back to", vi: "Quay lại" })} ${formatLeadStatus(transitionsQuery.data.previous)}`}
+                </Button>
+              </span>
+            ) : null}
+            {canTransitionLeadStatus && (transitionsQuery.data?.allowed ?? [])
+              // Already offered as Back (Rớt đơn's only move is back to Đã phỏng vấn).
+              .filter((next) => next !== transitionsQuery.data?.previous)
+              .map((next) => {
               const blocker = (transitionsQuery.data?.blocked ?? []).find((b) => b.status === next);
               const isBlocked = Boolean(blocker);
               const isDisqualify = next === "disqualified";

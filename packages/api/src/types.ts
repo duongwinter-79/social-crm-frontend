@@ -543,7 +543,10 @@ export interface LeadQualificationSnapshot {
 
 export interface LeadTransitions {
   current: string;
+  /** Forward moves ("Move to …"). */
   allowed: string[];
+  /** The one-step "Back" move: the previous status on the pipeline line, or null. */
+  previous?: string | null;
   isTerminal: boolean;
   /** Step 6 — gatekeeper-blocked transitions with operator-facing reasons. */
   blocked?: { status: string; reason: string }[];

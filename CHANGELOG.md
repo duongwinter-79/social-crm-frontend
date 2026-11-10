@@ -2,6 +2,12 @@
 
 ## 2026-11-10
 
+### Lead workbench — Back button for lead status; "Rớt đơn" returns to "Đã phỏng vấn"
+
+- new **← Quay lại {previous status}** button beside the status actions, from `previous` on `GET /leads/:id/transitions`; it moves the lead back one step on the status line. Shown to users who can change lead status, never on `new`, `departed` or `disqualified`
+- on "Rớt đơn" the only action is now **← Quay lại Đã phỏng vấn**, and the banner reads "Chỉ được phép quay lại Đã phỏng vấn" (was Đã liên hệ)
+- the status actions sit below the status cards up to 2xl screens, so the cards no longer squeeze when there are three or four actions
+
 ### Lead details layout — drag-and-drop editor in UI templates (Elementor-style page layout)
 
 - new **Layout** tab in **Admin → UI templates**: the lead details screen as one column per tab, with blocks dragged to reorder them or move them between tabs, tabs dragged to reorder them, **Full / Half** width per block, **Hide**, **Add tab** (Vietnamese + English name), **Remove** (blocks go back to their own tabs) and **Reset to built-in**. Pointer, touch and keyboard drag (`@dnd-kit/core` 6.3.1, `@dnd-kit/sortable` 10.0.0, `@dnd-kit/utilities` 3.2.2), plus a **Move to** menu on every block; screen-reader announcements name the block and tab
