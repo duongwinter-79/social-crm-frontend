@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-10 (2)
+
+### Lead workbench — "Rớt đơn" returns to "Đang ghép đơn" (customer correction)
+
+- on "Rớt đơn" the only action is now **← Quay lại Đang ghép đơn** (backend: `interview_failed → matching`), and the banner reads "Chỉ được phép quay lại Đang ghép đơn"
+
 ## 2026-11-10
 
 ### Lead workbench — Back button for lead status; "Rớt đơn" returns to "Đã phỏng vấn"
