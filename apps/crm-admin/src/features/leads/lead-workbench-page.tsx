@@ -601,7 +601,7 @@ export function LeadWorkbenchPage() {
               </span>
             ) : null}
             {canTransitionLeadStatus && (transitionsQuery.data?.allowed ?? [])
-              // Already offered as Back (Rớt đơn's only move is back to Đã phỏng vấn).
+              // Already offered as Back (Rớt đơn's only move is back to Đang ghép đơn).
               .filter((next) => next !== transitionsQuery.data?.previous)
               .map((next) => {
               const blocker = (transitionsQuery.data?.blocked ?? []).find((b) => b.status === next);

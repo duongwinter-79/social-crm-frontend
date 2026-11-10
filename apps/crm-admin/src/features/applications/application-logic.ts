@@ -78,8 +78,8 @@ export function requiresRejectReason(status: string) {
 // at or beyond QUALIFIED may create a replacement application (e.g. re-linking
 // after a previous application was deleted or withdrawn at VISA_PROCESSING).
 // interview_failed is excluded — the lead must first be moved back to
-// interview_scheduled ("rớt đơn quay về Đã phỏng vấn") before a new
-// application can be created.
+// matching ("rớt đơn quay về Đang ghép đơn") before a new application can be
+// created.
 const APPLICATION_CREATE_STAGES = new Set([
   "qualified",
   "matching",

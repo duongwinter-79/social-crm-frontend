@@ -112,8 +112,8 @@ export function LeadStatusLine(props: { status: string; className?: string }) {
           {isDisqualified
             ? copy({ en: "Off pipeline — disqualified.", vi: "Ngoài quy trình — đã bị loại." })
             : copy({
-                en: "Off pipeline — interview failed. The only allowed move is back to Interviewed.",
-                vi: "Ngoài quy trình — rớt đơn. Chỉ được phép quay lại Đã phỏng vấn.",
+                en: "Off pipeline — interview failed. The only allowed move is back to Matching.",
+                vi: "Ngoài quy trình — rớt đơn. Chỉ được phép quay lại Đang ghép đơn.",
               })}{" "}
           <span className="font-bold">{formatLeadStatus(status)}</span>
         </div>
