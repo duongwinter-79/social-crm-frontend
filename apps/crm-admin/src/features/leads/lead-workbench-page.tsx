@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getLeadDisplayName, getLeadFullNameLabel } from "@/lib/lead-display";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -34,6 +34,14 @@ import {
 } from "@social-crm/api";
 import { LeadStatusLine } from "./lead-status-line";
 import { CandidateWorkbench } from "@/features/candidate-workbench/candidate-workbench";
+import { useTemplate } from "@/templates/template-provider";
+import {
+  LAYOUT_GRID_CLASS,
+  blockSpanClass,
+  layoutTabLabel,
+  visibleLeadDetailsTabs,
+  type LeadDetailsBlockId
+} from "@/templates/lead-details-layout";
 import { DossierModal } from "./dossier-modal";
 import { FormChuanEntryPanel } from "./form-chuan-entry-panel";
 import { useI18n } from "../../i18n";
@@ -133,6 +141,7 @@ export function LeadWorkbenchPage() {
   const aiMutation = useAiQueryMutation();
   const runExtraction = useProcessThreadExtractionMutation();
   const { canEditLeads, canManageDocuments, canTransitionLeadStatus, canViewLeadPii, isAdmin } = usePermissions();
+  const { leadDetailsLayout } = useTemplate();
   // Page-level, not tab-scoped — see useFormExtractionWatcher for why the
   // poll/toast/refresh must survive the operator switching away from the
   // "extraction" tab.
@@ -240,6 +249,290 @@ export function LeadWorkbenchPage() {
   if (!lead) {
     return <Panel title={<UiText id="lead.workbench.title" />}><EmptyState title={<UiText id="lead.workbench.not-loaded.title" />} description={<UiText id="lead.workbench.not-loaded.desc" />} /></Panel>;
   }
+
+  // Lead details as blocks. The template's layout (templates/lead-details-layout.ts)
+  // decides which tab each one sits in, its order and width, and whether it
+  // is shown; with no template it is the built-in arrangement.
+  //
+  // "Thông tin cơ bản" was removed here. Every field it edited now
+  // lives on the FORM CHUẨN panel, which already owned all three
+  // writes (lead identity, qualification, dossier) and sequenced
+  // them. Keeping it meant the same lead data had two editors with
+  // two different sets of labels and two save buttons.
+  //
+  // "Xuất cảnh" was removed here: it rendered departureDate and
+  // visaDate read-only off the same `tf` record that the section
+  // above owns, where training-finance-detail-page.tsx:547-548
+  // renders them as editable inputs. Its third row, pipeline status,
+  // is already in the page header. A whole section for a worse copy
+  // of the neighbouring one.
+  const blocks: Record<LeadDetailsBlockId, ReactNode> = {
+    // The AI data used to be a sidebar section of its own, but
+    // the form already offers "Dùng" inline on every field that
+    // has an unverified value. It lives here, collapsed, so the
+    // one screen still reaches it without being a second place
+    // to go looking.
+    aiExtraction: (
+      <div className="rounded-2xl border border-indigo-200/80 bg-indigo-50/40">
+        <button
+          type="button"
+          onClick={() => setAiVisible((v) => !v)}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <span className="text-sm font-semibold text-indigo-900">
+            {aiSuggestionCount > 0
+              ? copy({
+                  en: `${aiSuggestionCount} AI values not verified yet`,
+                  vi: `${aiSuggestionCount} giá trị AI chưa xác minh`
+                })
+              : copy({ en: "AI extraction", vi: "Dữ liệu AI" })}
+          </span>
+          <span className="text-xs font-medium text-indigo-700">
+            {aiVisible ? copy({ en: "Hide", vi: "Ẩn" }) : copy({ en: "Show", vi: "Xem" })}
+          </span>
+        </button>
+        {aiVisible ? (
+          <div className="space-y-6 border-t border-indigo-100 p-4">
+            <FormExtractionProgress leadId={leadId} />
+            <LeadAiSnapshotCard
+              lead={lead}
+              suggestions={suggestionsQuery.data ?? []}
+              qualification={qualificationQuery.data}
+              onVerifyAll={(patch, identityPatch) => {
+                if (Object.keys(patch).length > 0) {
+                  qualificationMutation.mutate(patch);
+                }
+                // Identity fields (fullName/phone) are Lead-level, not qualification.
+                // "Verify all" verifies EVERY actionable field in the snapshot card,
+                // identity included — so persist them via updateLead (which mirrors
+                // them into lead_field_state as verified). A phone collision surfaces
+                // as an error on this mutation while the qualification save still
+                // succeeds independently.
+                if (identityPatch && Object.keys(identityPatch).length > 0) {
+                  const idPatch: { fullName?: string; phone?: string } = {};
+                  if (typeof identityPatch.fullName === "string") idPatch.fullName = identityPatch.fullName;
+                  if (typeof identityPatch.phone === "string") idPatch.phone = identityPatch.phone;
+                  if (Object.keys(idPatch).length > 0) {
+                    updateLead.mutate({ id: leadId, patch: idPatch });
+                  }
+                }
+              }}
+              onRerunExtraction={(scanMode) => {
+                if (selectedThreadId) {
+                  runExtraction.mutate({ leadId, threadId: selectedThreadId, scanMode });
+                }
+              }}
+              onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
+              isDismissing={dismissSuggestion.isPending}
+              isVerifyAllPending={qualificationMutation.isPending}
+              isRerunPending={runExtraction.isPending}
+              extractionStatus={runExtraction.backgroundStatus}
+              className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
+            />
+          </div>
+        ) : null}
+      </div>
+    ),
+    formChuan: (
+      <FormChuanEntryPanel
+        leadId={leadId}
+        lead={lead}
+        qualification={qualificationQuery.data}
+        profile={(candidate?.profile as Record<string, unknown> | null | undefined) ?? null}
+        canEdit={canEditLeads}
+        canViewPii={canViewLeadPii}
+      />
+    ),
+    dossierStatus: (
+      <Panel
+        title={<UiText id="lead.workbench.dossier.title" />}
+        subtitle={<UiText id="lead.workbench.dossier.subtitle" />}
+        action={<Badge tone={formStatusTone}>{formStatusLabel}</Badge>}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <InfoCard
+            label={copy({ en: "Candidate", vi: "Ứng viên" })}
+            value={candidate?.code ?? candidate?.id ?? copy({ en: "Not created yet", vi: "Chưa tạo" })}
+            hint={candidate?.profile
+              ? copy({ en: "Open the dossier to review form fields and document evidence.", vi: "Mở hồ sơ để xem dữ liệu từ form và bằng chứng tài liệu." })
+              : copy({ en: "Upload and verify the standard worker form to create the candidate dossier.", vi: "Tải lên và xác minh form lao động chuẩn để tạo hồ sơ ứng viên." })}
+          />
+          <InfoCard
+            label={copy({ en: "Standard worker form", vi: "Form lao động chuẩn" })}
+            value={formStatusLabel}
+            hint={form?.updatedAt
+              ? `${copy({ en: "Last updated:", vi: "Cập nhật:" })} ${form.updatedAt}`
+              : copy({ en: "No form file on record yet.", vi: "Chưa có file form nào được lưu." })}
+          />
+        </div>
+
+        {!formVerified ? (
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm leading-6 text-indigo-900">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-indigo-500">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+              <path d="M12 8h.01M12 11v5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+            </svg>
+            <span>
+              {copy({
+                en: "Standard worker form is required before the lead can advance to matching.",
+                vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
+              })}
+            </span>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+          {canManageDocuments ? (
+            <Button onClick={() => setFormModalOpen(true)}>
+              {form?.hasFile
+                ? <UiText id="journey.workbench.form.manage" />
+                : <UiText id="journey.workbench.form.upload" />}
+            </Button>
+          ) : null}
+          <Button
+            variant="secondary"
+            onClick={() => setDossierOpen(true)}
+            disabled={!candidate?.profile}
+          >
+            {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
+          </Button>
+        </div>
+      </Panel>
+    ),
+    documents: <LeadDocumentsPanel leadId={leadId} />,
+    // "Ứng tuyển" and "Tiến độ & Tài chính" were two sections for one
+    // job: getting this lead onto an order and through to departure.
+    // Both read the same application/tf records, so splitting them
+    // just made the operator click twice.
+    applicationPhase: (
+      <Panel
+        title={<UiText id="lead.workbench.application.title" />}
+        subtitle={<UiText id="lead.workbench.application.subtitle" />}
+      >
+        <ApplicationPhasePanel
+          leadId={leadId}
+          leadStatus={lead.status}
+          candidate={candidate ?? null}
+          form={form}
+          application={application}
+        />
+      </Panel>
+    ),
+    trainingFinance: <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />,
+    summary: (
+      <Panel title={<UiText id="lead.workbench.summary.title" />} subtitle={<UiText id="lead.workbench.summary.subtitle" />}>
+        <DescriptionList
+          items={[
+            { label: copy({ en: "Lead ID", vi: "Mã ứng viên tiềm năng" }), value: lead.id },
+            { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: candidate?.code ?? candidate?.id ?? copy({ en: "Not created", vi: "Chưa tạo" }) },
+            { label: copy({ en: "Source", vi: "Nguồn" }), value: lead.source },
+            { label: copy({ en: "Phone", vi: "Điện thoại" }), value: lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" }) },
+            { label: copy({ en: "Region", vi: "Khu vực" }), value: lead.region || copy({ en: "No region", vi: "Chưa có khu vực" }) },
+            { label: copy({ en: "Created", vi: "Tạo lúc" }), value: lead.createdAt || copy({ en: "Unknown", vi: "Chưa rõ" }) },
+            { label: copy({ en: "Updated", vi: "Cập nhật lúc" }), value: lead.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
+          ]}
+        />
+      </Panel>
+    ),
+    verifiedSnapshot: (
+      <Panel title={<UiText id="lead.workbench.verified-snapshot.title" />} subtitle={<UiText id="lead.workbench.verified-snapshot.subtitle" />}>
+        <DescriptionList
+          items={[
+            { label: copy({ en: "Passport", vi: "Hộ chiếu" }), value: yesNoUnknown(qualificationForm.hasPassport) },
+            { label: copy({ en: "Worked abroad", vi: "Từng đi nước ngoài" }), value: yesNoUnknown(qualificationForm.hasWorkedAbroad) },
+            { label: copy({ en: "Health fit", vi: "Sức khỏe đạt yêu cầu" }), value: yesNoUnknown(qualificationForm.healthMeetsCriteria) },
+            { label: copy({ en: "Risk history", vi: "Lịch sử rủi ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chưa rõ" }) }
+          ]}
+        />
+      </Panel>
+    ),
+    // Conversation and the ad-hoc AI question moved here from the
+    // old "Trích xuất AI" section: both are chronology, not data
+    // entry, and this is the chronology section.
+    conversation: (
+      <Panel
+        title={<UiText id="lead.workbench.conversation.title" />}
+        subtitle={<UiText id="lead.workbench.conversation.subtitle" />}
+      >
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="text-sm text-slate-600">
+            {selectedThreadId
+              ? copy({ en: "Conversation is hidden by default to keep this workbench focused.", vi: "Hội thoại được ẩn mặc định để trang xử lý gọn hơn." })
+              : copy({ en: "No primary conversation thread is linked to this lead.", vi: "Chưa có luồng hội thoại chính được liên kết với hồ sơ này." })}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setConversationVisible((value) => !value)}
+              disabled={!selectedThreadId}
+            >
+              {conversationVisible
+                ? copy({ en: "Hide conversation", vi: "Ẩn hội thoại" })
+                : copy({ en: "Show conversation", vi: "Xem hội thoại" })}
+            </Button>
+            {selectedThreadId ? (
+              <Button
+                variant="ghost"
+                onClick={() => navigate(`/conversations?threadId=${selectedThreadId}`)}
+              >
+                {copy({ en: "Open full page", vi: "Mở trang hội thoại" })}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {conversationVisible ? (
+          <div className="mt-4">
+            <LeadConversationInline thread={lead.threads?.[0]} />
+          </div>
+        ) : null}
+
+        {lead.threads?.length ? (
+          <div className="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs md:grid-cols-3">
+            <div>
+              <span className="text-slate-400">{copy({ en: "Status", vi: "Trạng thái AI" })}: </span>
+              <Badge tone="warning">{lead.threads[0].analyzeStatus}</Badge>
+            </div>
+            <div>
+              <span className="text-slate-400">{copy({ en: "Last message", vi: "Tin nhắn cuối" })}: </span>
+              <span className="text-slate-600">{lead.threads[0].lastMessageAt ?? "—"}</span>
+            </div>
+            <div>
+              <span className="text-slate-400">{copy({ en: "Last AI scan", vi: "AI quét gần nhất" })}: </span>
+              <span className="text-slate-600">{lead.threads[0].lastAiExtractedAt ?? "—"}</span>
+            </div>
+          </div>
+        ) : null}
+      </Panel>
+    ),
+    aiQuestion: (
+      <Panel
+        title={<UiText id="lead.workbench.ai-question.title" />}
+        subtitle={<UiText id="lead.workbench.ai-question.subtitle" />}
+      >
+        <div className="space-y-3">
+          <InfoStrip className="border-indigo-100 bg-indigo-50/70 text-indigo-900">
+            <div className="text-sm leading-6">
+              {copy({
+                // Was "above" — the AI block now lives on the worker
+                // profile section, not in this one.
+                en: "For saved structured extraction, open the AI data strip on the worker profile.",
+                vi: "Muốn cập nhật dữ liệu trích xuất đã lưu, mở khối Dữ liệu AI ở mục Hồ sơ lao động."
+              })}
+            </div>
+          </InfoStrip>
+          <Input label={copy({ en: "Question", vi: "Câu hỏi" })} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => { if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt }); }} disabled={!selectedThreadId || aiMutation.isPending}>
+              {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Đang hỏi AI..." }) : copy({ en: "Run query", vi: "Hỏi AI" })}
+            </Button>
+            <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng luồng hội thoại ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có luồng hội thoại" })}</span>
+          </div>
+          {aiMutation.data ? renderAiQueryResult(aiMutation.data.result, copy) : null}
+        </div>
+      </Panel>
+    )
+  };
 
   return (
     <div className="space-y-6">
@@ -462,307 +755,34 @@ export function LeadWorkbenchPage() {
               strictly more (the code) when there is. A second neutral badge
               rendered the same sentence twice side by side. */}
           <Badge tone={candidate ? "success" : "warning"}>{candidate ? `${copy({ en: "Candidate", vi: "Ứng viên" })} ${candidate.code ?? candidate.id}` : copy({ en: "No candidate created yet", vi: "Chưa tạo hồ sơ ứng viên" })}</Badge>
+          {/* Template authoring is full-admin only (ui-templates is @Roles(Admin)). */}
+          {isAdmin ? (
+            <Link
+              to="/ui-templates?tab=layout"
+              className="ml-auto text-xs font-medium text-indigo-700 hover:text-indigo-900 hover:underline"
+            >
+              {copy({ en: "Customize layout", vi: "Tùy chỉnh bố cục" })}
+            </Link>
+          ) : null}
         </div>
       </InfoStrip>
 
       <CandidateWorkbench
         className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-        defaultSection="formStandard"
-        sections={[
-          {
-            key: "formStandard",
-            content: (
-              <div className="space-y-5">
-                {/* The AI data used to be a sidebar section of its own, but
-                    the form already offers "Dùng" inline on every field that
-                    has an unverified value. It lives here, collapsed, so the
-                    one screen still reaches it without being a second place
-                    to go looking. */}
-                <div className="rounded-2xl border border-indigo-200/80 bg-indigo-50/40">
-                  <button
-                    type="button"
-                    onClick={() => setAiVisible((v) => !v)}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-                  >
-                    <span className="text-sm font-semibold text-indigo-900">
-                      {aiSuggestionCount > 0
-                        ? copy({
-                            en: `${aiSuggestionCount} AI values not verified yet`,
-                            vi: `${aiSuggestionCount} giá trị AI chưa xác minh`
-                          })
-                        : copy({ en: "AI extraction", vi: "Dữ liệu AI" })}
-                    </span>
-                    <span className="text-xs font-medium text-indigo-700">
-                      {aiVisible ? copy({ en: "Hide", vi: "Ẩn" }) : copy({ en: "Show", vi: "Xem" })}
-                    </span>
-                  </button>
-                  {aiVisible ? (
-                    <div className="space-y-6 border-t border-indigo-100 p-4">
-                      <FormExtractionProgress leadId={leadId} />
-                      <LeadAiSnapshotCard
-                        lead={lead}
-                        suggestions={suggestionsQuery.data ?? []}
-                        qualification={qualificationQuery.data}
-                        onVerifyAll={(patch, identityPatch) => {
-                          if (Object.keys(patch).length > 0) {
-                            qualificationMutation.mutate(patch);
-                          }
-                          // Identity fields (fullName/phone) are Lead-level, not qualification.
-                          // "Verify all" verifies EVERY actionable field in the snapshot card,
-                          // identity included — so persist them via updateLead (which mirrors
-                          // them into lead_field_state as verified). A phone collision surfaces
-                          // as an error on this mutation while the qualification save still
-                          // succeeds independently.
-                          if (identityPatch && Object.keys(identityPatch).length > 0) {
-                            const idPatch: { fullName?: string; phone?: string } = {};
-                            if (typeof identityPatch.fullName === "string") idPatch.fullName = identityPatch.fullName;
-                            if (typeof identityPatch.phone === "string") idPatch.phone = identityPatch.phone;
-                            if (Object.keys(idPatch).length > 0) {
-                              updateLead.mutate({ id: leadId, patch: idPatch });
-                            }
-                          }
-                        }}
-                        onRerunExtraction={(scanMode) => {
-                          if (selectedThreadId) {
-                            runExtraction.mutate({ leadId, threadId: selectedThreadId, scanMode });
-                          }
-                        }}
-                        onDismissSuggestion={(fn) => dismissSuggestion.mutate(fn)}
-                        isDismissing={dismissSuggestion.isPending}
-                        isVerifyAllPending={qualificationMutation.isPending}
-                        isRerunPending={runExtraction.isPending}
-                        extractionStatus={runExtraction.backgroundStatus}
-                        className="border-indigo-200/80 bg-gradient-to-br from-white via-white to-indigo-50/50"
-                      />
-                    </div>
-                  ) : null}
+        // Opens on the layout's first tab (Worker profile in the built-in layout).
+        sections={visibleLeadDetailsTabs(leadDetailsLayout).map((tab) => ({
+          key: tab.id,
+          label: tab.builtIn ? undefined : layoutTabLabel(tab.label, copy),
+          content: (
+            <div className={LAYOUT_GRID_CLASS} data-crm-tab={tab.id}>
+              {tab.blocks.map((block) => (
+                <div key={block.id} className={blockSpanClass(block.width)} data-crm-block={block.id} data-crm-width={block.width}>
+                  {blocks[block.id]}
                 </div>
-
-                <FormChuanEntryPanel
-                  leadId={leadId}
-                  lead={lead}
-                  qualification={qualificationQuery.data}
-                  profile={(candidate?.profile as Record<string, unknown> | null | undefined) ?? null}
-                  canEdit={canEditLeads}
-                  canViewPii={canViewLeadPii}
-                />
-              </div>
-            )
-          },
-          // "Thông tin cơ bản" was removed here. Every field it edited now
-          // lives on the FORM CHUẨN panel, which already owned all three
-          // writes (lead identity, qualification, dossier) and sequenced
-          // them. Keeping it meant the same lead data had two editors with
-          // two different sets of labels and two save buttons.
-          {
-            key: "documents",
-            content: (
-              <div className="space-y-6">
-                <Panel
-                  title={<UiText id="lead.workbench.dossier.title" />}
-                  subtitle={<UiText id="lead.workbench.dossier.subtitle" />}
-                  action={<Badge tone={formStatusTone}>{formStatusLabel}</Badge>}
-                >
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <InfoCard
-                      label={copy({ en: "Candidate", vi: "Ứng viên" })}
-                      value={candidate?.code ?? candidate?.id ?? copy({ en: "Not created yet", vi: "Chưa tạo" })}
-                      hint={candidate?.profile
-                        ? copy({ en: "Open the dossier to review form fields and document evidence.", vi: "Mở hồ sơ để xem dữ liệu từ form và bằng chứng tài liệu." })
-                        : copy({ en: "Upload and verify the standard worker form to create the candidate dossier.", vi: "Tải lên và xác minh form lao động chuẩn để tạo hồ sơ ứng viên." })}
-                    />
-                    <InfoCard
-                      label={copy({ en: "Standard worker form", vi: "Form lao động chuẩn" })}
-                      value={formStatusLabel}
-                      hint={form?.updatedAt
-                        ? `${copy({ en: "Last updated:", vi: "Cập nhật:" })} ${form.updatedAt}`
-                        : copy({ en: "No form file on record yet.", vi: "Chưa có file form nào được lưu." })}
-                    />
-                  </div>
-
-                  {!formVerified ? (
-                    <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm leading-6 text-indigo-900">
-                      <svg viewBox="0 0 24 24" aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-indigo-500">
-                        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-                        <path d="M12 8h.01M12 11v5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-                      </svg>
-                      <span>
-                        {copy({
-                          en: "Standard worker form is required before the lead can advance to matching.",
-                          vi: "Form lao động chuẩn là bắt buộc trước khi ứng viên có thể chuyển sang bước ghép đơn."
-                        })}
-                      </span>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-                    {canManageDocuments ? (
-                      <Button onClick={() => setFormModalOpen(true)}>
-                        {form?.hasFile
-                          ? <UiText id="journey.workbench.form.manage" />
-                          : <UiText id="journey.workbench.form.upload" />}
-                      </Button>
-                    ) : null}
-                    <Button
-                      variant="secondary"
-                      onClick={() => setDossierOpen(true)}
-                      disabled={!candidate?.profile}
-                    >
-                      {copy({ en: "Open dossier", vi: "Mở hồ sơ" })}
-                    </Button>
-                  </div>
-                </Panel>
-
-                <LeadDocumentsPanel leadId={leadId} />
-              </div>
-            ),
-          },
-          {
-            key: "application",
-            // "Ứng tuyển" and "Tiến độ & Tài chính" were two sections for one
-            // job: getting this lead onto an order and through to departure.
-            // Both read the same application/tf records, so splitting them
-            // just made the operator click twice.
-            content: (
-              <div className="space-y-6">
-                <Panel
-                  title={<UiText id="lead.workbench.application.title" />}
-                  subtitle={<UiText id="lead.workbench.application.subtitle" />}
-                >
-                  <ApplicationPhasePanel
-                    leadId={leadId}
-                    leadStatus={lead.status}
-                    candidate={candidate ?? null}
-                    form={form}
-                    application={application}
-                  />
-                </Panel>
-                <TrainingFinanceDetailPage embeddedRecordId={tf ? tf.id : "new"} embeddedLeadId={leadId} />
-              </div>
-            ),
-          },
-          // "Xuất cảnh" was removed here: it rendered departureDate and
-          // visaDate read-only off the same `tf` record that the section
-          // above owns, where training-finance-detail-page.tsx:547-548
-          // renders them as editable inputs. Its third row, pipeline status,
-          // is already in the page header. A whole section for a worse copy
-          // of the neighbouring one.
-          {
-            key: "history",
-            content: (
-              <div className="space-y-6">
-                <Panel title={<UiText id="lead.workbench.summary.title" />} subtitle={<UiText id="lead.workbench.summary.subtitle" />}>
-                  <DescriptionList
-                    items={[
-                      { label: copy({ en: "Lead ID", vi: "Mã ứng viên tiềm năng" }), value: lead.id },
-                      { label: copy({ en: "Candidate", vi: "Ứng viên" }), value: candidate?.code ?? candidate?.id ?? copy({ en: "Not created", vi: "Chưa tạo" }) },
-                      { label: copy({ en: "Source", vi: "Nguồn" }), value: lead.source },
-                      { label: copy({ en: "Phone", vi: "Điện thoại" }), value: lead.phone || copy({ en: "No phone", vi: "Chưa có số điện thoại" }) },
-                      { label: copy({ en: "Region", vi: "Khu vực" }), value: lead.region || copy({ en: "No region", vi: "Chưa có khu vực" }) },
-                      { label: copy({ en: "Created", vi: "Tạo lúc" }), value: lead.createdAt || copy({ en: "Unknown", vi: "Chưa rõ" }) },
-                      { label: copy({ en: "Updated", vi: "Cập nhật lúc" }), value: lead.updatedAt || copy({ en: "Unknown", vi: "Chưa rõ" }) }
-                    ]}
-                  />
-                </Panel>
-
-                <Panel title={<UiText id="lead.workbench.verified-snapshot.title" />} subtitle={<UiText id="lead.workbench.verified-snapshot.subtitle" />}>
-                  <DescriptionList
-                    items={[
-                      { label: copy({ en: "Passport", vi: "Hộ chiếu" }), value: yesNoUnknown(qualificationForm.hasPassport) },
-                      { label: copy({ en: "Worked abroad", vi: "Từng đi nước ngoài" }), value: yesNoUnknown(qualificationForm.hasWorkedAbroad) },
-                      { label: copy({ en: "Health fit", vi: "Sức khỏe đạt yêu cầu" }), value: yesNoUnknown(qualificationForm.healthMeetsCriteria) },
-                      { label: copy({ en: "Risk history", vi: "Lịch sử rủi ro" }), value: qualificationForm.hasRiskHistory ? formatEnum(qualificationForm.hasRiskHistory) : copy({ en: "Unknown", vi: "Chưa rõ" }) }
-                    ]}
-                  />
-                </Panel>
-
-                {/* Conversation and the ad-hoc AI question moved here from the
-                    old "Trích xuất AI" section: both are chronology, not data
-                    entry, and this is the chronology section. */}
-                <Panel
-                  title={<UiText id="lead.workbench.conversation.title" />}
-                  subtitle={<UiText id="lead.workbench.conversation.subtitle" />}
-                >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="text-sm text-slate-600">
-                      {selectedThreadId
-                        ? copy({ en: "Conversation is hidden by default to keep this workbench focused.", vi: "Hội thoại được ẩn mặc định để trang xử lý gọn hơn." })
-                        : copy({ en: "No primary conversation thread is linked to this lead.", vi: "Chưa có luồng hội thoại chính được liên kết với hồ sơ này." })}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        onClick={() => setConversationVisible((value) => !value)}
-                        disabled={!selectedThreadId}
-                      >
-                        {conversationVisible
-                          ? copy({ en: "Hide conversation", vi: "Ẩn hội thoại" })
-                          : copy({ en: "Show conversation", vi: "Xem hội thoại" })}
-                      </Button>
-                      {selectedThreadId ? (
-                        <Button
-                          variant="ghost"
-                          onClick={() => navigate(`/conversations?threadId=${selectedThreadId}`)}
-                        >
-                          {copy({ en: "Open full page", vi: "Mở trang hội thoại" })}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {conversationVisible ? (
-                    <div className="mt-4">
-                      <LeadConversationInline thread={lead.threads?.[0]} />
-                    </div>
-                  ) : null}
-
-                  {lead.threads?.length ? (
-                    <div className="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs md:grid-cols-3">
-                      <div>
-                        <span className="text-slate-400">{copy({ en: "Status", vi: "Trạng thái AI" })}: </span>
-                        <Badge tone="warning">{lead.threads[0].analyzeStatus}</Badge>
-                      </div>
-                      <div>
-                        <span className="text-slate-400">{copy({ en: "Last message", vi: "Tin nhắn cuối" })}: </span>
-                        <span className="text-slate-600">{lead.threads[0].lastMessageAt ?? "—"}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400">{copy({ en: "Last AI scan", vi: "AI quét gần nhất" })}: </span>
-                        <span className="text-slate-600">{lead.threads[0].lastAiExtractedAt ?? "—"}</span>
-                      </div>
-                    </div>
-                  ) : null}
-                </Panel>
-
-                <Panel
-                  title={<UiText id="lead.workbench.ai-question.title" />}
-                  subtitle={<UiText id="lead.workbench.ai-question.subtitle" />}
-                >
-                  <div className="space-y-3">
-                    <InfoStrip className="border-indigo-100 bg-indigo-50/70 text-indigo-900">
-                      <div className="text-sm leading-6">
-                        {copy({
-                          // Was "above" — the AI block now lives on the worker
-                          // profile section, not in this one.
-                          en: "For saved structured extraction, open the AI data strip on the worker profile.",
-                          vi: "Muốn cập nhật dữ liệu trích xuất đã lưu, mở khối Dữ liệu AI ở mục Hồ sơ lao động."
-                        })}
-                      </div>
-                    </InfoStrip>
-                    <Input label={copy({ en: "Question", vi: "Câu hỏi" })} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Button onClick={() => { if (selectedThreadId) aiMutation.mutate({ threadId: selectedThreadId, prompt }); }} disabled={!selectedThreadId || aiMutation.isPending}>
-                        {aiMutation.isPending ? copy({ en: "Running AI query...", vi: "Đang hỏi AI..." }) : copy({ en: "Run query", vi: "Hỏi AI" })}
-                      </Button>
-                      <span className="text-sm text-slate-500">{selectedThreadId ? copy({ en: `Using thread ${selectedThreadId}`, vi: `Đang dùng luồng hội thoại ${selectedThreadId}` }) : copy({ en: "No thread available", vi: "Không có luồng hội thoại" })}</span>
-                    </div>
-                    {aiMutation.data ? renderAiQueryResult(aiMutation.data.result, copy) : null}
-                  </div>
-                </Panel>
-              </div>
-            ),
-          },
-        ]}
+              ))}
+            </div>
+          )
+        }))}
       />
 
       {dossierOpen ? (

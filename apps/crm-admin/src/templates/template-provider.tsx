@@ -14,6 +14,7 @@ import { useI18n } from "@/i18n";
 import { pageIdForPath } from "./template-pages";
 import { startTemplateScript } from "./template-runtime";
 import { tokensToCssVariables } from "./template-tokens";
+import { resolveLeadDetailsLayout, type ResolvedLayoutTab } from "./lead-details-layout";
 import {
   readStoredPreview,
   rememberLogoutReason,
@@ -46,6 +47,8 @@ type TemplateContextValue = {
   setSafeMode: (on: boolean) => void;
   scriptErrors: string[];
   brand: TemplateBrand;
+  /** Lead details tabs and blocks; the built-in layout in safe mode or with no template. */
+  leadDetailsLayout: ResolvedLayoutTab[];
   isLoading: boolean;
   reload: () => Promise<void>;
 };
@@ -264,6 +267,11 @@ export function TemplateProvider(props: PropsWithChildren) {
     window.location.replace("/login");
   }, [isAuthenticated, isLoginPage]);
 
+  // Layouts are reconciled against the code's blocks, so a draft or an old
+  // layout cannot drop one; safe mode still shows the built-in arrangement.
+  const storedLeadDetailsLayout = safeMode ? null : effective?.layouts?.leadDetails ?? null;
+  const leadDetailsLayout = useMemo(() => resolveLeadDetailsLayout(storedLeadDetailsLayout), [storedLeadDetailsLayout]);
+
   const value = useMemo<TemplateContextValue>(() => {
     const tokens = effective?.tokens ?? {};
     return {
@@ -291,10 +299,11 @@ export function TemplateProvider(props: PropsWithChildren) {
         tagline: tokens.brandTagline ?? null,
         logoUrl: tokens.logoUrl ?? null
       },
+      leadDetailsLayout,
       isLoading,
       reload
     };
-  }, [active, currentUserId, effective, isLoading, isPreviewing, preview, reload, safeMode, scriptErrors]);
+  }, [active, currentUserId, effective, isLoading, isPreviewing, leadDetailsLayout, preview, reload, safeMode, scriptErrors]);
 
   return <TemplateContext.Provider value={value}>{props.children}</TemplateContext.Provider>;
 }

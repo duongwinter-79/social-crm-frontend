@@ -11,6 +11,7 @@ Open **Admin → UI templates** (`/ui-templates`, full admins only).
 | Colours | One colour per family (accent, neutral, success, warning, danger). A full 50–950 shade scale is generated from it. | Every screen, including the login page |
 | Font | A CSS font stack. Load web fonts with `@import` in Custom CSS. | Every screen |
 | Brand | Brand name, tagline and logo (https URL, `/path`, or an uploaded image up to 200 KB). | Sidebar and login page |
+| Layout | Drag-and-drop arrangement of the lead details screen: tab order, which tab each block sits in, block order, full or half width, hidden blocks, extra tabs. | Lead details; **built-in layout in safe mode** |
 | Custom CSS | Loaded after the app's own styles. | Signed-in screens only, **never on the login page**; skipped in safe mode |
 | Custom JS | Runs once per page load with the `crm` API below. | Signed-in sessions only, **never on the login page**; skipped in safe mode |
 
@@ -25,9 +26,37 @@ At most one template is active. With none active the app uses its built-in look,
 
 Saving a template that is already active updates the live look for everyone on their next page load. Every create, update, activate, deactivate and delete is written to the admin audit log: creates and deletes record the full template, updates record each changed field with its previous and next value, and activations record which template replaced which. Uploaded logos are recorded by size and hash rather than copied.
 
+## Lead details layout (drag and drop)
+
+The **Layout** tab of the editor lays out the lead details screen (`/leads/:id`). Admins also reach it from the **Customize layout** link on any lead.
+
+- Each tab of the screen is a column. Drag a block by its handle (⋮⋮) to reorder it, or into another column to move it to that tab. Drag a column by the handle in its header to reorder tabs.
+- **Full / Half**: half-width blocks sit side by side when the content area is at least 48rem wide, and stack on narrower screens. The grid follows the content area, not the window, so it never scrolls sideways.
+- **Hide** removes a block from the page. **FORM CHUẨN entry** is always shown: the screen exists to edit it.
+- **Add tab** adds a tab with a Vietnamese and English name. **Remove** puts its blocks back in their own tabs. Built-in tab names are edited on the UI text screen.
+- A tab with nothing visible is left off the page. The page opens on the first tab.
+- **Move to** on each block does the same as dragging. Keyboard: focus a handle, Space to pick up, arrow keys to move, Space to drop, Escape to cancel.
+- **Reset to built-in** returns to the screen as shipped. A layout identical to the built-in one is stored as none.
+
+Layouts only move blocks: what each block shows and does, and who may use it, is unchanged. The layout is reconciled with the blocks in the code every time it is applied. Unknown ids are ignored, and a block the layout does not mention (for example one added in a later release) appears at the end of its usual tab, so a layout can never lose a block.
+
+Stored shape (`layouts.leadDetails`), as exported in `.crm-template.json`:
+
+```json
+{
+  "version": 1,
+  "tabs": [
+    { "id": "history", "blocks": [{ "id": "summary", "width": "half" }, { "id": "verifiedSnapshot", "width": "half" }, { "id": "aiQuestion", "hidden": true }] },
+    { "id": "custom-1", "label": { "vi": "Giấy tờ khác", "en": "Papers" }, "blocks": [{ "id": "documents" }] }
+  ]
+}
+```
+
+Blocks: `aiExtraction`, `formChuan`, `dossierStatus`, `documents`, `applicationPhase`, `trainingFinance`, `summary`, `verifiedSnapshot`, `conversation`, `aiQuestion`. Built-in tabs: `formStandard`, `documents`, `application`, `history`.
+
 ## Safe mode
 
-If a template breaks the page, open any CRM URL with `?crm-safe-mode=1`. Custom CSS and JS are then skipped in that browser session (colours and brand still apply), so you can reach the editor and fix it. `?crm-safe-mode=0`, or the banner button, turns it off.
+If a template breaks the page, open any CRM URL with `?crm-safe-mode=1`. Custom CSS and JS are then skipped in that browser session and the lead details screen uses its built-in layout (colours and brand still apply), so you can reach the editor and fix it. `?crm-safe-mode=0`, or the banner button, turns it off.
 
 ## Stable hooks for CSS and JS
 
@@ -42,6 +71,9 @@ Target these instead of Tailwind class names, which change between releases.
 | `[data-crm-component]` | `button`, `input`, `select`, `field`, `panel`, `section-header`, `stat-card`, `metric-card`, `info-card`, `badge`, `empty-state`, `info-strip`, `toolbar`, `data-table`, `pagination`, `description-list` |
 | `[data-crm-variant]` | button: `primary`, `secondary`, `ghost`, `danger` |
 | `[data-crm-tone]` | badge / metric card: `neutral`, `accent`, `success`, `warning`, `danger` |
+| `[data-crm-section]` | lead details tab buttons: `formStandard`, `documents`, `application`, `history`, `custom-N` |
+| `[data-crm-tab]` | lead details tab content grid, same ids |
+| `[data-crm-block]` + `[data-crm-width]` | lead details blocks (ids above), `full` or `half` |
 
 CSS variables (values are `r g b` triplets, use them as `rgb(var(--crm-indigo-600))`):
 
@@ -99,11 +131,11 @@ Custom JS is admin-authored code with full access to the page, the same trust le
 
 ## Backend
 
-- `GET /api/ui-templates/active/public`: active tokens only, no CSS or JS (unauthenticated)
-- `GET /api/ui-templates/active`: active template including JS (any signed-in user)
+- `GET /api/ui-templates/active/public`: active tokens only, no layouts, CSS or JS (unauthenticated)
+- `GET /api/ui-templates/active`: active template including layouts and JS (any signed-in user)
 - `GET|POST /api/admin/ui-templates`, `GET|PATCH|DELETE /api/admin/ui-templates/:id`, `POST /api/admin/ui-templates/:id/activate`, `POST /api/admin/ui-templates/deactivate` (admin)
 
-Stored in `crm.ui_templates` (migration `CreateUiTemplates1778400000000`). A partial unique index keeps at most one row active, and activate / deactivate / delete run in a transaction under a Postgres advisory lock so concurrent admin actions cannot leave zero or two templates active.
+Stored in `crm.ui_templates` (migration `CreateUiTemplates1778400000000`; `layouts` jsonb added by `AddUiTemplateLayouts1778700000000`). The backend checks a layout's shape (known screen, ids, at most 12 tabs and 40 blocks per tab, each block placed once, plain-text tab names up to 40 characters); which blocks exist is the frontend's business. A partial unique index keeps at most one row active, and activate / deactivate / delete run in a transaction under a Postgres advisory lock so concurrent admin actions cannot leave zero or two templates active.
 
 Known limitation: two admins editing the same template at the same time overwrite each other (last save wins); there is no version check yet.
 
@@ -112,4 +144,6 @@ Known limitation: two admins editing the same template at the same time overwrit
 - `tailwind.config.js`: palettes routed through `--crm-*` variables, defaults equal to Tailwind's values
 - `apps/crm-admin/src/templates/`: tokens → CSS variables, page ids, script runtime, provider, import/export
 - `apps/crm-admin/src/features/admin/ui-templates-page.tsx`: the editor
+- `apps/crm-admin/src/templates/lead-details-layout.ts`: lead details blocks, layout reconcile and editing helpers
+- `apps/crm-admin/src/features/admin/lead-details-layout-editor.tsx`: the drag-and-drop layout editor (`@dnd-kit`)
 - `packages/ui/src/primitives.tsx`: `data-crm-*` hooks on shared components

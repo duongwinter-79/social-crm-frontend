@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Badge, Button, EmptyState, Field, FieldGroup, InfoStrip, Input, Panel, SectionHeader } from "@social-crm/ui";
 import {
   triggerBlobDownload,
@@ -11,6 +11,7 @@ import {
   useUpdateUiTemplateMutation,
   type AdminUiTemplate,
   type UiTemplateColorKey,
+  type UiTemplateLayouts,
   type UiTemplatePayload,
   type UiTemplateTokens
 } from "@social-crm/api";
@@ -20,6 +21,14 @@ import { useTemplate } from "@/templates/template-provider";
 import { TEMPLATE_PAGE_IDS } from "@/templates/template-pages";
 import { COLOR_FAMILIES, COLOR_KEYS, SHADES, generateScale } from "@/templates/template-tokens";
 import { SAFE_MODE_QUERY_PARAM, parseTemplateFile, toTemplateFile } from "@/templates/template-transfer";
+import {
+  defaultLeadDetailsLayout,
+  isDefaultLeadDetailsLayout,
+  resolveLeadDetailsLayout,
+  toStoredLeadDetailsLayout,
+  type ResolvedLayoutTab
+} from "@/templates/lead-details-layout";
+import { LeadDetailsLayoutEditor } from "./lead-details-layout-editor";
 
 type Draft = {
   name: string;
@@ -27,9 +36,12 @@ type Draft = {
   tokens: UiTemplateTokens;
   customCss: string;
   customJs: string;
+  /** Lead details layout; null = the built-in layout. */
+  leadDetails: ResolvedLayoutTab[] | null;
 };
 
-type Tab = "design" | "css" | "js" | "reference";
+type Tab = "design" | "layout" | "css" | "js" | "reference";
+const TABS: Tab[] = ["design", "layout", "css", "js", "reference"];
 type Confirm = { kind: "activate" | "delete" | "deactivate" } | null;
 
 const NEW_ID = "new";
@@ -37,7 +49,7 @@ const NEW_ID = "new";
 const MAX_LOGO_BYTES = 200 * 1024;
 const LIVE_PREVIEW_DELAY_MS = 400;
 
-const EMPTY_DRAFT: Draft = { name: "", description: "", tokens: {}, customCss: "", customJs: "" };
+const EMPTY_DRAFT: Draft = { name: "", description: "", tokens: {}, customCss: "", customJs: "", leadDetails: null };
 
 const STARTER_JS = `// Runs for every signed-in user while this template is active.
 // See the "Reference" tab for the crm.* API.
@@ -53,15 +65,26 @@ function toDraft(template: AdminUiTemplate): Draft {
     description: template.description ?? "",
     tokens: template.tokens ?? {},
     customCss: template.customCss ?? "",
-    customJs: template.customJs ?? ""
+    customJs: template.customJs ?? "",
+    leadDetails: template.layouts?.leadDetails ? resolveLeadDetailsLayout(template.layouts.leadDetails) : null
   };
 }
 
+/** The layout as stored; a layout that matches the built-in one is stored as none. */
+function storedLayouts(draft: Draft): UiTemplateLayouts {
+  return draft.leadDetails && !isDefaultLeadDetailsLayout(draft.leadDetails)
+    ? { leadDetails: toStoredLeadDetailsLayout(draft.leadDetails) }
+    : {};
+}
+
 function toPayload(draft: Draft): UiTemplatePayload {
+  const layouts = storedLayouts(draft);
   return {
     name: draft.name.trim(),
     description: draft.description.trim() || null,
     tokens: draft.tokens,
+    // null clears a layout the template had.
+    layouts: { leadDetails: layouts.leadDetails ?? null },
     customCss: draft.customCss.trim() ? draft.customCss : null,
     customJs: draft.customJs.trim() ? draft.customJs : null
   };
@@ -187,6 +210,8 @@ function ApiReference() {
     ['body[data-crm-template="…"]', { en: "Slug of the active template, or \"default\".", vi: "Mã của mẫu đang chạy, hoặc \"default\"." }],
     ['[data-crm-shell="…"]', { en: "frame, sidebar, brand, nav, header, content", vi: "frame, sidebar, brand, nav, header, content" }],
     ['[data-crm-component="…"]', { en: "button, input, select, field, panel, section-header, stat-card, metric-card, info-card, badge, empty-state, info-strip, toolbar, data-table, pagination, description-list", vi: "button, input, select, field, panel, section-header, stat-card, metric-card, info-card, badge, empty-state, info-strip, toolbar, data-table, pagination, description-list" }],
+    ['[data-crm-section="…"] · [data-crm-tab="…"]', { en: "Lead details: a tab's nav button and its content grid (formStandard, documents, application, history, or custom-N from the Layout tab).", vi: "Chi tiết ứng viên: nút mục ở thanh bên và lưới nội dung của mục (formStandard, documents, application, history, hoặc custom-N từ thẻ Bố cục)." }],
+    ['[data-crm-block="…"][data-crm-width="full|half"]', { en: "Lead details blocks: aiExtraction, formChuan, dossierStatus, documents, applicationPhase, trainingFinance, summary, verifiedSnapshot, conversation, aiQuestion.", vi: "Các khối chi tiết ứng viên: aiExtraction, formChuan, dossierStatus, documents, applicationPhase, trainingFinance, summary, verifiedSnapshot, conversation, aiQuestion." }],
     ["[data-crm-variant] · [data-crm-tone]", { en: "Button variant (primary, secondary, ghost, danger); badge / metric tone (neutral, accent, success, warning, danger).", vi: "Kiểu nút (primary, secondary, ghost, danger); tông của badge / metric (neutral, accent, success, warning, danger)." }],
     ["--crm-<palette>-<shade>", { en: "Colour variables for slate, indigo, blue, emerald, green, amber, yellow, rose, red × 50…950, plus --crm-font-sans.", vi: "Biến màu cho slate, indigo, blue, emerald, green, amber, yellow, rose, red × 50…950, và --crm-font-sans." }]
   ];
@@ -246,7 +271,9 @@ export function UiTemplatesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [baseline, setBaseline] = useState<Draft>(EMPTY_DRAFT);
-  const [tab, setTab] = useState<Tab>("design");
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(() => (TABS as string[]).includes(requestedTab ?? "") ? (requestedTab as Tab) : "design");
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Bridges the gap between a create/update response and the list refetch.
@@ -263,12 +290,24 @@ export function UiTemplatesPage() {
       ? templates.find((template) => template.id === selectedId) ?? (lastSaved?.id === selectedId ? lastSaved : null)
       : null;
   const isNew = selectedId === NEW_ID;
-  const isDirty = JSON.stringify(draft) !== JSON.stringify(baseline);
+  // Compared as saved, so dragging a block away and back is not a change.
+  const isDirty = JSON.stringify(toPayload(draft)) !== JSON.stringify(toPayload(baseline));
   const previewKey = isNew ? NEW_ID : selected?.id ?? null;
   const isPreviewingThis = Boolean(previewKey && templateContext.preview?.id === previewKey);
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   // Open the active template (or the first one) when the list first arrives.
+  // Arriving from a lead's "Customize layout" with no template yet: start one.
+  useEffect(() => {
+    if (selectedId !== null || templatesQuery.isLoading || !templatesQuery.isSuccess || templates.length > 0) return;
+    if (requestedTab !== "layout") return;
+    setSelectedId(NEW_ID);
+    setDraft({ ...EMPTY_DRAFT, name: copy({ en: "Lead details layout", vi: "Bố cục chi tiết ứng viên" }) });
+    setBaseline(EMPTY_DRAFT);
+    // Runs once, when the empty list first arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templatesQuery.isLoading, templatesQuery.isSuccess, templates.length]);
+
   useEffect(() => {
     if (selectedId !== null || templates.length === 0) return;
     const initial = activeTemplate ?? templates[0];
@@ -283,6 +322,7 @@ export function UiTemplatesPage() {
       id: key,
       name: draft.name || copy({ en: "Unsaved template", vi: "Mẫu chưa lưu" }),
       tokens: draft.tokens,
+      layouts: storedLayouts(draft),
       customCss: draft.customCss || null,
       customJs: js,
       updatedAt: new Date().toISOString()
@@ -309,12 +349,12 @@ export function UiTemplatesPage() {
     setNotice(null);
   };
 
-  const openNew = (initial: Draft) => {
+  const openNew = (initial: Draft, startTab: Tab = "design") => {
     if (!confirmDiscard()) return;
     setSelectedId(NEW_ID);
     setDraft(initial);
     setBaseline(EMPTY_DRAFT);
-    setTab("design");
+    setTab(startTab);
     setNotice(null);
   };
 
@@ -375,7 +415,7 @@ export function UiTemplatesPage() {
 
   const exportTemplate = () => {
     const payload = toPayload(draft);
-    const file = toTemplateFile({ ...payload, description: payload.description ?? null, tokens: draft.tokens, customCss: payload.customCss ?? null, customJs: payload.customJs ?? null });
+    const file = toTemplateFile({ ...payload, description: payload.description ?? null, tokens: draft.tokens, layouts: storedLayouts(draft), customCss: payload.customCss ?? null, customJs: payload.customJs ?? null });
     const slug = (draft.name || "template").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "template";
     triggerBlobDownload(new Blob([JSON.stringify(file, null, 2)], { type: "application/json" }), `${slug}.crm-template.json`);
   };
@@ -391,7 +431,8 @@ export function UiTemplatesPage() {
         description: payload.description ?? "",
         tokens: payload.tokens ?? {},
         customCss: payload.customCss ?? "",
-        customJs: payload.customJs ?? ""
+        customJs: payload.customJs ?? "",
+        leadDetails: payload.layouts.leadDetails ? resolveLeadDetailsLayout(payload.layouts.leadDetails) : null
       });
       setNotice(copy({ en: "Imported as a new, unsaved template. Review it, then save.", vi: "Đã nhập thành mẫu mới chưa lưu. Kiểm tra rồi bấm lưu." }));
     } catch (error) {
@@ -421,6 +462,7 @@ export function UiTemplatesPage() {
 
   const tabs: Array<[Tab, { en: string; vi: string }]> = [
     ["design", { en: "Branding & colours", vi: "Thương hiệu & màu sắc" }],
+    ["layout", { en: "Layout", vi: "Bố cục" }],
     ["css", { en: "Custom CSS", vi: "CSS tùy chỉnh" }],
     ["js", { en: "Custom JS", vi: "JS tùy chỉnh" }],
     ["reference", { en: "Reference", vi: "Tài liệu" }]
@@ -432,8 +474,8 @@ export function UiTemplatesPage() {
         eyebrow={copy({ en: "Admin tool", vi: "Công cụ quản trị" })}
         title={copy({ en: "UI templates", vi: "Mẫu giao diện" })}
         description={copy({
-          en: "Switch and edit the CRM's look at runtime: brand colours, font and logo, plus custom CSS and JavaScript. Templates only change presentation — workflows, permissions and data stay the same.",
-          vi: "Đổi và chỉnh giao diện CRM ngay khi đang chạy: màu thương hiệu, phông chữ, logo, cùng CSS và JavaScript tùy chỉnh. Mẫu chỉ thay đổi cách hiển thị — quy trình, phân quyền và dữ liệu giữ nguyên."
+          en: "Switch and edit the CRM's look at runtime: brand colours, font and logo, the lead details layout (drag and drop), plus custom CSS and JavaScript. Templates only change presentation — workflows, permissions and data stay the same.",
+          vi: "Đổi và chỉnh giao diện CRM ngay khi đang chạy: màu thương hiệu, phông chữ, logo, bố cục chi tiết ứng viên (kéo thả), cùng CSS và JavaScript tùy chỉnh. Mẫu chỉ thay đổi cách hiển thị — quy trình, phân quyền và dữ liệu giữ nguyên."
         })}
         action={
           <div className="flex flex-wrap gap-2">
@@ -630,6 +672,17 @@ export function UiTemplatesPage() {
               </div>
             ) : null}
 
+            {tab === "layout" ? (
+              <LeadDetailsLayoutEditor
+                tabs={draft.leadDetails ?? defaultLeadDetailsLayout()}
+                isCustomised={Boolean(draft.leadDetails && !isDefaultLeadDetailsLayout(draft.leadDetails))}
+                onChange={(update) =>
+                  setDraft((current) => ({ ...current, leadDetails: update(current.leadDetails ?? defaultLeadDetailsLayout()) }))
+                }
+                onReset={() => setDraft((current) => ({ ...current, leadDetails: null }))}
+              />
+            ) : null}
+
             {tab === "css" ? (
               <div className="space-y-3">
                 <div className="text-sm text-slate-500">
@@ -746,7 +799,7 @@ export function UiTemplatesPage() {
         }
         description={
           confirm?.kind === "activate"
-            ? copy({ en: "Every CRM user gets this template's colours, CSS and JS on their next page load.", vi: "Mọi người dùng CRM sẽ nhận màu, CSS và JS của mẫu này ở lần tải trang kế tiếp." })
+            ? copy({ en: "Every CRM user gets this template's colours, layout, CSS and JS on their next page load.", vi: "Mọi người dùng CRM sẽ nhận màu, bố cục, CSS và JS của mẫu này ở lần tải trang kế tiếp." })
             : confirm?.kind === "deactivate"
               ? copy({ en: "The active template stays saved and can be activated again later.", vi: "Mẫu đang dùng vẫn được lưu và có thể kích hoạt lại sau." })
               : copy({ en: "This cannot be undone. Export it first if you may need it again.", vi: "Không thể hoàn tác. Hãy xuất JSON trước nếu có thể cần lại." })

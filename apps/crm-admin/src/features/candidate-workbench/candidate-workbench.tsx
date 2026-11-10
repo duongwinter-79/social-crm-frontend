@@ -25,20 +25,27 @@ export type WorkbenchSectionKey =
   | "history";
 
 export interface WorkbenchSection {
-  key: WorkbenchSectionKey;
+  /** A built-in key, or the id of a tab a UI template's layout adds. */
+  key: string;
   content: ReactNode;
+  /** Nav label; built-in keys default to their UI-text label. */
+  label?: ReactNode;
   /** Optional small indicator rendered next to the nav label (e.g. a count). */
   badge?: ReactNode;
   disabled?: boolean;
 }
 
 /**
- * Four sections, no group headers. Three headers over eight entries was
- * scaffolding for a decomposition that no longer exists: the worker's record
- * is one thing (`formStandard`), and the rest are the jobs around it.
+ * The four built-in sections, no group headers. Three headers over eight
+ * entries was scaffolding for a decomposition that no longer exists: the
+ * worker's record is one thing (`formStandard`), and the rest are the jobs
+ * around it.
  *
  * The labels live in ui-text.registry.ts under these ids, not here, so the
  * customer can rename a section from the UI-text screen without a deploy.
+ * Which sections exist, their order and what each holds comes from the
+ * lead-details layout (templates/lead-details-layout.ts), which a UI template
+ * can rearrange; this shell renders the sections in the order it is given.
  */
 const SECTION_META: Record<WorkbenchSectionKey, { uiTextId: string; icon: ReactNode }> = {
   formStandard: { uiTextId: "lead.section.form-standard", icon: <IconDoc /> },
@@ -47,14 +54,15 @@ const SECTION_META: Record<WorkbenchSectionKey, { uiTextId: string; icon: ReactN
   history: { uiTextId: "lead.section.history", icon: <IconChat /> },
 };
 
-/** Canonical order — the sequence an operator works through a lead in. */
-const SECTION_ORDER: WorkbenchSectionKey[] = ["formStandard", "documents", "application", "history"];
+function builtInMeta(key: string) {
+  return Object.prototype.hasOwnProperty.call(SECTION_META, key) ? SECTION_META[key as WorkbenchSectionKey] : null;
+}
 
 export function CandidateWorkbench(props: {
   /** Lead status for the top status line. Omit to hide it. */
   status?: string;
   sections: WorkbenchSection[];
-  defaultSection?: WorkbenchSectionKey;
+  defaultSection?: string;
   /** Identity header (name, score, classification…). */
   header?: ReactNode;
   /** Action bar (Save / Cancel). */
@@ -64,15 +72,13 @@ export function CandidateWorkbench(props: {
   className?: string;
 }) {
   const available = props.sections.filter((s) => !s.disabled);
-  const firstKey = props.defaultSection ?? available[0]?.key ?? "formStandard";
-  const [active, setActive] = useState<WorkbenchSectionKey>(firstKey);
+  const [active, setActive] = useState<string>(props.defaultSection ?? available[0]?.key ?? "formStandard");
 
-  const activeSection = props.sections.find((s) => s.key === active) ?? available[0];
-
-  // Flat nav in canonical order — no groups to collapse into.
-  const items = SECTION_ORDER.map((key) => props.sections.find((s) => s.key === key)).filter(
-    (s): s is WorkbenchSection => Boolean(s)
-  );
+  // A layout change (template switched or previewed) can remove the open
+  // section; fall back to the first one rather than showing nothing.
+  const activeSection = available.find((s) => s.key === active) ?? available[0];
+  const activeKey = activeSection?.key;
+  const items = props.sections;
 
   return (
     <div className={`flex flex-col ${props.className ?? ""}`}>
@@ -103,12 +109,14 @@ export function CandidateWorkbench(props: {
         <nav className="flex shrink-0 gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2 lg:w-60 lg:flex-col lg:gap-0 lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-0 lg:py-4">
           <div className="flex flex-wrap gap-1.5 lg:block lg:space-y-1 lg:px-3">
             {items.map((section) => {
-              const meta = SECTION_META[section.key];
-              const isActive = section.key === active;
+              const meta = builtInMeta(section.key);
+              const isActive = section.key === activeKey;
               return (
                 <button
                   key={section.key}
                   type="button"
+                  data-crm-section={section.key}
+                  aria-current={isActive ? "true" : undefined}
                   disabled={section.disabled}
                   onClick={() => setActive(section.key)}
                   className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors lg:w-full ${
@@ -117,9 +125,9 @@ export function CandidateWorkbench(props: {
                       : "text-slate-600 hover:bg-white hover:text-slate-900"
                   } ${section.disabled ? "cursor-not-allowed opacity-40" : ""}`}
                 >
-                  <span className={isActive ? "text-white" : "text-slate-400"}>{meta.icon}</span>
+                  <span className={isActive ? "text-white" : "text-slate-400"}>{meta?.icon ?? <IconGrid />}</span>
                   <span className="lg:flex-1 lg:truncate">
-                    <UiText id={meta.uiTextId} />
+                    {section.label ?? (meta ? <UiText id={meta.uiTextId} /> : section.key)}
                   </span>
                   {section.badge ? <span>{section.badge}</span> : null}
                 </button>
@@ -160,6 +168,9 @@ function IconDoc() {
 }
 function IconCap() {
   return svg(<><path d="M3 9l9-4 9 4-9 4-9-4Z" /><path d="M7 11v5c0 1 2.2 2 5 2s5-1 5-2v-5" /></>);
+}
+function IconGrid() {
+  return svg(<><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></>);
 }
 function IconChat() {
   return svg(<><path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6A2.5 2.5 0 0 1 16.5 15H10l-4 3v-3a1 1 0 0 1-1-1z" /></>);
